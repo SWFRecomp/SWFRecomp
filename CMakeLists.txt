@@ -17,9 +17,14 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/swf.cpp
 )
 
-target_sources(SWFRecomp PRIVATE ${SOURCES})
-target_include_directories(SWFRecomp PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/zlib)
 
-if (WIN32)
-    target_link_libraries(SWFRecomp ws2_32)
-endif(WIN32)
+target_link_libraries(SWFRecomp PRIVATE
+    zlib
+)
+
+target_sources(SWFRecomp PRIVATE ${SOURCES})
+target_include_directories(SWFRecomp PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/zlib
+)

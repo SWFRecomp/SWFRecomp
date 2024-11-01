@@ -27,6 +27,18 @@ namespace SWFRecomp
 		u16 frame_count;
 		
 		SWFHeader();
-		SWFHeader(char* swf_data);
+		SWFHeader(char* swf_buffer);
+		
+		int load_other_data(char* swf_buffer);
+	};
+	
+	class SWF
+	{
+	public:
+		SWFHeader header;
+		char* swf_buffer;
+		
+		SWF();
+		SWF(const char* swf_path);
 	};
 };
