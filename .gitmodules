@@ -1,3 +1,4 @@
 [submodule "lib/zlib"]
 	path = lib/zlib
 	url = https://github.com/madler/zlib.git
+	commit = d476828316d05d54c6fd6a068b121b30c147b5cd
