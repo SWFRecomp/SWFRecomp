@@ -92,6 +92,19 @@ namespace SWFRecomp
 		swf_buffer_i += 2;
 		frame_count = *((u16*) &swf_buffer[swf_buffer_i]);
 		
+		printf("\n");
+		
+		printf("Window dimensions:\n");
+		printf("xmin: %d twips\n", frame_size.xmin);
+		printf("xmax: %d twips\n", frame_size.xmax);
+		printf("ymin: %d twips\n", frame_size.ymin);
+		printf("ymax: %d twips\n", frame_size.ymax);
+		
+		printf("\n");
+		
+		printf("FPS: %d\n", framerate >> 8);
+		printf("SWF frame count: %d\n", frame_count);
+		
 		return true;
 	}
 	
@@ -104,6 +117,8 @@ namespace SWFRecomp
 	
 	SWF::SWF(const char* swf_path)
 	{
+		printf("Reading %s...\n", swf_path);
+		
 		ifstream swf_file(swf_path, ios_base::in | ios_base::binary);
 		if (!swf_file.good())
 		{
@@ -133,6 +148,8 @@ namespace SWFRecomp
 			case 'C':
 			{
 				// zlib
+				
+				printf("SWF is compressed with zlib. Decompressing...\n");
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);

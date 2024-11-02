@@ -6,5 +6,5 @@ using namespace SWFRecomp;
 
 int main()
 {
-	SWF swf = SWF("sup.swf");
+	SWF swf = SWF("rotmg.swf");
 }
