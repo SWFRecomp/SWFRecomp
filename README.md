@@ -53,3 +53,4 @@ From RotMG:
 - Nequ
 - snowden
 - MoonMan
+- Auru
