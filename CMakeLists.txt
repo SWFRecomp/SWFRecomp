@@ -17,14 +17,19 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/swf.cpp
 )
 
+set(RENAME_ZCONF OFF)
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/zlib)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/lzma)
 
 target_link_libraries(SWFRecomp PRIVATE
     zlib
+    lzma
 )
 
 target_sources(SWFRecomp PRIVATE ${SOURCES})
 target_include_directories(SWFRecomp PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/lib/zlib
+    zlib
+    lzma/liblzma/api
 )

@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include <zlib.h>
+#include <lzma.h>
 
 #include <swf.h>
 
@@ -123,14 +124,64 @@ namespace SWFRecomp
 		
 		header = SWFHeader(swf_buffer);
 		
-		char* swf_buffer_uncompressed = new char[header.file_length];
-		memcpy(swf_buffer_uncompressed, swf_buffer, 8);
-		long unsigned int swf_length_no_8 = header.file_length - 8;
-		uncompress((u8*) &swf_buffer_uncompressed[8], &swf_length_no_8, const_cast<const u8*>((u8*) &swf_buffer[8]), (uLong) swf_size);
+		switch (header.compression)
+		{
+			case 'F':
+			{
+				// uncompressed
+				
+				break;
+			}
+			
+			case 'C':
+			{
+				// zlib
+				
+				char* swf_buffer_uncompressed = new char[header.file_length];
+				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
+				long unsigned int swf_length_no_8 = header.file_length - 8;
+				uncompress((u8*) &swf_buffer_uncompressed[8], &swf_length_no_8, const_cast<const u8*>((u8*) &swf_buffer[8]), (uLong) (swf_size - 8));
+				
+				delete[] swf_buffer;
+				swf_buffer = swf_buffer_uncompressed;
+				
+				break;
+			}
+			
+			case 'Z':
+			{
+				// lzma
+				
+				fprintf(stderr, "WARNING: LZMA compression not fully tested yet\n");
+				
+				char* swf_buffer_uncompressed = new char[header.file_length];
+				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
+				
+				lzma_stream swf_lzma_stream = LZMA_STREAM_INIT;
+				if (lzma_auto_decoder(&swf_lzma_stream, header.file_length, 0) != LZMA_OK)
+				{
+					fprintf(stderr, "Couldn't initialize LZMA decoding stream\n");
+					throw new std::exception();
+				}
+				
+				swf_lzma_stream.next_in = const_cast<const u8*>((u8*) &swf_buffer[8]);
+				swf_lzma_stream.avail_in = swf_size - 8;
+				swf_lzma_stream.next_out = (u8*) &swf_buffer_uncompressed[8];
+				swf_lzma_stream.avail_out = header.file_length - 8;
+				lzma_code(&swf_lzma_stream, LZMA_RUN);
+				
+				break;
+			}
+			
+			default:
+			{
+				fprintf(stderr, "Invalid SWF compression format\n");
+				throw new std::exception();
+				
+				break;
+			}
+		}
 		
-		header.load_other_data(swf_buffer_uncompressed);
-		
-		delete[] swf_buffer;
-		swf_buffer = swf_buffer_uncompressed;
+		header.load_other_data(swf_buffer);
 	}
 };
