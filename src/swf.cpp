@@ -76,9 +76,6 @@ namespace SWFRecomp
 			}
 		}
 		
-		// You wanna know something else?
-		// Half of those values aren't used. :p
-		
 		frame_size.xmin = (s32) rect_u32s[0];
 		frame_size.xmax = (s32) rect_u32s[1];
 		frame_size.ymin = (s32) rect_u32s[2];
@@ -168,7 +165,14 @@ namespace SWFRecomp
 				swf_lzma_stream.avail_in = swf_size - 8;
 				swf_lzma_stream.next_out = (u8*) &swf_buffer_uncompressed[8];
 				swf_lzma_stream.avail_out = header.file_length - 8;
-				lzma_code(&swf_lzma_stream, LZMA_RUN);
+				
+				if (lzma_code(&swf_lzma_stream, LZMA_RUN) != LZMA_OK)
+				{
+					fprintf(stderr, "Couldn't successfully decode LZMA\n");
+					throw new std::exception();
+				}
+				
+				lzma_end(&swf_lzma_stream);
 				
 				break;
 			}
