@@ -94,6 +94,10 @@ namespace SWFRecomp
 		
 		printf("\n");
 		
+		printf("SWF version: %d\n", version);
+		
+		printf("\n");
+		
 		printf("Window dimensions:\n");
 		printf("xmin: %d twips\n", frame_size.xmin);
 		printf("xmax: %d twips\n", frame_size.xmax);
@@ -123,7 +127,7 @@ namespace SWFRecomp
 		if (!swf_file.good())
 		{
 			fprintf(stderr, "SWF file `%s' not found\n", swf_path);
-			throw new std::exception();
+			throw std::exception();
 		}
 		
 		swf_file.seekg(0, ios_base::end);
@@ -175,7 +179,7 @@ namespace SWFRecomp
 				if (lzma_auto_decoder(&swf_lzma_stream, header.file_length, 0) != LZMA_OK)
 				{
 					fprintf(stderr, "Couldn't initialize LZMA decoding stream\n");
-					throw new std::exception();
+					throw std::exception();
 				}
 				
 				swf_lzma_stream.next_in = const_cast<const u8*>((u8*) &swf_buffer[8]);
@@ -186,7 +190,7 @@ namespace SWFRecomp
 				if (lzma_code(&swf_lzma_stream, LZMA_RUN) != LZMA_OK)
 				{
 					fprintf(stderr, "Couldn't successfully decode LZMA\n");
-					throw new std::exception();
+					throw std::exception();
 				}
 				
 				lzma_end(&swf_lzma_stream);
@@ -197,7 +201,7 @@ namespace SWFRecomp
 			default:
 			{
 				fprintf(stderr, "Invalid SWF compression format\n");
-				throw new std::exception();
+				throw std::exception();
 				
 				break;
 			}
