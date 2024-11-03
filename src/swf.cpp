@@ -169,31 +169,46 @@ namespace SWFRecomp
 			case 'Z':
 			{
 				// lzma
-				
-				fprintf(stderr, "WARNING: LZMA compression not fully tested yet\n");
+				// Yeah, Adobe definitely screwed the format up on this one.
+				// I'm not sure if they just didn't get it, or what...
+				// Whatever this mangled garbage is, it's NOT REAL LZMA.
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
 				
 				lzma_stream swf_lzma_stream = LZMA_STREAM_INIT;
-				if (lzma_auto_decoder(&swf_lzma_stream, header.file_length, 0) != LZMA_OK)
+				if (lzma_alone_decoder(&swf_lzma_stream, UINT64_MAX) != LZMA_OK)
 				{
 					fprintf(stderr, "Couldn't initialize LZMA decoding stream\n");
 					throw std::exception();
 				}
 				
-				swf_lzma_stream.next_in = const_cast<const u8*>((u8*) &swf_buffer[8]);
-				swf_lzma_stream.avail_in = swf_size - 8;
+				char lzma_header_swf[13];
+				memset(lzma_header_swf, 0, 13);
+				memcpy(&lzma_header_swf, &swf_buffer[12], 5);
+				*((u64*) &lzma_header_swf[5]) = (u64) (header.file_length - 8);
+				
+				swf_lzma_stream.next_in = const_cast<const u8*>((u8*) lzma_header_swf);
+				swf_lzma_stream.avail_in = 13;
 				swf_lzma_stream.next_out = (u8*) &swf_buffer_uncompressed[8];
 				swf_lzma_stream.avail_out = header.file_length - 8;
 				
-				if (lzma_code(&swf_lzma_stream, LZMA_RUN) != LZMA_OK)
+				lzma_ret ret = lzma_code(&swf_lzma_stream, LZMA_RUN);
+				if (ret != LZMA_OK)
 				{
-					fprintf(stderr, "Couldn't successfully decode LZMA\n");
+					fprintf(stderr, "Couldn't successfully decode LZMA header, returned %d\n", ret);
 					throw std::exception();
 				}
 				
+				swf_lzma_stream.next_in = const_cast<const u8*>((u8*) &swf_buffer[8 + 4 + 5]);
+				swf_lzma_stream.avail_in = swf_size - 8 - 4 - 5;
+				
+				ret = lzma_code(&swf_lzma_stream, LZMA_FINISH);
+				
 				lzma_end(&swf_lzma_stream);
+				
+				delete[] swf_buffer;
+				swf_buffer = swf_buffer_uncompressed;
 				
 				break;
 			}
