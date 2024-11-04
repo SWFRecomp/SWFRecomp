@@ -146,6 +146,8 @@ namespace SWFRecomp
 			{
 				// uncompressed
 				
+				printf("SWF is uncompressed.\n");
+				
 				break;
 			}
 			
@@ -172,6 +174,8 @@ namespace SWFRecomp
 				// Yeah, Adobe definitely screwed the format up on this one.
 				// I'm not sure if they just didn't get it, or what...
 				// Whatever this mangled garbage is, it's NOT REAL LZMA.
+				
+				printf("SWF is compressed with LZMA. Decompressing...\n");
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
