@@ -5,7 +5,7 @@
 #include <zlib.h>
 #include <lzma.h>
 
-#include <swf.h>
+#include <swf.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
@@ -188,7 +188,6 @@ namespace SWFRecomp
 				}
 				
 				char lzma_header_swf[13];
-				memset(lzma_header_swf, 0, 13);
 				memcpy(&lzma_header_swf, &swf_buffer[12], 5);
 				*((u64*) &lzma_header_swf[5]) = (u64) (header.file_length - 8);
 				
