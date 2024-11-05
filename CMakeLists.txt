@@ -15,6 +15,7 @@ add_executable(${PROJECT_NAME})
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/main.cpp
     ${CMAKE_SOURCE_DIR}/src/swf.cpp
+    ${CMAKE_SOURCE_DIR}/src/tag.cpp
 )
 
 set(RENAME_ZCONF OFF)

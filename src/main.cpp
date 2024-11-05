@@ -6,5 +6,7 @@ using namespace SWFRecomp;
 
 int main()
 {
-	SWF swf = SWF("ER-Client.swf");
+	SWF swf = SWF("sup.swf");
+	
+	while (swf.parseTag());
 }

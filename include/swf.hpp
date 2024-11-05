@@ -29,7 +29,7 @@ namespace SWFRecomp
 		SWFHeader();
 		SWFHeader(char* swf_buffer);
 		
-		int load_other_data(char* swf_buffer);
+		char* loadOtherData(char* swf_buffer);
 	};
 	
 	class SWF
@@ -37,8 +37,11 @@ namespace SWFRecomp
 	public:
 		SWFHeader header;
 		char* swf_buffer;
+		char* cur_pos;
 		
 		SWF();
 		SWF(const char* swf_path);
+		
+		bool parseTag();
 	};
 };

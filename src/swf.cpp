@@ -6,6 +6,7 @@
 #include <lzma.h>
 
 #include <swf.hpp>
+#include <tag.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
@@ -26,7 +27,7 @@ namespace SWFRecomp
 		memcpy(this, swf_buffer, 8);
 	}
 	
-	int SWFHeader::load_other_data(char* swf_buffer)
+	char* SWFHeader::loadOtherData(char* swf_buffer)
 	{
 		// I *will* absolutely litter this with comments
 		// because this format is reprehensible to parse
@@ -92,9 +93,12 @@ namespace SWFRecomp
 		swf_buffer_i += 2;
 		frame_count = *((u16*) &swf_buffer[swf_buffer_i]);
 		
+		swf_buffer_i += 2;
+		
 		printf("\n");
 		
 		printf("SWF version: %d\n", version);
+		printf("Decompressed file length: %d\n", file_length);
 		
 		printf("\n");
 		
@@ -109,7 +113,7 @@ namespace SWFRecomp
 		printf("FPS: %d\n", framerate >> 8);
 		printf("SWF frame count: %d\n", frame_count);
 		
-		return true;
+		return swf_buffer + swf_buffer_i;
 	}
 	
 	
@@ -225,6 +229,18 @@ namespace SWFRecomp
 			}
 		}
 		
-		header.load_other_data(swf_buffer);
+		cur_pos = header.loadOtherData(swf_buffer);
+	}
+	
+	bool SWF::parseTag()
+	{
+		SWFTag tag;
+		cur_pos = tag.parseHeader(cur_pos);
+		
+		printf("tag code: %d, tag length: %d\n", tag.tag_code, tag.length);
+		
+		cur_pos = tag.parseFields(cur_pos);
+		
+		return tag.tag_code != 0;
 	}
 };
