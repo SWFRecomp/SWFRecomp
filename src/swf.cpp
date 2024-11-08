@@ -110,6 +110,10 @@ namespace SWFRecomp
 		
 		printf("\n");
 		
+		printf("Which means resolution is %dx%d\n", (frame_size.xmax - frame_size.xmin)/20, (frame_size.ymax - frame_size.ymin)/20);
+		
+		printf("\n");
+		
 		printf("FPS: %d\n", framerate >> 8);
 		printf("SWF frame count: %d\n", frame_count);
 		
@@ -237,10 +241,29 @@ namespace SWFRecomp
 		SWFTag tag;
 		cur_pos = tag.parseHeader(cur_pos);
 		
-		printf("tag code: %d, tag length: %d\n", tag.tag_code, tag.length);
+		printf("tag code: %d, tag length: %d\n", tag.code, tag.length);
+		
+		switch (tag.code)
+		{
+			case SWF_TAG_FILE_ATTRIBUTES:
+			{
+				tag.setFieldCount(4);
+				tag.configureNextField(SWF_FIELD_UI8);
+				tag.configureNextField(SWF_FIELD_UI8);
+				tag.configureNextField(SWF_FIELD_UI8);
+				tag.configureNextField(SWF_FIELD_UI8);
+				break;
+			}
+			
+			default:
+			{
+				fprintf(stderr, "Tag type %d not implemented.\n", tag.code);
+				throw std::exception();
+			}
+		}
 		
 		cur_pos = tag.parseFields(cur_pos);
 		
-		return tag.tag_code != 0;
+		return tag.code != 0;
 	}
 };

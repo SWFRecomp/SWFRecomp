@@ -1,19 +1,29 @@
 #include <tag.hpp>
 
+#include <cstdio>
+
 namespace SWFRecomp
 {
-	SWFTag::SWFTag()
+	SWFTag::SWFTag() : field_count(0), next_field(0), fields(nullptr)
 	{
 		
 	}
 	
+	SWFTag::~SWFTag()
+	{
+		if (fields != nullptr)
+		{
+			delete[] fields;
+		}
+	}
+	
 	char* SWFTag::parseHeader(char* tag_buffer)
 	{
-		u16 tag_code_and_length = *((u16*) tag_buffer);
+		u16 code_and_length = *((u16*) tag_buffer);
 		tag_buffer += 2;
 		
-		tag_code = (tag_code_and_length >> 6) & 0x3FF;
-		length = tag_code_and_length & 0b111111;
+		code = (code_and_length >> 6) & 0x3FF;
+		length = code_and_length & 0b111111;
 		
 		if (length == 0x3F)
 		{
@@ -24,8 +34,26 @@ namespace SWFRecomp
 		return tag_buffer;
 	}
 	
+	void SWFTag::setFieldCount(u32 new_field_count)
+	{
+		field_count = new_field_count;
+		
+		fields = new SWFField[field_count];
+	}
+	
+	void SWFTag::configureNextField(FieldType type, u32 length, bool is_nbits)
+	{
+		fields[next_field].type = type;
+		next_field += 1;
+	}
+	
 	char* SWFTag::parseFields(char* tag_buffer)
 	{
+		for (u32 field_i = 0; field_i < field_count; ++field_i)
+		{
+			fields[field_i].parse(tag_buffer);
+		}
+		
 		tag_buffer += length;
 		
 		return tag_buffer;

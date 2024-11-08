@@ -12,7 +12,7 @@ namespace SWFRecomp
 		s32 ymin;
 		s32 ymax;
 	};
-
+	
 	class SWFHeader
 	{
 	public:

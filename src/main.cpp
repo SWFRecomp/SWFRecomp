@@ -8,5 +8,7 @@ int main()
 {
 	SWF swf = SWF("sup.swf");
 	
+	printf("\n");
+	
 	while (swf.parseTag());
 }
