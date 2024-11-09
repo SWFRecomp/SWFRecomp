@@ -22,7 +22,7 @@ namespace SWFRecomp
 		u16 code_and_length = *((u16*) tag_buffer);
 		tag_buffer += 2;
 		
-		code = (code_and_length >> 6) & 0x3FF;
+		code = (TagType) ((code_and_length >> 6) & 0x3FF);
 		length = code_and_length & 0b111111;
 		
 		if (length == 0x3F)

@@ -6,7 +6,7 @@
 
 namespace SWFRecomp
 {
-	enum SWFTagType
+	enum TagType
 	{
 		SWF_TAG_END_TAG = 0,
 		SWF_TAG_SHOW_FRAME = 1,
@@ -22,7 +22,7 @@ namespace SWFRecomp
 	class SWFTag
 	{
 	public:
-		u8 code;
+		TagType code;
 		u32 nbits;
 		u32 length;
 		
