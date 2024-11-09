@@ -44,9 +44,9 @@ namespace SWFRecomp
 	class SWFField
 	{
 	public:
-		u32 length;
+		u32 bit_length;
 		FieldType type;
-		void* value;
+		u64 value;
 		
 		SWFField();
 		

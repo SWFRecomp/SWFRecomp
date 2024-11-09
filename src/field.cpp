@@ -3,7 +3,7 @@
 
 #include <field.hpp>
 
-#define VAL(type, x) ((void*) *((type*) x))
+#define VAL(type, x) ((u64) *((type*) x))
 
 #include <cstdio>
 
@@ -20,14 +20,21 @@ namespace SWFRecomp
 		{
 			case SWF_FIELD_NONE:
 			{
-				fprintf(stderr, "No type set for field.\n");
-				throw std::exception();
+				EXC("No type set for field.\n");
 			}
 			
 			case SWF_FIELD_UI8:
 			{
 				value = VAL(u8, field_buffer);
 				field_buffer += 1;
+				
+				break;
+			}
+			
+			case SWF_FIELD_UI16:
+			{
+				value = VAL(u16, field_buffer);
+				field_buffer += 2;
 				
 				break;
 			}
@@ -42,8 +49,7 @@ namespace SWFRecomp
 			
 			default:
 			{
-				fprintf(stderr, "Field type %d not implemented.\n", type);
-				throw std::exception();
+				EXC_ARG("Field type %d not implemented.\n", type);
 			}
 		}
 		

@@ -1,14 +1,10 @@
 #include <iostream>
 
-#include <swf.hpp>
+#include <recompilation.hpp>
 
-using namespace SWFRecomp;
+using SWFRecomp::recompile;
 
 int main()
 {
-	SWF swf = SWF("sup.swf");
-	
-	printf("\n");
-	
-	while (swf.parseTag());
+	recompile("sup.swf", "RecompiledTags", "RecompiledScripts");
 }

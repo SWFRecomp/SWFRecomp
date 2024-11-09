@@ -41,7 +41,7 @@ namespace SWFRecomp
 		fields = new SWFField[field_count];
 	}
 	
-	void SWFTag::configureNextField(FieldType type, u32 length, bool is_nbits)
+	void SWFTag::configureNextField(FieldType type, u32 bit_length, bool is_nbits)
 	{
 		fields[next_field].type = type;
 		next_field += 1;
@@ -51,10 +51,8 @@ namespace SWFRecomp
 	{
 		for (u32 field_i = 0; field_i < field_count; ++field_i)
 		{
-			fields[field_i].parse(tag_buffer);
+			tag_buffer = fields[field_i].parse(tag_buffer);
 		}
-		
-		tag_buffer += length;
 		
 		return tag_buffer;
 	}

@@ -14,10 +14,13 @@ add_executable(${PROJECT_NAME})
 
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/recompilation.cpp
     ${CMAKE_SOURCE_DIR}/src/swf.cpp
     ${CMAKE_SOURCE_DIR}/src/tag.cpp
     ${CMAKE_SOURCE_DIR}/src/field.cpp
 )
+
+target_compile_options(${PROJECT_NAME} PRIVATE -O2)
 
 set(RENAME_ZCONF OFF)
 
@@ -29,7 +32,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     lzma
 )
 
-#~ configure_file(${CMAKE_BINARY_DIR}/lib/zlib/zlib.dll ${CMAKE_SOURCE_DIR}/ COPYONLY)
 if (WIN32)
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD

@@ -1,6 +1,11 @@
 #pragma once
 
+#include <fstream>
+
 #include <common.h>
+#include <tag.hpp>
+
+using std::ofstream;
 
 namespace SWFRecomp
 {
@@ -39,9 +44,11 @@ namespace SWFRecomp
 		char* swf_buffer;
 		char* cur_pos;
 		
+		SWFTag RGB;
+		
 		SWF();
 		SWF(const char* swf_path);
 		
-		bool parseTag();
+		bool parseTag(ofstream& tag_main);
 	};
 };

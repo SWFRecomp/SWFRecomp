@@ -1,18 +1,20 @@
 #include <cstdio>
 #include <cstring>
-#include <fstream>
+#include <string>
 
 #include <zlib.h>
 #include <lzma.h>
 
 #include <swf.hpp>
-#include <tag.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
 
+using std::to_string;
+
 using std::ifstream;
 using std::ios_base;
+using std::endl;
 
 namespace SWFRecomp
 {
@@ -129,13 +131,21 @@ namespace SWFRecomp
 	
 	SWF::SWF(const char* swf_path)
 	{
+		// Configure reusable struct records
+		// 
+		// Using a SWFTag without parsing the header
+		// behaves exactly like a SWF struct record
+		RGB.setFieldCount(3);
+		RGB.configureNextField(SWF_FIELD_UI8);  // Red
+		RGB.configureNextField(SWF_FIELD_UI8);  // Green
+		RGB.configureNextField(SWF_FIELD_UI8);  // Blue
+		
 		printf("Reading %s...\n", swf_path);
 		
 		ifstream swf_file(swf_path, ios_base::in | ios_base::binary);
 		if (!swf_file.good())
 		{
-			fprintf(stderr, "SWF file `%s' not found\n", swf_path);
-			throw std::exception();
+			EXC_ARG("SWF file `%s' not found\n", swf_path);
 		}
 		
 		swf_file.seekg(0, ios_base::end);
@@ -191,8 +201,7 @@ namespace SWFRecomp
 				lzma_stream swf_lzma_stream = LZMA_STREAM_INIT;
 				if (lzma_alone_decoder(&swf_lzma_stream, UINT64_MAX) != LZMA_OK)
 				{
-					fprintf(stderr, "Couldn't initialize LZMA decoding stream\n");
-					throw std::exception();
+					EXC("Couldn't initialize LZMA decoding stream\n");
 				}
 				
 				char lzma_header_swf[13];
@@ -207,8 +216,7 @@ namespace SWFRecomp
 				lzma_ret ret = lzma_code(&swf_lzma_stream, LZMA_RUN);
 				if (ret != LZMA_OK)
 				{
-					fprintf(stderr, "Couldn't successfully decode LZMA header, returned %d\n", ret);
-					throw std::exception();
+					EXC_ARG("Couldn't successfully decode LZMA header, returned %d\n", ret);
 				}
 				
 				swf_lzma_stream.next_in = const_cast<const u8*>((u8*) &swf_buffer[8 + 4 + 5]);
@@ -226,17 +234,14 @@ namespace SWFRecomp
 			
 			default:
 			{
-				fprintf(stderr, "Invalid SWF compression format\n");
-				throw std::exception();
-				
-				break;
+				EXC("Invalid SWF compression format\n");
 			}
 		}
 		
 		cur_pos = header.loadOtherData(swf_buffer);
 	}
 	
-	bool SWF::parseTag()
+	bool SWF::parseTag(ofstream& tag_main)
 	{
 		SWFTag tag;
 		cur_pos = tag.parseHeader(cur_pos);
@@ -245,24 +250,99 @@ namespace SWFRecomp
 		
 		switch (tag.code)
 		{
+			case SWF_TAG_END_TAG:
+			{
+				break;
+			}
+			
+			case SWF_TAG_SHOW_FRAME:
+			{
+				tag_main << "\t" << "tagShowFrame();" << endl;
+				
+				break;
+			}
+			
+			case SWF_TAG_SET_BACKGROUND_COLOR:
+			{
+				cur_pos = RGB.parseFields(cur_pos);
+				
+				tag_main << "\t" << "tagSetBackgroundColor("
+						 << to_string((u8) RGB.fields[0].value) << ", "
+						 << to_string((u8) RGB.fields[1].value) << ", "
+						 << to_string((u8) RGB.fields[2].value) << ");" << endl;
+				
+				break;
+			}
+			
+			case SWF_TAG_ENABLE_DEBUGGER_2:
+			{
+				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_SCRIPT_LIMITS:
+			{
+				tag.setFieldCount(2);
+				tag.configureNextField(SWF_FIELD_UI16);
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				cur_pos = tag.parseFields(cur_pos);
+				
+				tag_main << "\t" << "tagScriptLimits("
+						 << to_string((u16) tag.fields[0].value) << ", "
+						 << to_string((u16) tag.fields[1].value) << ");" << endl;
+				
+				break;
+			}
+			
 			case SWF_TAG_FILE_ATTRIBUTES:
 			{
 				tag.setFieldCount(4);
+				
 				tag.configureNextField(SWF_FIELD_UI8);
 				tag.configureNextField(SWF_FIELD_UI8);
 				tag.configureNextField(SWF_FIELD_UI8);
 				tag.configureNextField(SWF_FIELD_UI8);
+				
+				cur_pos = tag.parseFields(cur_pos);
+				
+				u8 flags = (u8) tag.fields[0].value;
+				
+				if ((flags & 0b00001000) == 0)
+				{
+					EXC("ActionScript 1 and 2 SWFs not implemented.\n");
+				}
+				
+				break;
+			}
+			
+			case SWF_TAG_SYMBOL_CLASS:
+			{
+				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_METADATA:
+			{
+				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DO_ABC:
+			{
+				cur_pos += tag.length;
+				
 				break;
 			}
 			
 			default:
 			{
-				fprintf(stderr, "Tag type %d not implemented.\n", tag.code);
-				throw std::exception();
+				EXC_ARG("Tag type %d not implemented.\n", tag.code);
 			}
 		}
-		
-		cur_pos = tag.parseFields(cur_pos);
 		
 		return tag.code != 0;
 	}

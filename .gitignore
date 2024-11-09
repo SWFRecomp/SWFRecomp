@@ -1,4 +1,6 @@
 .vs/
 build/
 out/
+RecompiledTags/
+RecompiledScripts/
 *.swf
