@@ -6,5 +6,5 @@ using SWFRecomp::recompile;
 
 int main()
 {
-	recompile("sup.swf", "RecompiledTags", "RecompiledScripts");
+	recompile("sup_manual.swf", "RecompiledTags", "RecompiledScripts");
 }

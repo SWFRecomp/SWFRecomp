@@ -1,7 +1,6 @@
 #pragma once
 
 #include <common.h>
-
 #include <field.hpp>
 
 namespace SWFRecomp
@@ -11,6 +10,8 @@ namespace SWFRecomp
 		SWF_TAG_END_TAG = 0,
 		SWF_TAG_SHOW_FRAME = 1,
 		SWF_TAG_SET_BACKGROUND_COLOR = 9,
+		SWF_TAG_DO_ACTION = 12,
+		SWF_TAG_ENABLE_DEBUGGER = 58,
 		SWF_TAG_ENABLE_DEBUGGER_2 = 64,
 		SWF_TAG_SCRIPT_LIMITS = 65,
 		SWF_TAG_FILE_ATTRIBUTES = 69,
@@ -37,5 +38,6 @@ namespace SWFRecomp
 		void setFieldCount(u32 new_field_count);
 		void configureNextField(FieldType type, u32 bit_length = 0, bool is_nbits = false);
 		char* parseFields(char* tag_buffer);
+		void clearFields();
 	};
 };

@@ -6,6 +6,7 @@
 #include <lzma.h>
 
 #include <swf.hpp>
+#include <action.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
@@ -129,7 +130,7 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(const char* swf_path)
+	SWF::SWF(const char* swf_path) : next_script_i(0), last_queued_script(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -241,11 +242,31 @@ namespace SWFRecomp
 		cur_pos = header.loadOtherData(swf_buffer);
 	}
 	
-	bool SWF::parseTag(ofstream& tag_main)
+	bool SWF::parseTag(ofstream& tag_main, const string& output_scripts_folder)
 	{
 		SWFTag tag;
 		cur_pos = tag.parseHeader(cur_pos);
 		
+		interpretTag(tag, tag_main, output_scripts_folder);
+		
+		return tag.code != 0;
+	}
+	
+	void SWF::parseAllTags(ofstream& tag_main, const string& output_scripts_folder)
+	{
+		SWFTag tag;
+		tag.code = SWF_TAG_SHOW_FRAME;
+		
+		while (tag.code != 0)
+		{
+			cur_pos = tag.parseHeader(cur_pos);
+			interpretTag(tag, tag_main, output_scripts_folder);
+			tag.clearFields();
+		}
+	}
+	
+	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, const string& output_scripts_folder)
+	{
 		printf("tag code: %d, tag length: %d\n", tag.code, tag.length);
 		
 		switch (tag.code)
@@ -257,6 +278,13 @@ namespace SWFRecomp
 			
 			case SWF_TAG_SHOW_FRAME:
 			{
+				while (last_queued_script < next_script_i)
+				{
+					tag_main << "\t" << "StackValue* stack = new StackValue[256];" << endl
+							 << "\t" << "script_" << to_string(last_queued_script) << "(stack);" << endl;
+					last_queued_script += 1;
+				}
+				
 				tag_main << "\t" << "tagShowFrame();" << endl;
 				
 				break;
@@ -270,6 +298,30 @@ namespace SWFRecomp
 						 << to_string((u8) RGB.fields[0].value) << ", "
 						 << to_string((u8) RGB.fields[1].value) << ", "
 						 << to_string((u8) RGB.fields[2].value) << ");" << endl;
+				
+				break;
+			}
+			
+			case SWF_TAG_DO_ACTION:
+			{
+				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
+				
+				out_script << "#include <recomp.h>" << endl << endl
+						   << "void script_" << next_script_i << "(StackValue* stack)" << endl
+						   << "{" << endl;
+				next_script_i += 1;
+				
+				SWFAction action;
+				cur_pos = action.parseActions(cur_pos, out_script);
+				
+				out_script << "}";
+				
+				break;
+			}
+			
+			case SWF_TAG_ENABLE_DEBUGGER:
+			{
+				cur_pos += tag.length;
 				
 				break;
 			}
@@ -309,9 +361,9 @@ namespace SWFRecomp
 				
 				u8 flags = (u8) tag.fields[0].value;
 				
-				if ((flags & 0b00001000) == 0)
+				if ((flags & 0b00001000) != 0)
 				{
-					EXC("ActionScript 1 and 2 SWFs not implemented.\n");
+					EXC("ActionScript 3 SWFs not implemented.\n");
 				}
 				
 				break;
@@ -331,19 +383,17 @@ namespace SWFRecomp
 				break;
 			}
 			
-			case SWF_TAG_DO_ABC:
-			{
-				cur_pos += tag.length;
+			//~ case SWF_TAG_DO_ABC:
+			//~ {
+				//~ cur_pos += tag.length;
 				
-				break;
-			}
+				//~ break;
+			//~ }
 			
 			default:
 			{
 				EXC_ARG("Tag type %d not implemented.\n", tag.code);
 			}
 		}
-		
-		return tag.code != 0;
 	}
 };

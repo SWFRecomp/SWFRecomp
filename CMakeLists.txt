@@ -18,6 +18,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/swf.cpp
     ${CMAKE_SOURCE_DIR}/src/tag.cpp
     ${CMAKE_SOURCE_DIR}/src/field.cpp
+    ${CMAKE_SOURCE_DIR}/src/action/action.cpp
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -O2)
@@ -42,6 +43,7 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/action
     zlib
     lzma/liblzma/api
 )

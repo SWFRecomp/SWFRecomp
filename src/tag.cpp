@@ -1,6 +1,6 @@
-#include <tag.hpp>
-
 #include <cstdio>
+
+#include <tag.hpp>
 
 namespace SWFRecomp
 {
@@ -36,6 +36,16 @@ namespace SWFRecomp
 	
 	void SWFTag::setFieldCount(u32 new_field_count)
 	{
+		if (field_count >= new_field_count)
+		{
+			return;
+		}
+		
+		if (fields != nullptr)
+		{
+			delete[] fields;
+		}
+		
 		field_count = new_field_count;
 		
 		fields = new SWFField[field_count];
@@ -55,5 +65,10 @@ namespace SWFRecomp
 		}
 		
 		return tag_buffer;
+	}
+	
+	void SWFTag::clearFields()
+	{
+		next_field = 0;
 	}
 };

@@ -5,8 +5,6 @@
 
 #define VAL(type, x) ((u64) *((type*) x))
 
-#include <cstdio>
-
 namespace SWFRecomp
 {
 	SWFField::SWFField()
@@ -21,6 +19,30 @@ namespace SWFRecomp
 			case SWF_FIELD_NONE:
 			{
 				EXC("No type set for field.\n");
+			}
+			
+			case SWF_FIELD_SI8:
+			{
+				value = VAL(s8, field_buffer);
+				field_buffer += 1;
+				
+				break;
+			}
+			
+			case SWF_FIELD_SI16:
+			{
+				value = VAL(s16, field_buffer);
+				field_buffer += 2;
+				
+				break;
+			}
+			
+			case SWF_FIELD_SI32:
+			{
+				value = VAL(s32, field_buffer);
+				field_buffer += 4;
+				
+				break;
 			}
 			
 			case SWF_FIELD_UI8:

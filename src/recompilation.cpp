@@ -27,6 +27,11 @@ namespace SWFRecomp
 			fs::create_directory(output_tags_folder);
 		}
 		
+		if (!fs::exists(output_scripts_folder))
+		{
+			fs::create_directory(output_scripts_folder);
+		}
+		
 		string output_tag_main = string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "tagMain.c";  // Gross.
 		ofstream tag_main(output_tag_main, ios_base::out);
 		
@@ -34,8 +39,9 @@ namespace SWFRecomp
 				 << "void tagMain()" << endl
 				 << "{" << endl;
 		
-		while (swf.parseTag(tag_main));
+		string output_scripts_folder_slashed = string("") + output_scripts_folder + ((char) fs::path::preferred_separator);
+		swf.parseAllTags(tag_main, output_scripts_folder_slashed);
 		
-		tag_main << "}" << endl;
+		tag_main << "}";
 	}
 };
