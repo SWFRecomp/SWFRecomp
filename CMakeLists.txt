@@ -38,6 +38,19 @@ add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/lib/zlib/zlib.dll... ${CMAKE_BINARY_DIR}/
 )
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/lib/zlib/zlib.dll... ${PROJECT_SOURCE_DIR}/tests/
+)
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_BINARY_DIR}/SWFRecomp.exe... ${PROJECT_SOURCE_DIR}/tests/
+)
+else()
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_BINARY_DIR}/SWFRecomp... ${PROJECT_SOURCE_DIR}/tests/
+)
 endif()
 
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
