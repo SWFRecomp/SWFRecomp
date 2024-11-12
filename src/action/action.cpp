@@ -11,17 +11,17 @@ namespace SWFRecomp
 	SWFAction::SWFAction() : sp(0)
 	{
 		stack_size = 256;
-		stack = new StackValue[stack_size];
+		stack = new ActionStackValue[stack_size];
 	}
 	
 	char* SWFAction::parseActions(char* action_buffer, ofstream& out_script)
 	{
-		u8 code = SWF_ACTION_CONSTANT_POOL;
+		SWFActionType code = (SWFActionType) SWF_ACTION_CONSTANT_POOL;
 		u16 length;
 		
 		while (code != SWF_ACTION_END_OF_ACTIONS)
 		{
-			code = action_buffer[0];
+			code = (SWFActionType) (u8) action_buffer[0];
 			action_buffer += 1;
 			
 			length = 0;
@@ -42,7 +42,7 @@ namespace SWFRecomp
 				case SWF_ACTION_TRACE:
 				{
 					sp -= 1;
-					out_script << "\t" << "actionTrace(\"" << ((char*) stack[sp].value) << "\\n\");" << endl;
+					out_script << "\t" << "actionTrace(\"" << ((char*) stack[sp].value) << "\");" << endl;
 					
 					break;
 				}
@@ -56,14 +56,14 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_PUSH:
 				{
-					StackValueType push_type = (StackValueType) action_buffer[0];
+					ActionStackValueType push_type = (ActionStackValueType) action_buffer[0];
 					action_buffer += 1;
 					
 					u64 push_value;
 					
 					switch (push_type)
 					{
-						case STACK_VALUE_STRING:
+						case ACTION_STACK_VALUE_STRING:
 						{
 							push_value = (u64) action_buffer;
 							size_t push_length = strnlen((char*) push_value, 1024) + 1;
@@ -96,12 +96,12 @@ namespace SWFRecomp
 		return action_buffer;
 	}
 	
-	void SWFAction::push(StackValueType type, u64 value)
+	void SWFAction::push(ActionStackValueType type, u64 value)
 	{
 		if (sp >= stack_size)
 		{
 			stack_size <<= 1;
-			StackValue* new_stack = new StackValue[stack_size];
+			ActionStackValue* new_stack = new ActionStackValue[stack_size];
 			
 			for (size_t i = 0; i < (stack_size >> 1); ++i)
 			{

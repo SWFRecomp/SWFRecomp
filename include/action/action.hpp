@@ -20,13 +20,13 @@ namespace SWFRecomp
 	class SWFAction
 	{
 	public:
-		StackValue* stack;
+		ActionStackValue* stack;
 		size_t stack_size;
 		size_t sp;
 		
 		SWFAction();
 		
 		char* parseActions(char* action_buffer, ofstream& out_script);
-		void push(StackValueType type, u64 value);
+		void push(ActionStackValueType type, u64 value);
 	};
 };

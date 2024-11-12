@@ -2,16 +2,16 @@
 
 namespace SWFRecomp
 {
-	enum StackValueType
+	enum ActionStackValueType
 	{
-		STACK_VALUE_STRING = 0,
-		STACK_VALUE_F32 = 1
+		ACTION_STACK_VALUE_STRING = 0,
+		ACTION_STACK_VALUE_F32 = 1
 	};
 	
-	class StackValue
+	class ActionStackValue
 	{
 	public:
-		StackValueType type;
+		ActionStackValueType type;
 		u64 value;
 	};
 };

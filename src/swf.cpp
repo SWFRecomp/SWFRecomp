@@ -257,6 +257,10 @@ namespace SWFRecomp
 		SWFTag tag;
 		tag.code = SWF_TAG_SHOW_FRAME;
 		
+		ofstream out_script_header(output_scripts_folder + "out.h", ios_base::out);
+		out_script_header << "#pragma once" << endl;
+		out_script_header.close();
+		
 		while (tag.code != 0)
 		{
 			cur_pos = tag.parseHeader(cur_pos);
@@ -280,8 +284,9 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "StackValue* stack = new StackValue[256];" << endl
-							 << "\t" << "script_" << to_string(last_queued_script) << "(stack);" << endl;
+					tag_main << "\t" << "ActionStackValue* stack = malloc(256*sizeof(ActionStackValue));" << endl
+							 << "\t" << "script_" << to_string(last_queued_script) << "(stack);" << endl
+							 << "\t" << "free(stack);" << endl;
 					last_queued_script += 1;
 				}
 				
@@ -304,11 +309,16 @@ namespace SWFRecomp
 			
 			case SWF_TAG_DO_ACTION:
 			{
+				ofstream out_script_header(output_scripts_folder + "out.h", ios_base::app);
+				out_script_header << endl << "void script_" << to_string(next_script_i) << "(ActionStackValue* stack);";
+				out_script_header.close();
+				
 				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				
 				out_script << "#include <recomp.h>" << endl << endl
-						   << "void script_" << next_script_i << "(StackValue* stack)" << endl
-						   << "{" << endl;
+						   << "void script_" << next_script_i << "(ActionStackValue* stack)" << endl
+						   << "{" << endl
+						   << "\t" << "size_t sp = 0;" << endl;
 				next_script_i += 1;
 				
 				SWFAction action;
