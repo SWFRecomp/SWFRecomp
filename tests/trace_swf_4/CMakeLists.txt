@@ -14,15 +14,10 @@ set(RUNTIME_INCLUDES
     ${CMAKE_SOURCE_DIR}/../SWFModernRuntime/include/libswf
 )
 
+
+
 # RecompiledTags - Library containing the primary recompiler output
 add_library(RecompiledTags STATIC)
-
-#~ target_compile_options(RecompiledTags PRIVATE
-    #~ # -Wno-unused-but-set-variable
-    #~ -fno-strict-aliasing
-    #~ -Wno-unused-variable
-    #~ -Wno-implicit-function-declaration
-#~ )
 
 target_include_directories(RecompiledTags PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -34,15 +29,10 @@ file(GLOB FUNC_C_SOURCES ${CMAKE_SOURCE_DIR}/RecompiledTags/*.c)
 
 target_sources(RecompiledTags PRIVATE ${FUNC_C_SOURCES})
 
+
+
 # RecompiledScripts - Library containing the secondary recompiler output for actions/abc
 add_library(RecompiledScripts STATIC)
-
-#~ target_compile_options(RecompiledScripts PRIVATE
-    #~ # -Wno-unused-but-set-variable
-    #~ -fno-strict-aliasing
-    #~ -Wno-unused-variable
-    #~ -Wno-implicit-function-declaration
-#~ )
 
 target_include_directories(RecompiledScripts PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -52,6 +42,8 @@ target_include_directories(RecompiledScripts PRIVATE
 file(GLOB FUNC_C_SOURCES ${CMAKE_SOURCE_DIR}/RecompiledScripts/*.c)
 
 target_sources(RecompiledScripts PRIVATE ${FUNC_C_SOURCES})
+
+
 
 add_executable(${PROJECT_NAME})
 
