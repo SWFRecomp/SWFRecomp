@@ -1,1 +1,2 @@
 trace_swf_4 "sup from SWF 4"
+trace_float_swf_4 "3.40000009536743"
