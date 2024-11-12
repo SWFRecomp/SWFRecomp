@@ -3,4 +3,4 @@ build/
 out/
 RecompiledTags/
 RecompiledScripts/
-*.swf
+sup*.swf
