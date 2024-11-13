@@ -52,11 +52,9 @@ namespace SWFRecomp
 					sp -= 2;
 					char* var_name = (char*) stack[sp].value;
 					
-					string out_assign = "\t";
-					
 					if (vars.count(var_name) == 0)
 					{
-						out_assign += "var ";
+						out_script << "\t" << "var " << var_name << ";" << endl;
 						vars[var_name] = true;
 					}
 					
@@ -64,9 +62,18 @@ namespace SWFRecomp
 					{
 						case ACTION_STACK_VALUE_STRING:
 						{
-							out_script << "\t" << "static const char* str_" << next_static_i << " = \"" << (char*) stack[sp + 1].value << "\";" << endl;
-							out_assign += string(var_name) + " = str_" + to_string(next_static_i) + ";";
+							out_script << "\t" << "static const char* str_" << next_static_i << " = \"" << (char*) stack[sp + 1].value << "\";" << endl
+									   << "\t" << string(var_name) << ".type = ACTION_STACK_VALUE_STRING;" << endl
+									   << "\t" << string(var_name) << ".value = (u64) str_" << to_string(next_static_i) << ";" << endl;
 							next_static_i += 1;
+							
+							break;
+						}
+						
+						case ACTION_STACK_VALUE_F32:
+						{
+							out_script << "\t" << string(var_name) + ".type = ACTION_STACK_VALUE_F32;" << endl
+									   << "\t" << string(var_name) + ".value = " << (VAL(u32, &stack[sp + 1].value)) << ";" << endl;
 							
 							break;
 						}
@@ -78,8 +85,6 @@ namespace SWFRecomp
 							break;
 						}
 					}
-					
-					out_script << out_assign << endl;
 					
 					break;
 				}
@@ -104,7 +109,7 @@ namespace SWFRecomp
 						
 						case ACTION_STACK_VALUE_VARIABLE:
 						{
-							out_script << "\t" << "actionTrace(" << ((char*) stack[sp].value) << ");" << endl;
+							out_script << "\t" << "actionTraceVar(" << ((char*) stack[sp].value) << ");" << endl;
 							break;
 						}
 					}
