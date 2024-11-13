@@ -11,9 +11,8 @@ using std::endl;
 
 namespace SWFRecomp
 {
-	SWFAction::SWFAction() : sp(0)
+	SWFAction::SWFAction() : stack_size(256), sp(0), next_static_i(0)
 	{
-		stack_size = 256;
 		stack = new ActionStackValue[stack_size];
 	}
 	
@@ -41,6 +40,50 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_GET_VARIABLE:
+				{
+					stack[sp - 1].type = ACTION_STACK_VALUE_VARIABLE;
+					
+					break;
+				}
+				
+				case SWF_ACTION_SET_VARIABLE:
+				{
+					sp -= 2;
+					char* var_name = (char*) stack[sp].value;
+					
+					string out_assign = "\t";
+					
+					if (vars.count(var_name) == 0)
+					{
+						out_assign += "var ";
+						vars[var_name] = true;
+					}
+					
+					switch (stack[sp + 1].type)
+					{
+						case ACTION_STACK_VALUE_STRING:
+						{
+							out_script << "\t" << "static const char* str_" << next_static_i << " = \"" << (char*) stack[sp + 1].value << "\";" << endl;
+							out_assign += string(var_name) + " = str_" + to_string(next_static_i) + ";";
+							next_static_i += 1;
+							
+							break;
+						}
+						
+						case ACTION_STACK_VALUE_UNKNOWN:
+						{
+							out_script << "stack[--sp].value;" << endl;
+							
+							break;
+						}
+					}
+					
+					out_script << out_assign << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_TRACE:
 				{
 					sp -= 1;
@@ -56,6 +99,12 @@ namespace SWFRecomp
 						case ACTION_STACK_VALUE_F32:
 						{
 							out_script << "\t" << "actionTrace(\"" << std::setprecision(15) << (VAL(float, &stack[sp].value)) << "\");" << endl;
+							break;
+						}
+						
+						case ACTION_STACK_VALUE_VARIABLE:
+						{
+							out_script << "\t" << "actionTrace(" << ((char*) stack[sp].value) << ");" << endl;
 							break;
 						}
 					}
