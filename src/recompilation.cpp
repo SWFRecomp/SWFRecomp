@@ -35,11 +35,6 @@ namespace SWFRecomp
 		string output_tag_main = string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "tagMain.c";  // Gross.
 		ofstream tag_main(output_tag_main, ios_base::out);
 		
-		tag_main << "#include <recomp.h>" << endl
-				 << "#include <out.h>" << endl << endl
-				 << "void tagMain()" << endl
-				 << "{" << endl;
-		
 		string output_scripts_folder_slashed = string("") + output_scripts_folder + ((char) fs::path::preferred_separator);
 		swf.parseAllTags(tag_main, output_scripts_folder_slashed);
 		

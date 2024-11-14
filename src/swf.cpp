@@ -257,6 +257,12 @@ namespace SWFRecomp
 		SWFTag tag;
 		tag.code = SWF_TAG_SHOW_FRAME;
 		
+		tag_main << "#include <recomp.h>" << endl
+				 << "#include <out.h>" << endl << endl
+				 << "#define DECL_STACK ActionStackValue*" << endl << endl
+				 << "void tagMain()" << endl
+				 << "{" << endl;
+		
 		ofstream out_script_header(output_scripts_folder + "out.h", ios_base::out);
 		out_script_header << "#pragma once" << endl;
 		out_script_header.close();
@@ -284,7 +290,9 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "ActionStackValue* stack = malloc(256*sizeof(ActionStackValue));" << endl
+					tag_main << "\t" << "DECL_STACK stack = malloc(256*sizeof(ActionStackValue));" << endl
+							 << "\t" << "#undef DECL_STACK" << endl
+							 << "\t" << "#define DECL_STACK" << endl
 							 << "\t" << "script_" << to_string(last_queued_script) << "(stack);" << endl
 							 << "\t" << "free(stack);" << endl;
 					last_queued_script += 1;
@@ -316,6 +324,7 @@ namespace SWFRecomp
 				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				
 				out_script << "#include <recomp.h>" << endl << endl
+						   << "#define DECL_TEMP_VAR_PTR ActionStackValue*" << endl << endl
 						   << "void script_" << next_script_i << "(ActionStackValue* stack)" << endl
 						   << "{" << endl
 						   << "\t" << "size_t sp = 0;" << endl;
