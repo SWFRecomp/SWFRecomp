@@ -32,5 +32,7 @@ namespace SWFRecomp
 		char* parseActions(char* action_buffer, ofstream& out_script);
 		void declareVariable(char* var_name, ostream& out_script);
 		void createStaticString(char* str, ostream& out_script);
+		char actionCodeLookAhead(char* action_buffer, int lookAhead);
+		size_t actionCodeLookAheadIndex(char* action_buffer, int lookAhead);
 	};
 };

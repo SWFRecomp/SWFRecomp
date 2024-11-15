@@ -26,6 +26,7 @@ namespace SWFRecomp
 		std::streampos vardetect_backtrack = 0;
 		std::streampos vardetect_backtrack_prev = 0;
 		u64 vardetect_value = 0;
+		u64 dynavar_value = 0;
 		bool setvardetect_possible = false;
 		
 		ActionStackValue last_push;
@@ -41,7 +42,8 @@ namespace SWFRecomp
 			code = (SWFActionType) (u8) action_buffer[0];
 			action_buffer += 1;
 			length = 0;
-			
+			printf("code: 0x%02X\n", code);
+			fflush(stdout);
 			if ((code & 0b10000000) != 0)
 			{
 				length = VAL(u16, action_buffer);
@@ -50,11 +52,16 @@ namespace SWFRecomp
 			
 			if (setvardetect_possible && code != SWF_ACTION_PUSH)
 			{
+				printf("resetting detection upper\n%s\n", pushes.str().substr(0, pushes.tellp()).c_str());
+				fflush(stdout);
 				out_script << pushes.str().substr(0, pushes.tellp()).c_str();
 				pushes.str("");
 				pushes.clear();
 				
 				vardetect_value = 0;
+				second_last_push.type = ACTION_STACK_VALUE_UNSET;
+				last_push.type = ACTION_STACK_VALUE_UNSET;
+				dynavar_value = 0;
 				setvardetect_possible = false;
 			}
 			
@@ -76,45 +83,48 @@ namespace SWFRecomp
 				{
 					if (vardetect_value != 0)
 					{
-						out_script << "\t" << "stack[sp - 1].type = " << VD_STR << ".type;" << endl
-								   << "\t" << "stack[sp - 1].value = " << VD_STR << ".value;" << endl;
+						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << VD_STR << ".value);" << endl;
 						vardetect_value = 0;
+						pushes.str("");
+						pushes.clear();
 					}
 					
 					else
 					{
-						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(stack[sp - 1].value);" << endl
-								   << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "stack[sp - 1].type = temp_val->type;" << endl
-								   << "\t" << "stack[sp - 1].value = temp_val->value;" << endl;
+						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(stack[sp - 1].value);" << endl;
 					}
+					
+					out_script << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
+							   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
+							   << "\t" << "stack[sp - 1].type = temp_val->type;" << endl
+							   << "\t" << "stack[sp - 1].value = temp_val->value;" << endl;
 					
 					break;
 				}
 				
 				case SWF_ACTION_SET_VARIABLE:
 				{
+					out_script << "\t" << "sp -= 2;" << endl;
+					
 					if (vardetect_value != 0)
 					{
-						out_script << "\t" << "sp -= 2;" << endl;
-						
 						declareVariable(VD_STR, out_script);
 						
-						out_script << "\t" << VD_STR << ".type = stack[sp].type;" << endl
-								   << "\t" << VD_STR << ".value = stack[sp].value;" << endl;
+						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << VD_STR << ".value);" << endl;
 						vardetect_value = 0;
+						pushes.str("");
+						pushes.clear();
 					}
 					
 					else
 					{
-						out_script << "\t" << "sp -= 2;" << endl
-								   << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(stack[sp].value);" << endl
-								   << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "temp_val->type = stack[sp + 1].type;" << endl
-								   << "\t" << "temp_val->value = stack[sp + 1].value;" << endl;
+						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(stack[sp].value);" << endl;
 					}
+					
+					out_script << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
+							   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
+							   << "\t" << "temp_val->type = stack[sp + 1].type;" << endl
+							   << "\t" << "temp_val->value = stack[sp + 1].value;" << endl;
 					
 					break;
 				}
@@ -125,6 +135,8 @@ namespace SWFRecomp
 					{
 						out_script << "\t" << "actionTrace(" << VD_STR << ");" << endl;
 						vardetect_value = 0;
+						pushes.str("");
+						pushes.clear();
 					}
 					
 					else
@@ -198,10 +210,53 @@ namespace SWFRecomp
 					
 					action_buffer += push_length;
 					
-					if (last_push.type == ACTION_STACK_VALUE_STRING && action_buffer[0] == (u8) SWF_ACTION_GET_VARIABLE)
+					//~ printf("status...last push type: %d, aCLA0: 0x%02X, aCLA1: 0x%02X, aCLA2: 0x%02X\n", last_push.type, (u8) actionCodeLookAhead(action_buffer, 0), (u8) actionCodeLookAhead(action_buffer, 1), (u8) actionCodeLookAhead(action_buffer, 2));
+					
+					if (dynavar_value != 0)
+					{
+						out_script << pushes.str().substr(0, pushes.tellp()).c_str();
+						pushes.str("");
+						pushes.clear();
+						
+						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << ((char*) dynavar_value) << ".value);" << endl
+								   << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
+								   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
+								   << "\t" << "temp_val->type = stack[sp - 1].type;" << endl
+								   << "\t" << "temp_val->value = stack[sp - 1].value;" << endl;
+						
+						action_buffer += actionCodeLookAheadIndex(action_buffer, 1);
+						
+						dynavar_value = 0;
+					}
+					
+					else if (last_push.type == ACTION_STACK_VALUE_STRING && (u8) actionCodeLookAhead(action_buffer, 0) == SWF_ACTION_GET_VARIABLE &&
+							 (u8) actionCodeLookAhead(action_buffer, 1) == SWF_ACTION_PUSH && (u8) actionCodeLookAhead(action_buffer, 2) == SWF_ACTION_SET_VARIABLE)
+					{
+						// SetVariable using known-variable name's string detected
+						printf("dynamic set detected\n");
+						fflush(stdout);
+						
+						action_buffer += actionCodeLookAheadIndex(action_buffer, 1);
+						
+						pushes.str("");
+						pushes.clear();
+						
+						dynavar_value = last_push.value;
+					}
+					
+					else if (last_push.type == ACTION_STACK_VALUE_STRING && action_buffer[0] == (u8) SWF_ACTION_GET_VARIABLE)
 					{
 						// GetVariable with known variable-name detected
+						printf("known getvar detected\n");
+						fflush(stdout);
+						
 						vardetect_value = last_push.value;
+						second_last_push.type = ACTION_STACK_VALUE_UNSET;
+						last_push.type = ACTION_STACK_VALUE_UNSET;
+						setvardetect_possible = false;
+						
+						pushes.str("");
+						pushes.clear();
 						
 						action_buffer += 1;
 					}
@@ -210,6 +265,9 @@ namespace SWFRecomp
 							 (setvardetect_possible && action_buffer[0] == (u8) SWF_ACTION_SET_VARIABLE))
 					{
 						// SetVariable with known variable-name detected
+						printf("known setvar detected: slpt: %d, svdp: %d\n", second_last_push.type, setvardetect_possible);
+						fflush(stdout);
+						
 						pushes.seekp(vardetect_backtrack_prev, std::ios_base::beg);
 						
 						// Set this so VD_STR works
@@ -224,7 +282,7 @@ namespace SWFRecomp
 								next_static_i -= 1;
 								createStaticString((char*) last_push.value, pushes);
 								pushes << "\t" << VD_STR << ".type = ACTION_STACK_VALUE_STRING" << ";" << endl
-									   << "\t" << VD_STR << ".value = str_" << to_string(next_static_i - 1) << ";" << endl;
+									   << "\t" << VD_STR << ".value = (u64) str_" << to_string(next_static_i - 1) << ";" << endl;
 								
 								break;
 							}
@@ -243,6 +301,7 @@ namespace SWFRecomp
 						pushes.clear();
 						
 						vardetect_value = 0;
+						second_last_push.type = ACTION_STACK_VALUE_UNSET;
 						setvardetect_possible = false;
 						
 						action_buffer += 1;
@@ -252,6 +311,8 @@ namespace SWFRecomp
 					{
 						// Optimized SetVariable is still possible
 						// if another consecutive Push and then SetVariable
+						printf("possible setvar detected\n");
+						fflush(stdout);
 						setvardetect_possible = true;
 					}
 					
@@ -275,11 +336,15 @@ namespace SWFRecomp
 			
 			if (vardetect_value != 0 && code != SWF_ACTION_PUSH)
 			{
+				printf("resetting detection lower\n");
+				fflush(stdout);
 				out_script << pushes.str().substr(0, pushes.tellp()).c_str();
 				pushes.str("");
 				pushes.clear();
 				
 				vardetect_value = 0;
+				second_last_push.type = ACTION_STACK_VALUE_UNSET;
+				last_push.type = ACTION_STACK_VALUE_UNSET;
 				setvardetect_possible = false;
 			}
 		}
@@ -301,5 +366,32 @@ namespace SWFRecomp
 	{
 		out_script << "\t" << "static const char* str_" << next_static_i << " = \"" << str << "\";" << endl;
 		next_static_i += 1;
+	}
+	
+	char SWFAction::actionCodeLookAhead(char* action_buffer, int lookAhead)
+	{
+		return action_buffer[actionCodeLookAheadIndex(action_buffer, lookAhead)];
+	}
+	
+	size_t SWFAction::actionCodeLookAheadIndex(char* action_buffer, int lookAhead)
+	{
+		size_t action_buffer_i = 0;
+		
+		for (int i = 0; i < lookAhead; ++i)
+		{
+			if ((action_buffer[action_buffer_i] & 0b10000000) != 0)
+			{
+				action_buffer_i += 1;
+				action_buffer_i += VAL(u16, &action_buffer[action_buffer_i]);
+				action_buffer_i += 2;
+			}
+			
+			else
+			{
+				action_buffer_i += 1;
+			}
+		}
+		
+		return action_buffer_i;
 	}
 };
