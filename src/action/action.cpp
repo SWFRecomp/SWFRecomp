@@ -69,6 +69,15 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_ADD:
+				{
+					out_script << "\t" << "// Add" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionAdd(&stack[sp - 1], &stack[sp]);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_POP:
 				{
 					out_script << "\t" << "// Pop" << endl
@@ -146,7 +155,7 @@ namespace SWFRecomp
 					
 					if (vardetect_value != 0)
 					{
-						out_script << "\t" << "actionTrace(" << VD_STR << ");" << endl;
+						out_script << "\t" << "actionTrace(&" << VD_STR << ");" << endl;
 						vardetect_value = 0;
 						pushes.str("");
 						pushes.clear();
@@ -154,7 +163,7 @@ namespace SWFRecomp
 					
 					else
 					{
-						out_script << "\t" << "actionTrace(stack[--sp]);" << endl;
+						out_script << "\t" << "actionTrace(&stack[--sp]);" << endl;
 					}
 					
 					break;
