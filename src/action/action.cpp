@@ -73,7 +73,78 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Add" << endl
 							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionAdd(&stack[sp - 1], &stack[sp]);" << endl;
+							   << "\t" << "actionAdd(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_SUBTRACT:
+				{
+					out_script << "\t" << "// Subtract" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionSubtract(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_MULTIPLY:
+				{
+					out_script << "\t" << "// Multiply" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionMultiply(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_DIVIDE:
+				{
+					out_script << "\t" << "// Divide" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionDivide(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_EQUALS:
+				{
+					out_script << "\t" << "// Equals" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionEquals(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_LESS:
+				{
+					out_script << "\t" << "// Less" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionLess(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_AND:
+				{
+					out_script << "\t" << "// And" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionAnd(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_OR:
+				{
+					out_script << "\t" << "// Or" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "actionOr(&stack[sp], &stack[sp - 1]);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_NOT:
+				{
+					out_script << "\t" << "// Not" << endl
+							   << "\t" << "actionNot(&stack[sp - 1]);" << endl;
 					
 					break;
 				}
