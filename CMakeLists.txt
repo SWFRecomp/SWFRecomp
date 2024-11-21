@@ -49,7 +49,7 @@ add_custom_command(
 else()
 add_custom_command(
     TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/SWFRecomp... ${PROJECT_SOURCE_DIR}/tests/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/SWFRecomp ${PROJECT_SOURCE_DIR}/tests/
 )
 endif()
 
