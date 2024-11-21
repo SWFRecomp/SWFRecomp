@@ -149,6 +149,20 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_STRING_EQUALS:
+				{
+					out_script << "\t" << "// StringEquals" << endl
+							   << "\t" << "sp -= 1;" << endl
+							   << "\t" << "char str_" << to_string(next_static_i) << "[17];" << endl
+							   << "\t" << "char str_" << to_string(next_static_i + 1) << "[17];" << endl
+							   << "\t" << "actionStringEquals(&stack[sp], &stack[sp - 1], "
+							   << "str_" << to_string(next_static_i) << ", str_" << to_string(next_static_i + 1) << ");" << endl;
+					
+					next_static_i += 2;
+					
+					break;
+				}
+				
 				case SWF_ACTION_POP:
 				{
 					out_script << "\t" << "// Pop" << endl
