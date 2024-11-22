@@ -37,7 +37,5 @@ namespace SWFRecomp
 		
 		string output_scripts_folder_slashed = string("") + output_scripts_folder + ((char) fs::path::preferred_separator);
 		swf.parseAllTags(tag_main, output_scripts_folder_slashed);
-		
-		tag_main << "}";
 	}
 };

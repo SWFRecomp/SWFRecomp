@@ -45,6 +45,8 @@ namespace SWFRecomp
 		SWFHeader header;
 		char* swf_buffer;
 		char* cur_pos;
+		size_t next_frame_i;
+		bool another_frame;
 		size_t next_script_i;
 		size_t last_queued_script;
 		

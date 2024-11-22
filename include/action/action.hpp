@@ -35,13 +35,13 @@ namespace SWFRecomp
 	class SWFAction
 	{
 	public:
-		size_t next_static_i;
+		size_t next_str_i;
 		
 		SWFAction();
 		
-		char* parseActions(char* action_buffer, ofstream& out_script);
-		void declareVariable(char* var_name, ostream& out_script);
-		void createStaticString(char* str, ostream& out_script);
+		char* parseActions(char* action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls);
+		void declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls);
+		void declareString(char* str, ostream& out_script_defs, ostream& out_script_decls);
 		char actionCodeLookAhead(char* action_buffer, int lookAhead);
 		size_t actionCodeLookAheadIndex(char* action_buffer, int lookAhead);
 	};

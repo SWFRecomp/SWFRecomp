@@ -14,12 +14,12 @@ using std::endl;
 
 namespace SWFRecomp
 {
-	SWFAction::SWFAction() : next_static_i(0)
+	SWFAction::SWFAction() : next_str_i(0)
 	{
 		
 	}
 	
-	char* SWFAction::parseActions(char* action_buffer, ofstream& out_script)
+	char* SWFAction::parseActions(char* action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls)
 	{
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
@@ -153,12 +153,12 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// StringEquals" << endl
 							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "char str_" << to_string(next_static_i) << "[17];" << endl
-							   << "\t" << "char str_" << to_string(next_static_i + 1) << "[17];" << endl
+							   << "\t" << "char str_" << to_string(next_str_i) << "[17];" << endl
+							   << "\t" << "char str_" << to_string(next_str_i + 1) << "[17];" << endl
 							   << "\t" << "actionStringEquals(&stack[sp], &stack[sp - 1], "
-							   << "str_" << to_string(next_static_i) << ", str_" << to_string(next_static_i + 1) << ");" << endl;
+							   << "str_" << to_string(next_str_i) << ", str_" << to_string(next_str_i + 1) << ");" << endl;
 					
-					next_static_i += 2;
+					next_str_i += 2;
 					
 					break;
 				}
@@ -211,7 +211,7 @@ namespace SWFRecomp
 						out_script << " (static var holds dynamic name)" << endl
 								   << "\t" << "sp -= 2;" << endl;
 						
-						declareVariable(VD_STR, out_script);
+						declareVariable(VD_STR, out_script_defs, out_script_decls);
 						
 						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << VD_STR << ".value);" << endl;
 						vardetect_value = 0;
@@ -283,12 +283,12 @@ namespace SWFRecomp
 								pushes << "(String)" << endl;
 								
 								push_value = (u64) &action_buffer[push_length];
-								createStaticString((char*) push_value, pushes);
+								declareString((char*) push_value, out_script_defs, out_script_decls);
 								size_t push_str_len = strnlen((char*) push_value, 1024) + 1;
 								push_length += push_str_len;
 								
 								pushes << "\t" << "stack[sp].type = ACTION_STACK_VALUE_STRING;" << endl
-									   << "\t" << "stack[sp].value = (u64) str_" << to_string(next_static_i - 1) << ";" << endl
+									   << "\t" << "stack[sp].value = (u64) str_" << to_string(next_str_i - 1) << ";" << endl
 									   << "\t" << "sp += 1;" << endl;
 								
 								if (push_length == 1024)
@@ -381,16 +381,16 @@ namespace SWFRecomp
 						// Set this so VD_STR works
 						vardetect_value = second_last_push.value;
 						
-						declareVariable(VD_STR, out_script);
+						declareVariable(VD_STR, out_script_defs, out_script_decls);
 						
 						switch (last_push.type)
 						{
 							case ACTION_STACK_VALUE_STRING:
 							{
-								next_static_i -= 1;
-								createStaticString((char*) last_push.value, pushes);
+								next_str_i -= 1;
+								declareString((char*) last_push.value, out_script_defs, out_script_decls);
 								pushes << "\t" << VD_STR << ".type = ACTION_STACK_VALUE_STRING" << ";" << endl
-									   << "\t" << VD_STR << ".value = (u64) str_" << to_string(next_static_i - 1) << ";" << endl;
+									   << "\t" << VD_STR << ".value = (u64) str_" << to_string(next_str_i - 1) << ";" << endl;
 								
 								break;
 							}
@@ -456,20 +456,24 @@ namespace SWFRecomp
 		return action_buffer;
 	}
 	
-	void SWFAction::declareVariable(char* var_name, ostream& out_script)
+	void SWFAction::declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls)
 	{
-		out_script << "\t" << "#ifndef DECL_VAR_" << var_name << endl
-				   << "\t" << "#define DECL_VAR_" << var_name << " var" << endl
-				   << "\t" << "#endif" << endl
-				   << "\t" << "DECL_VAR_" << var_name << " " << var_name << ";" << endl
-				   << "\t" << "#undef DECL_VAR_" << var_name << endl
-				   << "\t" << "#define DECL_VAR_" << var_name << " (void)" << endl;
+		out_script_defs << "#ifndef DECL_VAR_" << var_name << endl
+						<< "#define DECL_VAR_" << var_name << endl
+						<< "var " << var_name << ";" << endl
+						<< "#endif" << endl;
+		
+		out_script_decls << "#ifndef DECL_VAR_" << var_name << endl
+						 << "#define DECL_VAR_" << var_name << endl
+						 << "extern var " << var_name << ";" << endl
+						 << "#endif" << endl;
 	}
 	
-	void SWFAction::createStaticString(char* str, ostream& out_script)
+	void SWFAction::declareString(char* str, ostream& out_script_defs, ostream& out_script_decls)
 	{
-		out_script << "\t" << "static const char* str_" << next_static_i << " = \"" << str << "\";" << endl;
-		next_static_i += 1;
+		out_script_defs << endl << "char* str_" << next_str_i << " = \"" << str << "\";";
+		out_script_decls << endl << "extern char* str_" << next_str_i << ";";
+		next_str_i += 1;
 	}
 	
 	char SWFAction::actionCodeLookAhead(char* action_buffer, int lookAhead)

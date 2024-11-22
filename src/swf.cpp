@@ -130,7 +130,7 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(const char* swf_path) : next_script_i(0), last_queued_script(0)
+	SWF::SWF(const char* swf_path) : next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -259,13 +259,21 @@ namespace SWFRecomp
 		
 		tag_main << "#include <recomp.h>" << endl
 				 << "#include <out.h>" << endl << endl
-				 << "#define DECL_STACK ActionStackValue*" << endl << endl
-				 << "void tagMain()" << endl
+				 << "void frame_" << to_string(next_frame_i) << "()" << endl
 				 << "{" << endl;
+		next_frame_i += 1;
 		
 		ofstream out_script_header(output_scripts_folder + "out.h", ios_base::out);
 		out_script_header << "#pragma once" << endl;
 		out_script_header.close();
+		
+		ofstream out_script_defs(output_scripts_folder + "script_defs.c", ios_base::out);
+		out_script_defs << "#include \"script_decls.h\"" << endl;
+		out_script_defs.close();
+		
+		ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::out);
+		out_script_decls << "#pragma once" << endl;
+		out_script_decls.close();
 		
 		while (tag.code != 0)
 		{
@@ -273,16 +281,60 @@ namespace SWFRecomp
 			interpretTag(tag, tag_main, output_scripts_folder);
 			tag.clearFields();
 		}
+		
+		tag_main << endl << endl
+				 << "typedef void (*frame_func)();" << endl << endl
+				 << "frame_func frame_funcs[] =" << endl
+				 << "{" << endl;
+		
+		for (size_t i = 0; i < next_frame_i; ++i)
+		{
+			tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
+		}
+		
+		tag_main << "};" << endl << endl
+				 << "void tagMain()" << endl
+				 << "{" << endl
+				 << "\t" << "while (!quit_swf)" << endl
+				 << "\t" << "{" << endl
+				 << "\t\t" << "frame_funcs[next_frame]();" << endl
+				 << "\t" << "}" << endl
+				 << "}";
 	}
 	
 	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, const string& output_scripts_folder)
 	{
 		printf("tag code: %d, tag length: %d\n", tag.code, tag.length);
 		
+		if (another_frame && tag.code != SWF_TAG_END_TAG)
+		{
+			tag_main << "}" << endl << endl
+					 << "void frame_" << to_string(next_frame_i) << "()" << endl
+					 << "{" << endl;
+			next_frame_i += 1;
+			
+			another_frame = false;
+		}
+		
 		switch (tag.code)
 		{
 			case SWF_TAG_END_TAG:
 			{
+				if (next_frame_i == 1)
+				{
+					tag_main << "\t" << "quit_swf = 1;" << endl;
+				}
+				
+				else
+				{
+					tag_main << "\t" << "if (!manual_next_frame)" << endl
+							 << "\t" << "{" << endl
+							 << "\t\t" << "next_frame = 0;" << endl
+							 << "\t" << "}" << endl;
+				}
+				
+				tag_main << "}";
+				
 				break;
 			}
 			
@@ -290,15 +342,14 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "DECL_STACK stack = malloc(256*sizeof(ActionStackValue));" << endl
-							 << "\t" << "#undef DECL_STACK" << endl
-							 << "\t" << "#define DECL_STACK" << endl
-							 << "\t" << "script_" << to_string(last_queued_script) << "(stack);" << endl
+					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, sp);" << endl
 							 << "\t" << "free(stack);" << endl;
 					last_queued_script += 1;
 				}
 				
 				tag_main << "\t" << "tagShowFrame();" << endl;
+				
+				another_frame = true;
 				
 				break;
 			}
@@ -318,20 +369,22 @@ namespace SWFRecomp
 			case SWF_TAG_DO_ACTION:
 			{
 				ofstream out_script_header(output_scripts_folder + "out.h", ios_base::app);
-				out_script_header << endl << "void script_" << to_string(next_script_i) << "(ActionStackValue* stack);";
-				out_script_header.close();
+				ofstream out_script_defs(output_scripts_folder + "script_defs.c", ios_base::app);
+				ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::app);
+				
+				out_script_header << endl << "void script_" << to_string(next_script_i) << "(ActionStackValue* stack, u64 sp);";
 				
 				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				
-				out_script << "#include <recomp.h>" << endl << endl
+				out_script << "#include <recomp.h>" << endl
+						   << "#include \"script_decls.h\"" << endl << endl
 						   << "#define DECL_TEMP_VAR_PTR ActionStackValue*" << endl << endl
-						   << "void script_" << next_script_i << "(ActionStackValue* stack)" << endl
-						   << "{" << endl
-						   << "\t" << "size_t sp = 0;" << endl;
+						   << "void script_" << next_script_i << "(ActionStackValue* stack, u64 sp)" << endl
+						   << "{" << endl;
 				next_script_i += 1;
 				
 				SWFAction action;
-				cur_pos = action.parseActions(cur_pos, out_script);
+				cur_pos = action.parseActions(cur_pos, out_script, out_script_defs, out_script_decls);
 				
 				out_script << "}";
 				
