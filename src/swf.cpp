@@ -6,7 +6,6 @@
 #include <lzma.h>
 
 #include <swf.hpp>
-#include <action.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
@@ -272,7 +271,8 @@ namespace SWFRecomp
 		out_script_defs.close();
 		
 		ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::out);
-		out_script_decls << "#pragma once" << endl;
+		out_script_decls << "#pragma once" << endl << endl
+						 << "#include <stackvalue.h>" << endl;
 		out_script_decls.close();
 		
 		while (tag.code != 0)
@@ -298,6 +298,11 @@ namespace SWFRecomp
 				 << "\t" << "while (!quit_swf)" << endl
 				 << "\t" << "{" << endl
 				 << "\t\t" << "frame_funcs[next_frame]();" << endl
+				 << "\t\t" << "if (!manual_next_frame)" << endl
+				 << "\t\t" << "{" << endl
+				 << "\t\t\t" << "next_frame += 1;" << endl
+				 << "\t\t" << "}" << endl
+				 << "\t\t" << "manual_next_frame = 0;" << endl
 				 << "\t" << "}" << endl
 				 << "}";
 	}
@@ -330,6 +335,7 @@ namespace SWFRecomp
 					tag_main << "\t" << "if (!manual_next_frame)" << endl
 							 << "\t" << "{" << endl
 							 << "\t\t" << "next_frame = 0;" << endl
+							 << "\t\t" << "manual_next_frame = 1;" << endl
 							 << "\t" << "}" << endl;
 				}
 				
@@ -342,8 +348,7 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, sp);" << endl
-							 << "\t" << "free(stack);" << endl;
+					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, sp);" << endl;
 					last_queued_script += 1;
 				}
 				
@@ -383,7 +388,6 @@ namespace SWFRecomp
 						   << "{" << endl;
 				next_script_i += 1;
 				
-				SWFAction action;
 				cur_pos = action.parseActions(cur_pos, out_script, out_script_defs, out_script_decls);
 				
 				out_script << "}";

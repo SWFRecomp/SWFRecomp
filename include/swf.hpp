@@ -5,6 +5,7 @@
 
 #include <common.h>
 #include <tag.hpp>
+#include <action.hpp>
 
 using std::ofstream;
 using std::string;
@@ -49,6 +50,8 @@ namespace SWFRecomp
 		bool another_frame;
 		size_t next_script_i;
 		size_t last_queued_script;
+		
+		SWFAction action;
 		
 		SWFTag RGB;
 		

@@ -69,6 +69,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_STOP:
+				{
+					out_script << "\t" << "// Stop" << endl
+							   << "\t" << "quit_swf = 1;" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_ADD:
 				{
 					out_script << "\t" << "// Add" << endl
@@ -159,6 +167,17 @@ namespace SWFRecomp
 							   << "str_" << to_string(next_str_i) << ", str_" << to_string(next_str_i + 1) << ");" << endl;
 					
 					next_str_i += 2;
+					
+					break;
+				}
+				
+				case SWF_ACTION_STRING_LENGTH:
+				{
+					out_script << "\t" << "// StringLength" << endl
+							   << "\t" << "char str_" << to_string(next_str_i) << "[17];" << endl
+							   << "\t" << "actionStringLength(&stack[sp - 1], str_" << to_string(next_str_i) << ");" << endl;
+					
+					next_str_i += 1;
 					
 					break;
 				}
@@ -387,8 +406,6 @@ namespace SWFRecomp
 						{
 							case ACTION_STACK_VALUE_STRING:
 							{
-								next_str_i -= 1;
-								declareString((char*) last_push.value, out_script_defs, out_script_decls);
 								pushes << "\t" << VD_STR << ".type = ACTION_STACK_VALUE_STRING" << ";" << endl
 									   << "\t" << VD_STR << ".value = (u64) str_" << to_string(next_str_i - 1) << ";" << endl;
 								
@@ -458,12 +475,12 @@ namespace SWFRecomp
 	
 	void SWFAction::declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls)
 	{
-		out_script_defs << "#ifndef DECL_VAR_" << var_name << endl
-						<< "#define DECL_VAR_" << var_name << endl
+		out_script_defs << endl << "#ifndef DEF_VAR_" << var_name << endl
+						<< "#define DEF_VAR_" << var_name << endl
 						<< "var " << var_name << ";" << endl
 						<< "#endif" << endl;
 		
-		out_script_decls << "#ifndef DECL_VAR_" << var_name << endl
+		out_script_decls << endl << "#ifndef DECL_VAR_" << var_name << endl
 						 << "#define DECL_VAR_" << var_name << endl
 						 << "extern var " << var_name << ";" << endl
 						 << "#endif" << endl;
