@@ -29,6 +29,7 @@ namespace SWFRecomp
 		SWF_ACTION_POP = 0x17,
 		SWF_ACTION_GET_VARIABLE = 0x1C,
 		SWF_ACTION_SET_VARIABLE = 0x1D,
+		SWF_ACTION_STRING_ADD = 0x21,
 		SWF_ACTION_TRACE = 0x26,
 		SWF_ACTION_CONSTANT_POOL = 0x88,
 		SWF_ACTION_PUSH = 0x96
@@ -44,6 +45,7 @@ namespace SWFRecomp
 		char* parseActions(char* action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls);
 		void declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls);
 		void declareString(char* str, ostream& out_script_defs, ostream& out_script_decls);
+		void declareEmptyString(size_t size, ostream& out_script_defs, ostream& out_script_decls);
 		char actionCodeLookAhead(char* action_buffer, int lookAhead);
 		size_t actionCodeLookAheadIndex(char* action_buffer, int lookAhead);
 	};

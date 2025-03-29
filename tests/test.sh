@@ -9,8 +9,10 @@ echo ""
 
 if [[ $result =~ "$2" ]]; then
 	echo "PASSED"
+	echo ""
+	exit 0
 else
 	echo "FAILED"
+	echo ""
+	exit -1
 fi
-
-echo ""

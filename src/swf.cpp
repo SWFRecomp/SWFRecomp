@@ -383,7 +383,6 @@ namespace SWFRecomp
 				
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
-						   << "#define DECL_TEMP_VAR_PTR ActionStackValue*" << endl << endl
 						   << "void script_" << next_script_i << "(ActionStackValue* stack, u64 sp)" << endl
 						   << "{" << endl;
 				next_script_i += 1;
@@ -439,7 +438,7 @@ namespace SWFRecomp
 				
 				if ((flags & 0b00001000) != 0)
 				{
-					EXC("ActionScript 3 SWFs not implemented.\n");
+					//EXC("ActionScript 3 SWFs not implemented.\n");
 				}
 				
 				break;

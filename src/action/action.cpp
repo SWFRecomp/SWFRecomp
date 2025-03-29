@@ -49,7 +49,8 @@ namespace SWFRecomp
 				action_buffer += 2;
 			}
 			
-			if (setvardetect_possible && code != SWF_ACTION_PUSH)
+			// upper static var detection
+			if (false && setvardetect_possible && code != SWF_ACTION_PUSH)
 			{
 				out_script << pushes.str().substr(0, pushes.tellp()).c_str();
 				pushes.str("");
@@ -80,8 +81,8 @@ namespace SWFRecomp
 				case SWF_ACTION_ADD:
 				{
 					out_script << "\t" << "// Add" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionAdd(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionAdd(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -89,8 +90,8 @@ namespace SWFRecomp
 				case SWF_ACTION_SUBTRACT:
 				{
 					out_script << "\t" << "// Subtract" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionSubtract(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionSubtract(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -98,8 +99,8 @@ namespace SWFRecomp
 				case SWF_ACTION_MULTIPLY:
 				{
 					out_script << "\t" << "// Multiply" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionMultiply(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionMultiply(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -107,8 +108,8 @@ namespace SWFRecomp
 				case SWF_ACTION_DIVIDE:
 				{
 					out_script << "\t" << "// Divide" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionDivide(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionDivide(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -116,8 +117,8 @@ namespace SWFRecomp
 				case SWF_ACTION_EQUALS:
 				{
 					out_script << "\t" << "// Equals" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionEquals(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionEquals(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -125,8 +126,8 @@ namespace SWFRecomp
 				case SWF_ACTION_LESS:
 				{
 					out_script << "\t" << "// Less" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionLess(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionLess(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -134,8 +135,8 @@ namespace SWFRecomp
 				case SWF_ACTION_AND:
 				{
 					out_script << "\t" << "// And" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionAnd(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionAnd(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -143,8 +144,8 @@ namespace SWFRecomp
 				case SWF_ACTION_OR:
 				{
 					out_script << "\t" << "// Or" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "actionOr(&stack[sp], &stack[sp - 1]);" << endl;
+							   << "\t" << "actionOr(&STACK_TOP, &STACK_SECOND_TOP);" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -152,32 +153,47 @@ namespace SWFRecomp
 				case SWF_ACTION_NOT:
 				{
 					out_script << "\t" << "// Not" << endl
-							   << "\t" << "actionNot(&stack[sp - 1]);" << endl;
+							   << "\t" << "actionNot(&STACK_TOP);" << endl;
 					
 					break;
 				}
 				
 				case SWF_ACTION_STRING_EQUALS:
 				{
-					out_script << "\t" << "// StringEquals" << endl
-							   << "\t" << "sp -= 1;" << endl
-							   << "\t" << "char str_" << to_string(next_str_i) << "[17];" << endl
-							   << "\t" << "char str_" << to_string(next_str_i + 1) << "[17];" << endl
-							   << "\t" << "actionStringEquals(&stack[sp], &stack[sp - 1], "
-							   << "str_" << to_string(next_str_i) << ", str_" << to_string(next_str_i + 1) << ");" << endl;
+					declareEmptyString(17, out_script_defs, out_script_decls);
+					declareEmptyString(17, out_script_defs, out_script_decls);
 					
-					next_str_i += 2;
+					out_script << "\t" << "// StringEquals" << endl
+							   << "\t" << "actionStringEquals(&STACK_TOP, &STACK_SECOND_TOP, "
+							   << "str_" << to_string(next_str_i - 2) << ", "
+							   << "str_" << to_string(next_str_i - 1) << ");" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
 				
 				case SWF_ACTION_STRING_LENGTH:
 				{
-					out_script << "\t" << "// StringLength" << endl
-							   << "\t" << "char str_" << to_string(next_str_i) << "[17];" << endl
-							   << "\t" << "actionStringLength(&stack[sp - 1], str_" << to_string(next_str_i) << ");" << endl;
+					declareEmptyString(17, out_script_defs, out_script_decls);
 					
-					next_str_i += 1;
+					out_script << "\t" << "// StringLength" << endl
+							   << "\t" << "actionStringLength(&STACK_TOP, str_" << to_string(next_str_i - 1) << ");" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_STRING_ADD:
+				{
+					declareEmptyString(17, out_script_defs, out_script_decls);
+					declareEmptyString(17, out_script_defs, out_script_decls);
+					declareEmptyString(1024, out_script_defs, out_script_decls);
+					
+					out_script << "\t" << "// StringAdd" << endl
+							   << "\t" << "actionStringAdd(&STACK_TOP, &STACK_SECOND_TOP, "
+							   << "str_" << to_string(next_str_i - 3) << ", "
+							   << "str_" << to_string(next_str_i - 2) << ", "
+							   << "str_" << to_string(next_str_i - 1) << ");" << endl
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -185,7 +201,7 @@ namespace SWFRecomp
 				case SWF_ACTION_POP:
 				{
 					out_script << "\t" << "// Pop" << endl
-							   << "\t" << "sp -= 1;" << endl;
+							   << "\t" << "POP();" << endl;
 					
 					break;
 				}
@@ -197,12 +213,8 @@ namespace SWFRecomp
 					if (vardetect_value != 0)
 					{
 						out_script << " (static var holds dynamic name)" << endl
-								   << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << VD_STR << ".value);" << endl
-								   << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "stack[sp].type = temp_val->type;" << endl
-								   << "\t" << "stack[sp].value = temp_val->value;" << endl
-								   << "\t" << "sp += 1;" << endl;
+								   << "\t" << "temp_val = getVariable(" << VD_STR << ".value);" << endl
+								   << "\t" << "PUSH(temp_val->type, temp_val->value);" << endl;
 						vardetect_value = 0;
 						pushes.str("");
 						pushes.clear();
@@ -211,11 +223,8 @@ namespace SWFRecomp
 					else
 					{
 						out_script << endl
-								   << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(stack[sp - 1].value);" << endl
-								   << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "stack[sp - 1].type = temp_val->type;" << endl
-								   << "\t" << "stack[sp - 1].value = temp_val->value;" << endl;
+								   << "\t" << "temp_val = getVariable(STACK_TOP.value);" << endl
+								   << "\t" << "SET_STACK_TOP(temp_val->type, temp_val->value);" << endl;
 					}
 					
 					break;
@@ -227,12 +236,11 @@ namespace SWFRecomp
 					
 					if (vardetect_value != 0)
 					{
-						out_script << " (static var holds dynamic name)" << endl
-								   << "\t" << "sp -= 2;" << endl;
+						out_script << " (static var holds dynamic name)" << endl;
 						
 						declareVariable(VD_STR, out_script_defs, out_script_decls);
 						
-						out_script << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << VD_STR << ".value);" << endl;
+						out_script << "\t" << "temp_val = getVariable(" << VD_STR << ".value);" << endl;
 						vardetect_value = 0;
 						pushes.str("");
 						pushes.clear();
@@ -241,14 +249,10 @@ namespace SWFRecomp
 					else
 					{
 						out_script << endl
-								   << "\t" << "sp -= 2;" << endl
-								   << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(stack[sp].value);" << endl;
+								   << "\t" << "temp_val = getVariable(STACK_SECOND_TOP.value);" << endl;
 					}
 					
-					out_script << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
-							   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
-							   << "\t" << "temp_val->type = stack[sp + 1].type;" << endl
-							   << "\t" << "temp_val->value = stack[sp + 1].value;" << endl;
+					out_script << "\t" << "SET(temp_val, STACK_TOP.type, STACK_TOP.value);" << endl;
 					
 					break;
 				}
@@ -267,7 +271,8 @@ namespace SWFRecomp
 					
 					else
 					{
-						out_script << "\t" << "actionTrace(&stack[--sp]);" << endl;
+						out_script << "\t" << "actionTrace(&STACK_TOP);" << endl
+								   << "\t" << "POP();" << endl;
 					}
 					
 					break;
@@ -306,9 +311,7 @@ namespace SWFRecomp
 								size_t push_str_len = strnlen((char*) push_value, 1024) + 1;
 								push_length += push_str_len;
 								
-								pushes << "\t" << "stack[sp].type = ACTION_STACK_VALUE_STRING;" << endl
-									   << "\t" << "stack[sp].value = (u64) str_" << to_string(next_str_i - 1) << ";" << endl
-									   << "\t" << "sp += 1;" << endl;
+								pushes << "\t" << "PUSH(ACTION_STACK_VALUE_STRING, (u64) str_" << to_string(next_str_i - 1) << ");" << endl;
 								
 								if (push_length == 1024)
 								{
@@ -325,9 +328,10 @@ namespace SWFRecomp
 								push_value = (u64) VAL(u32, &action_buffer[push_length]);
 								push_length += 4;
 								
-								pushes << "\t" << "stack[sp].type = ACTION_STACK_VALUE_F32;" << endl
-									   << "\t" << "stack[sp].value = " << ((u32) push_value) << ";" << endl
-									   << "\t" << "sp += 1;" << endl;
+								char hex_float[11];
+								snprintf(hex_float, 11, "0x%08X", (u32) push_value);
+								
+								pushes << "\t" << "PUSH(ACTION_STACK_VALUE_F32, " << hex_float << ");" << endl;
 								
 								break;
 							}
@@ -342,101 +346,105 @@ namespace SWFRecomp
 					
 					action_buffer += push_length;
 					
-					//~ printf("status...last push type: %d, aCLA0: 0x%02X, aCLA1: 0x%02X, aCLA2: 0x%02X\n", last_push.type, (u8) actionCodeLookAhead(action_buffer, 0), (u8) actionCodeLookAhead(action_buffer, 1), (u8) actionCodeLookAhead(action_buffer, 2));
-					
-					if (dynavar_value != 0)
+					// static var optimizations
+					if (false)
 					{
-						out_script << pushes.str().substr(0, pushes.tellp()).c_str();
-						pushes.str("");
-						pushes.clear();
-						
-						out_script << "\t" << "// SetVariable (dynamic consecutive get/set)" << endl
-								   << "\t" << "sp -= 1;" << endl
-								   << "\t" << "DECL_TEMP_VAR_PTR temp_val = getVariable(" << ((char*) dynavar_value) << ".value);" << endl
-								   << "\t" << "#undef DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "#define DECL_TEMP_VAR_PTR" << endl
-								   << "\t" << "temp_val->type = stack[sp].type;" << endl
-								   << "\t" << "temp_val->value = stack[sp].value;" << endl;
-						
-						action_buffer += actionCodeLookAheadIndex(action_buffer, 1);
-						
-						dynavar_value = 0;
-					}
-					
-					else if (last_push.type == ACTION_STACK_VALUE_STRING && (u8) actionCodeLookAhead(action_buffer, 0) == SWF_ACTION_GET_VARIABLE &&
-							 (u8) actionCodeLookAhead(action_buffer, 1) == SWF_ACTION_PUSH && (u8) actionCodeLookAhead(action_buffer, 2) == SWF_ACTION_SET_VARIABLE)
-					{
-						// SetVariable using known-variable name's string detected
-						action_buffer += actionCodeLookAheadIndex(action_buffer, 1);
-						
-						pushes.str("");
-						pushes.clear();
-						
-						dynavar_value = last_push.value;
-					}
-					
-					else if (last_push.type == ACTION_STACK_VALUE_STRING && action_buffer[0] == (u8) SWF_ACTION_GET_VARIABLE)
-					{
-						// GetVariable with known variable-name detected
-						vardetect_value = last_push.value;
-						second_last_push.type = ACTION_STACK_VALUE_UNSET;
-						last_push.type = ACTION_STACK_VALUE_UNSET;
-						setvardetect_possible = false;
-						
-						pushes.str("");
-						pushes.clear();
-						
-						action_buffer += 1;
-					}
-					
-					else if ((second_last_push.type == ACTION_STACK_VALUE_STRING && action_buffer[0] == (u8) SWF_ACTION_SET_VARIABLE) ||
-							 (setvardetect_possible && action_buffer[0] == (u8) SWF_ACTION_SET_VARIABLE))
-					{
-						// SetVariable with known variable-name detected
-						out_script << "\t" << "// SetVariable (static var)" << endl;
-						
-						pushes.seekp(vardetect_backtrack_prev, std::ios_base::beg);
-						
-						// Set this so VD_STR works
-						vardetect_value = second_last_push.value;
-						
-						declareVariable(VD_STR, out_script_defs, out_script_decls);
-						
-						switch (last_push.type)
+						if (dynavar_value != 0)
 						{
-							case ACTION_STACK_VALUE_STRING:
-							{
-								pushes << "\t" << VD_STR << ".type = ACTION_STACK_VALUE_STRING" << ";" << endl
-									   << "\t" << VD_STR << ".value = (u64) str_" << to_string(next_str_i - 1) << ";" << endl;
-								
-								break;
-							}
+							out_script << pushes.str().substr(0, pushes.tellp()).c_str();
+							pushes.str("");
+							pushes.clear();
 							
-							case ACTION_STACK_VALUE_F32:
-							{
-								pushes << "\t" << VD_STR << ".type = ACTION_STACK_VALUE_F32;" << endl
-									   << "\t" << VD_STR << ".value = " << ((u32) push_value) << ";" << endl;
-								
-								break;
-							}
+							out_script << "\t" << "// SetVariable (dynamic consecutive get/set)" << endl
+									   << "\t" << "temp_val = getVariable(" << ((char*) dynavar_value) << ".value);" << endl
+									   << "\t" << "SET(temp_val, STACK_TOP.type, STACK_TOP.value);" << endl
+									   << "\t" << "POP();" << endl;
+							
+							action_buffer += actionCodeLookAheadIndex(action_buffer, 1);
+							
+							dynavar_value = 0;
 						}
 						
-						out_script << pushes.str().substr(0, pushes.tellp()).c_str();
-						pushes.str("");
-						pushes.clear();
+						else if (last_push.type == ACTION_STACK_VALUE_STRING && (u8) actionCodeLookAhead(action_buffer, 0) == SWF_ACTION_GET_VARIABLE &&
+								 (u8) actionCodeLookAhead(action_buffer, 1) == SWF_ACTION_PUSH && (u8) actionCodeLookAhead(action_buffer, 2) == SWF_ACTION_SET_VARIABLE)
+						{
+							// SetVariable using known-variable name's string detected
+							action_buffer += actionCodeLookAheadIndex(action_buffer, 1);
+							
+							pushes.str("");
+							pushes.clear();
+							
+							dynavar_value = last_push.value;
+						}
 						
-						vardetect_value = 0;
-						second_last_push.type = ACTION_STACK_VALUE_UNSET;
-						setvardetect_possible = false;
+						else if (last_push.type == ACTION_STACK_VALUE_STRING && action_buffer[0] == (u8) SWF_ACTION_GET_VARIABLE)
+						{
+							// GetVariable with known variable-name detected
+							vardetect_value = last_push.value;
+							second_last_push.type = ACTION_STACK_VALUE_UNSET;
+							last_push.type = ACTION_STACK_VALUE_UNSET;
+							setvardetect_possible = false;
+							
+							pushes.str("");
+							pushes.clear();
+							
+							action_buffer += 1;
+						}
 						
-						action_buffer += 1;
-					}
-					
-					else if (last_push.type == ACTION_STACK_VALUE_STRING)
-					{
-						// Optimized SetVariable is still possible
-						// if another consecutive Push and then SetVariable
-						setvardetect_possible = true;
+						else if ((second_last_push.type == ACTION_STACK_VALUE_STRING && action_buffer[0] == (u8) SWF_ACTION_SET_VARIABLE) ||
+								 (setvardetect_possible && action_buffer[0] == (u8) SWF_ACTION_SET_VARIABLE))
+						{
+							// SetVariable with known variable-name detected
+							out_script << "\t" << "// SetVariable (static var)" << endl;
+							
+							pushes.seekp(vardetect_backtrack_prev, std::ios_base::beg);
+							
+							// Set this so VD_STR works
+							vardetect_value = second_last_push.value;
+							
+							declareVariable(VD_STR, out_script_defs, out_script_decls);
+							
+							switch (last_push.type)
+							{
+								case ACTION_STACK_VALUE_STRING:
+								{
+									pushes << "\t" << "SET(&" << VD_STR << "ACTION_STACK_VALUE_STRING, (u64) str_" << to_string(next_str_i - 1) << ");" << endl;
+									
+									break;
+								}
+								
+								case ACTION_STACK_VALUE_F32:
+								{
+									pushes << "\t" << "SET(&" << VD_STR << ", ACTION_STACK_VALUE_F32, " << ((u32) push_value) << ");" << endl;
+									
+									break;
+								}
+							}
+							
+							out_script << pushes.str().substr(0, pushes.tellp()).c_str();
+							pushes.str("");
+							pushes.clear();
+							
+							vardetect_value = 0;
+							second_last_push.type = ACTION_STACK_VALUE_UNSET;
+							setvardetect_possible = false;
+							
+							action_buffer += 1;
+						}
+						
+						else if (last_push.type == ACTION_STACK_VALUE_STRING)
+						{
+							// Optimized SetVariable is still possible
+							// if another consecutive Push and then SetVariable
+							setvardetect_possible = true;
+						}
+						
+						else
+						{
+							out_script << pushes.str().substr(0, pushes.tellp()).c_str();
+							pushes.str("");
+							pushes.clear();
+						}
 					}
 					
 					else
@@ -457,7 +465,8 @@ namespace SWFRecomp
 				}
 			}
 			
-			if (vardetect_value != 0 && code != SWF_ACTION_PUSH)
+			// lower static var detection
+			if (false && vardetect_value != 0 && code != SWF_ACTION_PUSH)
 			{
 				out_script << pushes.str().substr(0, pushes.tellp()).c_str();
 				pushes.str("");
@@ -478,18 +487,22 @@ namespace SWFRecomp
 		out_script_defs << endl << "#ifndef DEF_VAR_" << var_name << endl
 						<< "#define DEF_VAR_" << var_name << endl
 						<< "var " << var_name << ";" << endl
-						<< "#endif" << endl;
+						<< "#endif";
 		
-		out_script_decls << endl << "#ifndef DECL_VAR_" << var_name << endl
-						 << "#define DECL_VAR_" << var_name << endl
-						 << "extern var " << var_name << ";" << endl
-						 << "#endif" << endl;
+		out_script_decls << endl << "extern var " << var_name << ";";
 	}
 	
 	void SWFAction::declareString(char* str, ostream& out_script_defs, ostream& out_script_decls)
 	{
 		out_script_defs << endl << "char* str_" << next_str_i << " = \"" << str << "\";";
 		out_script_decls << endl << "extern char* str_" << next_str_i << ";";
+		next_str_i += 1;
+	}
+	
+	void SWFAction::declareEmptyString(size_t size, ostream& out_script_defs, ostream& out_script_decls)
+	{
+		out_script_defs << endl << "char str_" << next_str_i << "[" << to_string(size) << "];";
+		out_script_decls << endl << "extern char str_" << next_str_i << "[];";
 		next_str_i += 1;
 	}
 	
