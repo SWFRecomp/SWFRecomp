@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.10)
 
 project(TestSWFRecompiled)
 set(CMAKE_C_STANDARD 17)
