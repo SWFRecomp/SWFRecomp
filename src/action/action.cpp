@@ -6,7 +6,6 @@
 #include <action.hpp>
 
 #define VAL(type, x) *((type*) x)
-#define VD_STR ((char*) vardetect_value)
 
 using std::stringstream;
 using std::to_string;
