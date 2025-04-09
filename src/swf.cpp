@@ -348,7 +348,7 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, sp);" << endl;
+					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, &sp);" << endl;
 					last_queued_script += 1;
 				}
 				
@@ -377,13 +377,14 @@ namespace SWFRecomp
 				ofstream out_script_defs(output_scripts_folder + "script_defs.c", ios_base::app);
 				ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::app);
 				
-				out_script_header << endl << "void script_" << to_string(next_script_i) << "(ActionStackValue* stack, u64 sp);";
+				out_script_header << endl << "void script_" << to_string(next_script_i) << "(char* stack, u32* sp);";
 				
 				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
-						   << "void script_" << next_script_i << "(ActionStackValue* stack, u64 sp)" << endl
+						   << "u32 oldSP;" << endl << endl
+						   << "void script_" << next_script_i << "(char* stack, u32* sp)" << endl
 						   << "{" << endl;
 				next_script_i += 1;
 				
