@@ -1,6 +1,6 @@
 #!/bin/bash
 
-result=$(bash -c "cd $1/build && ./Release/TestSWFRecompiled")
+result=$(bash -c "cd $1/build && (./Release/TestSWFRecompiled || ./TestSWFRecompiled)")
 
 echo ""
 echo "Expected: \`$2'"
