@@ -292,19 +292,7 @@ namespace SWFRecomp
 			tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
 		}
 		
-		tag_main << "};" << endl << endl
-				 << "void tagMain()" << endl
-				 << "{" << endl
-				 << "\t" << "while (!quit_swf)" << endl
-				 << "\t" << "{" << endl
-				 << "\t\t" << "frame_funcs[next_frame]();" << endl
-				 << "\t\t" << "if (!manual_next_frame)" << endl
-				 << "\t\t" << "{" << endl
-				 << "\t\t\t" << "next_frame += 1;" << endl
-				 << "\t\t" << "}" << endl
-				 << "\t\t" << "manual_next_frame = 0;" << endl
-				 << "\t" << "}" << endl
-				 << "}";
+		tag_main << "};";
 	}
 	
 	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, const string& output_scripts_folder)
@@ -383,7 +371,6 @@ namespace SWFRecomp
 				
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
-						   << "u32 oldSP;" << endl << endl
 						   << "void script_" << next_script_i << "(char* stack, u32* sp)" << endl
 						   << "{" << endl;
 				next_script_i += 1;

@@ -171,7 +171,7 @@ namespace SWFRecomp
 				case SWF_ACTION_GET_VARIABLE:
 				{
 					out_script << "\t" << "// GetVariable" << endl
-							   << "\t" << "temp_val = getVariable((char*) STACK_TOP_VALUE);" << endl
+							   << "\t" << "temp_val = getVariable((char*) STACK_TOP_VALUE, STACK_TOP_N);" << endl
 							   << "\t" << "POP();" << endl
 							   << "\t" << "PUSH_VAR(temp_val);" << endl;
 					
@@ -181,7 +181,7 @@ namespace SWFRecomp
 				case SWF_ACTION_SET_VARIABLE:
 				{
 					out_script << "\t" << "// SetVariable" << endl
-							   << "\t" << "temp_val = getVariable((char*) STACK_SECOND_TOP_VALUE);" << endl
+							   << "\t" << "temp_val = getVariable((char*) STACK_SECOND_TOP_VALUE, STACK_SECOND_TOP_N);" << endl
 							   << "\t" << "SET_VAR(temp_val, STACK_TOP_TYPE, STACK_TOP_N, STACK_TOP_VALUE);" << endl
 							   << "\t" << "POP_2();" << endl;
 					
