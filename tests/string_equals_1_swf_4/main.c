@@ -2,5 +2,5 @@
 
 int main()
 {
-	swfStart();
+	swfStart(frame_funcs);
 }

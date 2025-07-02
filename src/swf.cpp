@@ -292,19 +292,7 @@ namespace SWFRecomp
 			tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
 		}
 		
-		tag_main << "};" << endl << endl
-				 << "void tagMain()" << endl
-				 << "{" << endl
-				 << "\t" << "while (!quit_swf)" << endl
-				 << "\t" << "{" << endl
-				 << "\t\t" << "frame_funcs[next_frame]();" << endl
-				 << "\t\t" << "if (!manual_next_frame)" << endl
-				 << "\t\t" << "{" << endl
-				 << "\t\t\t" << "next_frame += 1;" << endl
-				 << "\t\t" << "}" << endl
-				 << "\t\t" << "manual_next_frame = 0;" << endl
-				 << "\t" << "}" << endl
-				 << "}";
+		tag_main << "};";
 	}
 	
 	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, const string& output_scripts_folder)
@@ -348,7 +336,7 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, sp);" << endl;
+					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, &sp);" << endl;
 					last_queued_script += 1;
 				}
 				
@@ -377,14 +365,13 @@ namespace SWFRecomp
 				ofstream out_script_defs(output_scripts_folder + "script_defs.c", ios_base::app);
 				ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::app);
 				
-				out_script_header << endl << "void script_" << to_string(next_script_i) << "(ActionStackValue* stack, u64 sp);";
+				out_script_header << endl << "void script_" << to_string(next_script_i) << "(char* stack, u32* sp);";
 				
 				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
-						   << "#define DECL_TEMP_VAR_PTR ActionStackValue*" << endl << endl
-						   << "void script_" << next_script_i << "(ActionStackValue* stack, u64 sp)" << endl
+						   << "void script_" << next_script_i << "(char* stack, u32* sp)" << endl
 						   << "{" << endl;
 				next_script_i += 1;
 				
@@ -439,7 +426,7 @@ namespace SWFRecomp
 				
 				if ((flags & 0b00001000) != 0)
 				{
-					EXC("ActionScript 3 SWFs not implemented.\n");
+					//EXC("ActionScript 3 SWFs not implemented.\n");
 				}
 				
 				break;

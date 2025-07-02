@@ -1,6 +1,11 @@
 #!/bin/bash
 
-result=$(bash -c "cd $1/build && ./Release/TestSWFRecompiled")
+if [ -e "$1/build/Release/TestSWFRecompiled" ]
+then
+	result=$(bash -c "cd $1/build && ./Release/TestSWFRecompiled")
+else
+	result=$(bash -c "cd $1/build && ./TestSWFRecompiled")
+fi
 
 echo ""
 echo "Expected: \`$2'"
@@ -9,8 +14,10 @@ echo ""
 
 if [[ $result =~ "$2" ]]; then
 	echo "PASSED"
+	echo ""
+	exit 0
 else
 	echo "FAILED"
+	echo ""
+	exit -1
 fi
-
-echo ""
