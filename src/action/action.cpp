@@ -247,7 +247,7 @@ namespace SWFRecomp
 							
 							default:
 							{
-								EXC("Undefined push type.\n");
+								EXC_ARG("Undefined push type: %d.\n", push_type);
 							}
 						}
 					}
