@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -e "./Release/TestSWFRecompiled" ]
+if [ -e "$1/build/Release/TestSWFRecompiled" ]
 then
 	result=$(bash -c "cd $1/build && ./Release/TestSWFRecompiled")
 else
