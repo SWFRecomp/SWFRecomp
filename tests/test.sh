@@ -1,6 +1,11 @@
 #!/bin/bash
 
-result=$(bash -c "cd $1/build && (./Release/TestSWFRecompiled || ./TestSWFRecompiled)")
+if [ -e "./Release/TestSWFRecompiled" ]
+then
+	result=$(bash -c "cd $1/build && ./Release/TestSWFRecompiled")
+else
+	result=$(bash -c "cd $1/build && ./TestSWFRecompiled")
+fi
 
 echo ""
 echo "Expected: \`$2'"
