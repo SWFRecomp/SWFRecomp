@@ -140,7 +140,8 @@ namespace SWFRecomp
 					declareEmptyString(17, out_script_defs, out_script_decls);
 					
 					out_script << "\t" << "// StringLength" << endl
-							   << "\t" << "actionStringLength(stack, sp, str_" << to_string(next_str_i - 1) << ");" << endl;
+							   << "\t" << "actionStringLength(stack, sp, str_"
+							   << to_string(next_str_i - 1) << ");" << endl;
 					
 					break;
 				}
@@ -149,11 +150,9 @@ namespace SWFRecomp
 				{
 					declareEmptyString(17, out_script_defs, out_script_decls);
 					declareEmptyString(17, out_script_defs, out_script_decls);
-					declareEmptyString(1024, out_script_defs, out_script_decls);
 					
 					out_script << "\t" << "// StringAdd" << endl
 							   << "\t" << "actionStringAdd(stack, sp, "
-							   << "str_" << to_string(next_str_i - 3) << ", "
 							   << "str_" << to_string(next_str_i - 2) << ", "
 							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
 					
