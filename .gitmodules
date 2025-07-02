@@ -3,4 +3,4 @@
 	url = https://github.com/madler/zlib.git
 [submodule "lib/lzma"]
 	path = lib/lzma
-	url = https://github.com/chemfiles/lzma.git
+	url = https://github.com/SWFRecomp/lzma.git
