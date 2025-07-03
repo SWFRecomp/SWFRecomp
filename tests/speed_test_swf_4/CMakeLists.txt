@@ -47,7 +47,7 @@ target_sources(RecompiledScripts PRIVATE ${FUNC_C_SOURCES})
 
 add_executable(${PROJECT_NAME})
 
-target_compile_options(${PROJECT_NAME} PRIVATE /O2)
+target_compile_options(${PROJECT_NAME} PRIVATE -O2)
 
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/main.c
