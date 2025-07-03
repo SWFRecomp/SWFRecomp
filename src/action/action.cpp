@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
 #include <action.hpp>
 
@@ -23,8 +24,50 @@ namespace SWFRecomp
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
 		
+		char* action_buffer_start = action_buffer;
+		
+		std::vector<char*> labels;
+		
+		// Parse action bytes once to mark labels
 		while (code != SWF_ACTION_END_OF_ACTIONS)
 		{
+			code = (SWFActionType) (u8) action_buffer[0];
+			action_buffer += 1;
+			length = 0;
+			
+			if ((code & 0b10000000) != 0)
+			{
+				length = VAL(u16, action_buffer);
+				action_buffer += 2;
+			}
+			
+			switch (code)
+			{
+				case SWF_ACTION_JUMP:
+				case SWF_ACTION_IF:
+				{
+					s16 offset = VAL(s16, action_buffer);
+					labels.push_back(action_buffer + length + ((s64) offset));
+					break;
+				}
+			}
+			
+			action_buffer += length;
+		}
+		
+		action_buffer = action_buffer_start;
+		code = SWF_ACTION_CONSTANT_POOL;
+		
+		while (code != SWF_ACTION_END_OF_ACTIONS)
+		{
+			for (const char* ptr : labels)
+			{
+				if (action_buffer == ptr)
+				{
+					out_script << "label_" << to_string((s16) (ptr - action_buffer_start)) << ":" << endl;
+				}
+			}
+			
 			code = (SWFActionType) (u8) action_buffer[0];
 			action_buffer += 1;
 			length = 0;
@@ -261,6 +304,33 @@ namespace SWFRecomp
 					}
 					
 					action_buffer += push_length;
+					
+					break;
+				}
+				
+				case SWF_ACTION_JUMP:
+				{
+					s16 offset = VAL(s16, action_buffer);
+					
+					out_script << "\t" << "// Jump" << endl
+							   << "\t" << "goto label_" << to_string((s16) (action_buffer + length - action_buffer_start + offset)) << ";" << endl;
+					
+					action_buffer += length;
+					
+					break;
+				}
+				
+				case SWF_ACTION_IF:
+				{
+					s16 offset = VAL(s16, action_buffer);
+					
+					out_script << "\t" << "// If" << endl
+							   << "\t" << "if (evaluateCondition(stack, sp))" << endl
+							   << "\t" << "{" << endl
+							   << "\t" << "\t" << "goto label_" << to_string((s16) (action_buffer + length - action_buffer_start + offset)) << ";" << endl
+							   << "\t" << "}" << endl;
+					
+					action_buffer += length;
 					
 					break;
 				}
