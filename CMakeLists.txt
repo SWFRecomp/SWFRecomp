@@ -21,7 +21,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/action/action.cpp
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -O2)
+target_compile_options(${PROJECT_NAME} PRIVATE)
 
 set(RENAME_ZCONF OFF)
 
