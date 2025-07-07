@@ -16,7 +16,7 @@ namespace SWFRecomp
 		is_nbits = false;
 	}
 	
-	char* SWFField::parse(char* field_buffer, u32& nbits, u32& cur_byte_bits_left, bool& prev_was_bitfield)
+	void SWFField::parse(char*& field_buffer, u32& nbits, u32& cur_byte_bits_left, bool& prev_was_bitfield)
 	{
 		bool current_is_bitfield = (type == SWF_FIELD_UB ||
 								    type == SWF_FIELD_SB ||
@@ -85,7 +85,7 @@ namespace SWFRecomp
 			
 			case SWF_FIELD_UB:
 			{
-				field_buffer = parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left, false);
+				parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left, false);
 				
 				if (is_nbits)
 				{
@@ -99,7 +99,14 @@ namespace SWFRecomp
 			
 			case SWF_FIELD_SB:
 			{
-				field_buffer = parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left, true);
+				u8 length = (bit_length == 0) ? nbits : bit_length;
+				
+				parseBitField(field_buffer, length, cur_byte_bits_left, true);
+				
+				int shiftAmount = 64 - length;
+				
+				s64 temp = (s64) (value << shiftAmount);
+				value = temp >> shiftAmount;
 				
 				if (is_nbits)
 				{
@@ -118,15 +125,10 @@ namespace SWFRecomp
 		}
 		
 		prev_was_bitfield = current_is_bitfield;
-		
-		return field_buffer;
 	}
 	
-	char* SWFField::parseBitField(char* field_buffer, u32 nbits, u32& cur_byte_bits_left, bool sb)
+	void SWFField::parseBitField(char*& field_buffer, u32 nbits, u32& cur_byte_bits_left, bool sb)
 	{
-		// Start off with the first byte
-		u8 field_buffer_i = 0;
-		
 		// How many bits does it have left to read?
 		u8 cur_field_bits_left = nbits;
 		
@@ -135,7 +137,7 @@ namespace SWFRecomp
 			u8 bits_left = MIN(cur_field_bits_left, cur_byte_bits_left);
 			u8 mask = (((s8) 0x80) >> (bits_left - 1));
 			
-			u8 temp_field_byte = field_buffer[field_buffer_i] << (8 - cur_byte_bits_left);
+			u8 temp_field_byte = *field_buffer << (8 - cur_byte_bits_left);
 			
 			value <<= bits_left;
 			
@@ -154,7 +156,7 @@ namespace SWFRecomp
 			
 			if (cur_byte_bits_left == 0)
 			{
-				field_buffer_i += 1;
+				field_buffer += 1;
 				cur_byte_bits_left = 8;
 			}
 			
@@ -163,7 +165,5 @@ namespace SWFRecomp
 				break;
 			}
 		}
-		
-		return field_buffer + field_buffer_i;
 	}
 };

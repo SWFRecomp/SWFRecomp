@@ -19,7 +19,7 @@ namespace SWFRecomp
 		
 	}
 	
-	char* SWFAction::parseActions(char* action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls)
+	void SWFAction::parseActions(char*& action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls)
 	{
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
@@ -343,8 +343,6 @@ namespace SWFRecomp
 				}
 			}
 		}
-		
-		return action_buffer;
 	}
 	
 	void SWFAction::declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls)

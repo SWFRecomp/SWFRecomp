@@ -17,7 +17,7 @@ namespace SWFRecomp
 		}
 	}
 	
-	char* SWFTag::parseHeader(char* tag_buffer)
+	void SWFTag::parseHeader(char*& tag_buffer)
 	{
 		u16 code_and_length = *((u16*) tag_buffer);
 		tag_buffer += 2;
@@ -30,17 +30,10 @@ namespace SWFRecomp
 			length = *((u32*) tag_buffer);
 			tag_buffer += 4;
 		}
-		
-		return tag_buffer;
 	}
 	
 	void SWFTag::setFieldCount(u32 new_field_count)
 	{
-		if (field_count >= new_field_count)
-		{
-			return;
-		}
-		
 		if (fields != nullptr)
 		{
 			delete[] fields;
@@ -60,23 +53,30 @@ namespace SWFRecomp
 		next_field += 1;
 	}
 	
-	char* SWFTag::parseFields(char* tag_buffer)
+	void SWFTag::parseFields(char*& tag_buffer, u32 nbits)
 	{
-		u32 nbits = 0;
 		u32 cur_byte_bits_left = 8;
 		bool prev_was_bitfield = false;
 		
 		for (u32 field_i = 0; field_i < field_count; ++field_i)
 		{
-			tag_buffer = fields[field_i].parse(tag_buffer, nbits, cur_byte_bits_left, prev_was_bitfield);
+			fields[field_i].parse(tag_buffer, nbits, cur_byte_bits_left, prev_was_bitfield);
 		}
 		
 		if (cur_byte_bits_left != 8)
 		{
 			tag_buffer += 1;
 		}
+	}
+	
+	void SWFTag::parseFieldsContinue(char*& tag_buffer, u32& cur_byte_bits_left, u32 nbits)
+	{
+		bool prev_was_bitfield = false;
 		
-		return tag_buffer;
+		for (u32 field_i = 0; field_i < field_count; ++field_i)
+		{
+			fields[field_i].parse(tag_buffer, nbits, cur_byte_bits_left, prev_was_bitfield);
+		}
 	}
 	
 	void SWFTag::clearFields()

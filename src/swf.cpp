@@ -29,7 +29,7 @@ namespace SWFRecomp
 		memcpy(this, swf_buffer, 8);
 	}
 	
-	char* SWFHeader::loadOtherData(char* swf_buffer)
+	void SWFHeader::loadOtherData(char*& swf_buffer)
 	{
 		SWFTag rect;
 		
@@ -41,7 +41,7 @@ namespace SWFRecomp
 		rect.configureNextField(SWF_FIELD_SB, 0);
 		rect.configureNextField(SWF_FIELD_SB, 0);
 		
-		swf_buffer = rect.parseFields(swf_buffer);
+		rect.parseFields(swf_buffer);
 		
 		frame_size.nbits = (u8) rect.fields[0].value;
 		frame_size.xmin = (s32) rect.fields[1].value;
@@ -76,8 +76,6 @@ namespace SWFRecomp
 		
 		printf("FPS: %d\n", framerate >> 8);
 		printf("SWF frame count: %d\n", frame_count);
-		
-		return swf_buffer;
 	}
 	
 	
@@ -196,9 +194,9 @@ namespace SWFRecomp
 			}
 		}
 		
-		swf_buffer += 8;
+		cur_pos = swf_buffer + 8;
 		
-		cur_pos = header.loadOtherData(swf_buffer);
+		header.loadOtherData(cur_pos);
 	}
 	
 	void SWF::parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder)
@@ -227,7 +225,7 @@ namespace SWFRecomp
 		
 		while (tag.code != 0)
 		{
-			cur_pos = tag.parseHeader(cur_pos);
+			tag.parseHeader(cur_pos);
 			interpretTag(tag, tag_main, out_draws, out_draws_header, output_scripts_folder);
 			tag.clearFields();
 		}
@@ -297,16 +295,16 @@ namespace SWFRecomp
 				break;
 			}
 			
-			//~ case SWF_TAG_DEFINE_SHAPE:
-			//~ {
-				//~ interpretShape(tag, out_draws, out_draws_header);
+			case SWF_TAG_DEFINE_SHAPE:
+			{
+				interpretShape(tag, out_draws, out_draws_header);
 				
-				//~ break;
-			//~ }
+				break;
+			}
 			
 			case SWF_TAG_SET_BACKGROUND_COLOR:
 			{
-				cur_pos = RGB.parseFields(cur_pos);
+				RGB.parseFields(cur_pos);
 				
 				tag_main << "\t" << "tagSetBackgroundColor("
 						 << to_string((u8) RGB.fields[0].value) << ", "
@@ -332,7 +330,7 @@ namespace SWFRecomp
 						   << "{" << endl;
 				next_script_i += 1;
 				
-				cur_pos = action.parseActions(cur_pos, out_script, out_script_defs, out_script_decls);
+				action.parseActions(cur_pos, out_script, out_script_defs, out_script_decls);
 				
 				out_script << "}";
 				
@@ -359,7 +357,7 @@ namespace SWFRecomp
 				tag.configureNextField(SWF_FIELD_UI16);
 				tag.configureNextField(SWF_FIELD_UI16);
 				
-				cur_pos = tag.parseFields(cur_pos);
+				tag.parseFields(cur_pos);
 				
 				tag_main << "\t" << "tagScriptLimits("
 						 << to_string((u16) tag.fields[0].value) << ", "
@@ -377,7 +375,7 @@ namespace SWFRecomp
 				tag.configureNextField(SWF_FIELD_UI8);
 				tag.configureNextField(SWF_FIELD_UI8);
 				
-				cur_pos = tag.parseFields(cur_pos);
+				tag.parseFields(cur_pos);
 				
 				u8 flags = (u8) tag.fields[0].value;
 				
@@ -423,18 +421,269 @@ namespace SWFRecomp
 		{
 			case SWF_TAG_DEFINE_SHAPE:
 			{
-				shape_tag.setFieldCount(7);
+				shape_tag.setFieldCount(6);
+				
 				shape_tag.configureNextField(SWF_FIELD_UI16, 16);
 				shape_tag.configureNextField(SWF_FIELD_UB, 5, true);
 				shape_tag.configureNextField(SWF_FIELD_SB, 0);
 				shape_tag.configureNextField(SWF_FIELD_SB, 0);
 				shape_tag.configureNextField(SWF_FIELD_SB, 0);
 				shape_tag.configureNextField(SWF_FIELD_SB, 0);
+				
+				shape_tag.parseFields(cur_pos);
+				
+				// FILLSTYLEARRAY
+				shape_tag.clearFields();
+				shape_tag.setFieldCount(1);
+				
 				shape_tag.configureNextField(SWF_FIELD_UI8, 8);
 				
-				cur_pos = shape_tag.parseFields(cur_pos);
+				shape_tag.parseFields(cur_pos);
 				
-				exit(EXIT_SUCCESS);
+				u16 fill_style_count = (u8) shape_tag.fields[0].value;
+				
+				if (fill_style_count == 0xFF)
+				{
+					shape_tag.clearFields();
+					
+					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+					
+					shape_tag.parseFields(cur_pos);
+					
+					fill_style_count = (u16) shape_tag.fields[0].value;
+				}
+				
+				for (u16 i = 0; i < fill_style_count; ++i)
+				{
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(4);
+					
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					
+					shape_tag.parseFields(cur_pos);
+				}
+				
+				// LINESTYLEARRAY
+				shape_tag.clearFields();
+				shape_tag.setFieldCount(1);
+				
+				shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+				
+				shape_tag.parseFields(cur_pos);
+				
+				u16 line_style_count = (u8) shape_tag.fields[0].value;
+				
+				if (line_style_count == 0xFF)
+				{
+					shape_tag.clearFields();
+					
+					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+					
+					shape_tag.parseFields(cur_pos);
+					
+					line_style_count = (u16) shape_tag.fields[0].value;
+				}
+				
+				for (u16 i = 0; i < line_style_count; ++i)
+				{
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(4);
+					
+					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					
+					shape_tag.parseFields(cur_pos);
+				}
+				
+				shape_tag.clearFields();
+				shape_tag.setFieldCount(2);
+				
+				shape_tag.configureNextField(SWF_FIELD_UB, 4);
+				shape_tag.configureNextField(SWF_FIELD_UB, 4);
+				
+				shape_tag.parseFields(cur_pos);
+				
+				u8 fill_bits = (u8) shape_tag.fields[0].value;
+				u8 line_bits = (u8) shape_tag.fields[1].value;
+				
+				fprintf(stderr, "fill bits: %d, line bits: %d\n", fill_bits, line_bits);
+				
+				u32 cur_byte_bits_left = 8;
+				
+				while (true)
+				{
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(2);
+					
+					shape_tag.configureNextField(SWF_FIELD_UB, 1);
+					shape_tag.configureNextField(SWF_FIELD_UB, 5);
+					
+					shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+					
+					bool is_edge_record = (u8) shape_tag.fields[0].value;
+					u8 state_flags = (u8) shape_tag.fields[1].value;
+					
+					if (is_edge_record)
+					{
+						bool is_straight_edge = (state_flags & 0b10000) != 0;
+						
+						if (is_straight_edge)
+						{
+							// StraightEdgeRecord
+							
+							shape_tag.clearFields();
+							shape_tag.setFieldCount(1);
+							
+							shape_tag.configureNextField(SWF_FIELD_UB, 1);
+							
+							shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+							
+							bool is_general_line = (shape_tag.fields[0].value & 1) != 0;
+							
+							u8 num_bits = (u8) state_flags & 0xF;
+							
+							if (is_general_line)
+							{
+								shape_tag.clearFields();
+								shape_tag.setFieldCount(2);
+								
+								shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+								shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+								
+								shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+								
+								s16 delta_x = (s16) shape_tag.fields[0].value;
+								s16 delta_y = (s16) shape_tag.fields[1].value;
+								
+								fprintf(stderr, "line with delta x: %d, delta y: %d\n", delta_x, delta_y);
+								
+								continue;
+							}
+							
+							shape_tag.clearFields();
+							shape_tag.setFieldCount(2);
+							
+							shape_tag.configureNextField(SWF_FIELD_UB, 1);
+							shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+							
+							shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+							
+							bool is_vertical_line = (shape_tag.fields[0].value & 1) != 0;
+							s16 delta = (s16) shape_tag.fields[1].value;
+							
+							if (is_vertical_line)
+							{
+								fprintf(stderr, "delta y: %d\n", delta);
+							}
+							
+							else
+							{
+								fprintf(stderr, "delta x: %d\n", delta);
+							}
+							
+							continue;
+						}
+						
+						// CurvedEdgeRecord
+						
+						// TODO: implement this record
+						
+						continue;
+					}
+					
+					if (state_flags == 0)
+					{
+						// EndShapeRecord
+						break;
+					}
+					
+					// StyleChangeRecord
+					
+					// StateNewStyles is only used by DefineShape2 and DefineShape3
+					bool state_new_styles = (state_flags & 0b10000) != 0;
+					bool state_line_style = (state_flags & 0b01000) != 0;
+					bool state_fill_style_1 = (state_flags & 0b00100) != 0;
+					bool state_fill_style_0 = (state_flags & 0b00010) != 0;
+					bool state_move_to = (state_flags & 0b00001) != 0;
+					
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(3*state_move_to + state_fill_style_0 + state_fill_style_1 + state_line_style);
+					
+					if (state_move_to)
+					{
+						shape_tag.configureNextField(SWF_FIELD_UB, 5, true);
+						shape_tag.configureNextField(SWF_FIELD_SB, 0);
+						shape_tag.configureNextField(SWF_FIELD_SB, 0);
+					}
+					
+					if (state_fill_style_0)
+					{
+						shape_tag.configureNextField(SWF_FIELD_UB, fill_bits);
+					}
+					
+					if (state_fill_style_1)
+					{
+						shape_tag.configureNextField(SWF_FIELD_UB, fill_bits);
+					}
+					
+					if (state_line_style)
+					{
+						shape_tag.configureNextField(SWF_FIELD_UB, line_bits);
+					}
+					
+					shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+					
+					u8 move_bits;
+					u32 move_delta_x;
+					u32 move_delta_y;
+					
+					u32 fill_style_0;
+					u32 fill_style_1;
+					
+					u32 line_style;
+					
+					size_t current_field = 0;
+					
+					if (state_move_to)
+					{
+						move_bits = (u8) shape_tag.fields[current_field++].value;
+						move_delta_x = (u32) shape_tag.fields[current_field++].value;
+						move_delta_y = (u32) shape_tag.fields[current_field++].value;
+						
+						fprintf(stderr, "move bits: %d, delta x: %d, delta y: %d\n", move_bits, move_delta_x, move_delta_y);
+					}
+					
+					if (state_fill_style_0)
+					{
+						fill_style_0 = (u32) shape_tag.fields[current_field++].value;
+						
+						fprintf(stderr, "fill style 0: %d\n", fill_style_0);
+					}
+					
+					if (state_fill_style_1)
+					{
+						fill_style_1 = (u32) shape_tag.fields[current_field++].value;
+						
+						fprintf(stderr, "fill style 1: %d\n", fill_style_1);
+					}
+					
+					if (state_line_style)
+					{
+						line_style = (u32) shape_tag.fields[current_field++].value;
+						
+						fprintf(stderr, "line style: %d\n", line_style);
+					}
+				}
+				
+				if (cur_byte_bits_left != 8)
+				{
+					cur_pos += 1;
+				}
 				
 				break;
 			}

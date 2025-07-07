@@ -45,7 +45,7 @@ namespace SWFRecomp
 		
 		SWFAction();
 		
-		char* parseActions(char* action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls);
+		void parseActions(char*& action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls);
 		void declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls);
 		void declareString(char* str, ostream& out_script_defs, ostream& out_script_decls);
 		void declareEmptyString(size_t size, ostream& out_script_defs, ostream& out_script_decls);

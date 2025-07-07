@@ -37,7 +37,7 @@ namespace SWFRecomp
 		SWFHeader();
 		SWFHeader(char* swf_buffer);
 		
-		char* loadOtherData(char* swf_buffer);
+		void loadOtherData(char*& swf_buffer);
 	};
 	
 	class SWF

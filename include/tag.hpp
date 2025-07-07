@@ -35,10 +35,11 @@ namespace SWFRecomp
 		SWFTag();
 		~SWFTag();
 		
-		char* parseHeader(char* tag_buffer);
+		void parseHeader(char*& tag_buffer);
 		void setFieldCount(u32 new_field_count);
 		void configureNextField(FieldType type, u32 bit_length = 0, bool is_nbits = false);
-		char* parseFields(char* tag_buffer);
+		void parseFields(char*& tag_buffer, u32 nbits = 0);
+		void parseFieldsContinue(char*& tag_buffer, u32& cur_byte_bits_left, u32 nbits = 0);
 		void clearFields();
 	};
 };
