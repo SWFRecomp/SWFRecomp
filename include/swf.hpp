@@ -58,8 +58,8 @@ namespace SWFRecomp
 		SWF();
 		SWF(const char* swf_path);
 		
-		bool parseTag(ofstream& tag_main, const string& output_scripts_folder);
-		void parseAllTags(ofstream& tag_main, const string& output_scripts_folder);
-		void interpretTag(SWFTag& tag, ofstream& tag_main, const string& output_scripts_folder);
+		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
+		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
+		void interpretShape(SWFTag& shape_tag, ofstream& out_draws, ofstream& out_draws_header);
 	};
 };

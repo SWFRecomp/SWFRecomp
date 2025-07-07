@@ -241,17 +241,7 @@ namespace SWFRecomp
 		cur_pos = header.loadOtherData(swf_buffer);
 	}
 	
-	bool SWF::parseTag(ofstream& tag_main, const string& output_scripts_folder)
-	{
-		SWFTag tag;
-		cur_pos = tag.parseHeader(cur_pos);
-		
-		interpretTag(tag, tag_main, output_scripts_folder);
-		
-		return tag.code != 0;
-	}
-	
-	void SWF::parseAllTags(ofstream& tag_main, const string& output_scripts_folder)
+	void SWF::parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder)
 	{
 		SWFTag tag;
 		tag.code = SWF_TAG_SHOW_FRAME;
@@ -278,7 +268,7 @@ namespace SWFRecomp
 		while (tag.code != 0)
 		{
 			cur_pos = tag.parseHeader(cur_pos);
-			interpretTag(tag, tag_main, output_scripts_folder);
+			interpretTag(tag, tag_main, out_draws, out_draws_header, output_scripts_folder);
 			tag.clearFields();
 		}
 		
@@ -295,7 +285,7 @@ namespace SWFRecomp
 		tag_main << "};";
 	}
 	
-	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, const string& output_scripts_folder)
+	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder)
 	{
 		printf("tag code: %d, tag length: %d\n", tag.code, tag.length);
 		
@@ -346,6 +336,13 @@ namespace SWFRecomp
 				
 				break;
 			}
+			
+			//~ case SWF_TAG_DEFINE_SHAPE:
+			//~ {
+				//~ interpretShape(tag, out_draws, out_draws_header);
+				
+				//~ break;
+			//~ }
 			
 			case SWF_TAG_SET_BACKGROUND_COLOR:
 			{
@@ -456,6 +453,30 @@ namespace SWFRecomp
 			default:
 			{
 				EXC_ARG("Tag type %d not implemented.\n", tag.code);
+			}
+		}
+	}
+	
+	void SWF::interpretShape(SWFTag& shape_tag, ofstream& out_draws, ofstream& out_draws_header)
+	{
+		switch (shape_tag.code)
+		{
+			case SWF_TAG_DEFINE_SHAPE:
+			{
+				shape_tag.setFieldCount(7);
+				shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+				shape_tag.configureNextField(SWF_FIELD_UB, 5, true);
+				shape_tag.configureNextField(SWF_FIELD_SB, 0);
+				shape_tag.configureNextField(SWF_FIELD_SB, 0);
+				shape_tag.configureNextField(SWF_FIELD_SB, 0);
+				shape_tag.configureNextField(SWF_FIELD_SB, 0);
+				shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+				
+				cur_pos = shape_tag.parseFields(cur_pos);
+				
+				exit(EXIT_SUCCESS);
+				
+				break;
 			}
 		}
 	}

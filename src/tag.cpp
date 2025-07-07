@@ -54,14 +54,21 @@ namespace SWFRecomp
 	void SWFTag::configureNextField(FieldType type, u32 bit_length, bool is_nbits)
 	{
 		fields[next_field].type = type;
+		fields[next_field].bit_length = bit_length;
+		fields[next_field].is_nbits = is_nbits;
+		
 		next_field += 1;
 	}
 	
 	char* SWFTag::parseFields(char* tag_buffer)
 	{
+		u32 nbits = 0;
+		u32 cur_byte_bits_left = 8;
+		bool prev_was_bitfield = false;
+		
 		for (u32 field_i = 0; field_i < field_count; ++field_i)
 		{
-			tag_buffer = fields[field_i].parse(tag_buffer);
+			tag_buffer = fields[field_i].parse(tag_buffer, nbits, cur_byte_bits_left, prev_was_bitfield);
 		}
 		
 		return tag_buffer;

@@ -47,9 +47,11 @@ namespace SWFRecomp
 		u32 bit_length;
 		FieldType type;
 		u64 value;
+		bool is_nbits;
 		
 		SWFField();
 		
-		char* parse(char* field_buffer);
+		char* parse(char* field_buffer, u32& nbits, u32& cur_byte_bits_left, bool& prev_was_bitfield);
+		char* parseBitField(char* field_buffer, u32 nbits, u32& cur_byte_bits_left, bool sb);
 	};
 };

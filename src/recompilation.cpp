@@ -35,7 +35,17 @@ namespace SWFRecomp
 		string output_tag_main = string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "tagMain.c";  // Gross.
 		ofstream tag_main(output_tag_main, ios_base::out);
 		
+		ofstream out_draws(string("") + output_tags_folder + "draws.c", ios_base::out);
+		out_draws << "#include \"recomp.h\"" << endl;
+		
+		ofstream out_draws_header(string("") + output_tags_folder + "draws.h", ios_base::out);
+		out_draws_header << "#pragma once" << endl;
+		
 		string output_scripts_folder_slashed = string("") + output_scripts_folder + ((char) fs::path::preferred_separator);
-		swf.parseAllTags(tag_main, output_scripts_folder_slashed);
+		swf.parseAllTags(tag_main, out_draws, out_draws_header, output_scripts_folder_slashed);
+		
+		tag_main.close();
+		out_draws.close();
+		out_draws_header.close();
 	}
 };
