@@ -71,6 +71,11 @@ namespace SWFRecomp
 			tag_buffer = fields[field_i].parse(tag_buffer, nbits, cur_byte_bits_left, prev_was_bitfield);
 		}
 		
+		if (cur_byte_bits_left != 8)
+		{
+			tag_buffer += 1;
+		}
+		
 		return tag_buffer;
 	}
 	
