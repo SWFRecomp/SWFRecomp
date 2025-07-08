@@ -85,7 +85,7 @@ namespace SWFRecomp
 			
 			case SWF_FIELD_UB:
 			{
-				parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left, false);
+				parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left);
 				
 				if (is_nbits)
 				{
@@ -101,7 +101,7 @@ namespace SWFRecomp
 			{
 				u8 length = (bit_length == 0) ? nbits : bit_length;
 				
-				parseBitField(field_buffer, length, cur_byte_bits_left, true);
+				parseBitField(field_buffer, length, cur_byte_bits_left);
 				
 				int shiftAmount = 64 - length;
 				
@@ -127,7 +127,7 @@ namespace SWFRecomp
 		prev_was_bitfield = current_is_bitfield;
 	}
 	
-	void SWFField::parseBitField(char*& field_buffer, u32 nbits, u32& cur_byte_bits_left, bool sb)
+	void SWFField::parseBitField(char*& field_buffer, u32 nbits, u32& cur_byte_bits_left)
 	{
 		// How many bits does it have left to read?
 		u8 cur_field_bits_left = nbits;
@@ -140,16 +140,7 @@ namespace SWFRecomp
 			u8 temp_field_byte = *field_buffer << (8 - cur_byte_bits_left);
 			
 			value <<= bits_left;
-			
-			if (sb)
-			{
-				value |= (temp_field_byte & mask) >> (8 - bits_left);
-			}
-			
-			else
-			{
-				value |= (temp_field_byte >> (8 - bits_left)) & (mask >> (8 - bits_left));
-			}
+			value |= (temp_field_byte & mask) >> (8 - bits_left);
 			
 			cur_field_bits_left -= bits_left;
 			cur_byte_bits_left -= bits_left;

@@ -52,6 +52,6 @@ namespace SWFRecomp
 		SWFField();
 		
 		void parse(char*& field_buffer, u32& nbits, u32& cur_byte_bits_left, bool& prev_was_bitfield);
-		void parseBitField(char*& field_buffer, u32 nbits, u32& cur_byte_bits_left, bool sb);
+		void parseBitField(char*& field_buffer, u32 nbits, u32& cur_byte_bits_left);
 	};
 };
