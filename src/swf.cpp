@@ -531,6 +531,7 @@ namespace SWFRecomp
 					if (is_edge_record)
 					{
 						bool is_straight_edge = (state_flags & 0b10000) != 0;
+						u8 num_bits = (u8) state_flags & 0xF;
 						
 						if (is_straight_edge)
 						{
@@ -544,8 +545,6 @@ namespace SWFRecomp
 							shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
 							
 							bool is_general_line = (shape_tag.fields[0].value & 1) != 0;
-							
-							u8 num_bits = (u8) state_flags & 0xF;
 							
 							if (is_general_line)
 							{
@@ -591,9 +590,20 @@ namespace SWFRecomp
 						
 						// CurvedEdgeRecord
 						
-						// TODO: implement this record
+						shape_tag.clearFields();
+						shape_tag.setFieldCount(4);
 						
-						EXC("Curved edge record not implemented.\n");
+						shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+						shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+						shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+						shape_tag.configureNextField(SWF_FIELD_SB, num_bits + 2);
+						
+						shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+						
+						s16 control_delta_x = (s16) shape_tag.fields[0].value;
+						s16 control_delta_y = (s16) shape_tag.fields[1].value;
+						s16 anchor_delta_x = (s16) shape_tag.fields[2].value;
+						s16 anchor_delta_y = (s16) shape_tag.fields[3].value;
 						
 						continue;
 					}
