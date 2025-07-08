@@ -593,6 +593,8 @@ namespace SWFRecomp
 						
 						// TODO: implement this record
 						
+						EXC("Curved edge record not implemented.\n");
+						
 						continue;
 					}
 					
