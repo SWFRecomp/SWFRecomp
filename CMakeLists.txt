@@ -40,18 +40,6 @@ else()
 set(CONFIG_DIR $<CONFIG>)
 endif()
 
-if (WIN32)
-add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${CONFIG_DIR}/SWFRecomp.exe ${PROJECT_SOURCE_DIR}/tests/
-)
-else()
-add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/SWFRecomp ${PROJECT_SOURCE_DIR}/tests/
-)
-endif()
-
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include

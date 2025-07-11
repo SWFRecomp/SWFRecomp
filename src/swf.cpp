@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include <zlib.h>
 #include <lzma.h>
@@ -9,6 +10,10 @@
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
+
+#define VAL(type, x) (*((type*) x))
+
+#define CROSS(v1, v2) (v1.x*v2.y - v2.x*v1.y)
 
 using std::to_string;
 
@@ -204,8 +209,9 @@ namespace SWFRecomp
 		SWFTag tag;
 		tag.code = SWF_TAG_SHOW_FRAME;
 		
-		tag_main << "#include <recomp.h>" << endl
-				 << "#include <out.h>" << endl << endl
+		tag_main << "#include <recomp.h>" << endl << endl
+				 << "#include <out.h>" << endl
+				 << "#include \"draws.h\"" << endl << endl
 				 << "void frame_" << to_string(next_frame_i) << "()" << endl
 				 << "{" << endl;
 		next_frame_i += 1;
@@ -297,7 +303,7 @@ namespace SWFRecomp
 			
 			case SWF_TAG_DEFINE_SHAPE:
 			{
-				interpretShape(tag, out_draws, out_draws_header);
+				interpretShape(tag, tag_main, out_draws, out_draws_header);
 				
 				break;
 			}
@@ -333,6 +339,104 @@ namespace SWFRecomp
 				action.parseActions(cur_pos, out_script, out_script_defs, out_script_decls);
 				
 				out_script << "}";
+				
+				break;
+			}
+			
+			case SWF_TAG_PLACE_OBJECT_2:
+			{
+				tag.setFieldCount(2);
+				
+				tag.configureNextField(SWF_FIELD_UI8);
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 depth = (u16) tag.fields[1].value;
+				
+				// TODO: check flags to dynamically configure next fields
+				
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 char_id = (u16) tag.fields[0].value;
+				
+				u32 cur_byte_bits_left = 8;
+				
+				// configure MATRIX record
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UB, 1);
+				
+				tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+				
+				bool has_scale = tag.fields[0].value & 1;
+				
+				if (has_scale)
+				{
+					tag.clearFields();
+					tag.setFieldCount(3);
+					
+					tag.configureNextField(SWF_FIELD_UB, 5, true);
+					tag.configureNextField(SWF_FIELD_FB, 0);
+					tag.configureNextField(SWF_FIELD_FB, 0);
+					
+					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+					
+					u32 nscale_bits = (u32) tag.fields[0].value;
+					float scale_x = VAL(float, &tag.fields[1].value);
+					float scale_y = VAL(float, &tag.fields[2].value);
+				}
+				
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UB, 1);
+				
+				tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+				
+				bool has_rotate = tag.fields[0].value & 1;
+				
+				if (has_rotate)
+				{
+					tag.clearFields();
+					tag.setFieldCount(3);
+					
+					tag.configureNextField(SWF_FIELD_UB, 5, true);
+					tag.configureNextField(SWF_FIELD_FB, 0);
+					tag.configureNextField(SWF_FIELD_FB, 0);
+					
+					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+					
+					u32 nrotate_bits = (u32) tag.fields[0].value;
+					float rotateskew_0 = VAL(float, &tag.fields[1].value);
+					float rotateskew_1 = VAL(float, &tag.fields[2].value);
+				}
+				
+				tag.clearFields();
+				tag.setFieldCount(3);
+				
+				tag.configureNextField(SWF_FIELD_UB, 5, true);
+				tag.configureNextField(SWF_FIELD_FB, 0);
+				tag.configureNextField(SWF_FIELD_FB, 0);
+				
+				tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+				
+				u32 ntranslate_bits = (u32) tag.fields[0].value;
+				s32 translate_x = (u32) tag.fields[1].value;
+				s32 translate_y = (u32) tag.fields[2].value;
+				
+				if (cur_byte_bits_left != 8)
+				{
+					cur_pos += 1;
+				}
+				
+				tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ");" << endl;
 				
 				break;
 			}
@@ -415,7 +519,7 @@ namespace SWFRecomp
 		}
 	}
 	
-	void SWF::interpretShape(SWFTag& shape_tag, ofstream& out_draws, ofstream& out_draws_header)
+	void SWF::interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header)
 	{
 		switch (shape_tag.code)
 		{
@@ -431,6 +535,8 @@ namespace SWFRecomp
 				shape_tag.configureNextField(SWF_FIELD_SB, 0);
 				
 				shape_tag.parseFields(cur_pos);
+				
+				u16 shape_id = (u16) shape_tag.fields[0].value;
 				
 				// FILLSTYLEARRAY
 				shape_tag.clearFields();
@@ -511,7 +617,14 @@ namespace SWFRecomp
 				u8 fill_bits = (u8) shape_tag.fields[0].value;
 				u8 line_bits = (u8) shape_tag.fields[1].value;
 				
-				fprintf(stderr, "fill bits: %d, line bits: %d\n", fill_bits, line_bits);
+				u32 last_fill_style_0 = 0;
+				u32 last_fill_style_1 = 0;
+				
+				std::vector<std::vector<Vertex>> shapes;
+				shapes.push_back(std::vector<Vertex>());
+				
+				s32 last_x = 0;
+				s32 last_y = 0;
 				
 				u32 cur_byte_bits_left = 8;
 				
@@ -559,7 +672,14 @@ namespace SWFRecomp
 								s16 delta_x = (s16) shape_tag.fields[0].value;
 								s16 delta_y = (s16) shape_tag.fields[1].value;
 								
-								fprintf(stderr, "line with delta x: %d, delta y: %d\n", delta_x, delta_y);
+								Vertex v;
+								v.x = last_x + (s32) delta_x;
+								v.y = last_y + (s32) delta_y;
+								
+								shapes[0].push_back(v);
+								
+								last_x = v.x;
+								last_y = v.y;
 								
 								continue;
 							}
@@ -575,15 +695,25 @@ namespace SWFRecomp
 							bool is_vertical_line = (shape_tag.fields[0].value & 1) != 0;
 							s16 delta = (s16) shape_tag.fields[1].value;
 							
+							Vertex v;
+							
+							v.x = last_x;
+							v.y = last_y;
+							
 							if (is_vertical_line)
 							{
-								fprintf(stderr, "delta y: %d\n", delta);
+								v.y += (s32) delta;
 							}
 							
 							else
 							{
-								fprintf(stderr, "delta x: %d\n", delta);
+								v.x += (s32) delta;
 							}
+							
+							shapes[0].push_back(v);
+							
+							last_x = v.x;
+							last_y = v.y;
 							
 							continue;
 						}
@@ -667,12 +797,26 @@ namespace SWFRecomp
 						move_delta_x = (u32) shape_tag.fields[current_field++].value;
 						move_delta_y = (u32) shape_tag.fields[current_field++].value;
 						
+						Vertex v;
+						v.x = last_x + move_delta_x;
+						v.y = last_y + move_delta_y;
+						
+						shapes[0].push_back(v);
+						
+						last_x = v.x;
+						last_y = v.y;
+						
 						fprintf(stderr, "move bits: %d, delta x: %d, delta y: %d\n", move_bits, move_delta_x, move_delta_y);
 					}
 					
 					if (state_fill_style_0)
 					{
 						fill_style_0 = (u32) shape_tag.fields[current_field++].value;
+						
+						//~ if (fill_style_0 != 0 && fill_style_0 != last_fill_style_0)
+						//~ {
+							
+						//~ }
 						
 						fprintf(stderr, "fill style 0: %d\n", fill_style_0);
 					}
@@ -697,8 +841,66 @@ namespace SWFRecomp
 					cur_pos += 1;
 				}
 				
+				for (size_t i = 0; i < shapes[0].size(); ++i)
+				{
+					fprintf(stderr, "got x: %d, y: %d\n", shapes[0][i].x, shapes[0][i].y);
+				}
+				
+				std::vector<Tri> tris;
+				
+				fillShape(shapes[0], tris);
+				
+				std::string shape_name = "shape_" + to_string(shape_id) + "_tris";
+				
+				out_draws << endl;
+				
+				out_draws << "float " << shape_name << "[" << to_string(3*tris.size()) << "][7] =" << endl
+						  << "{" << endl;
+				
+				for (Tri t : tris)
+				{
+					for (int i = 0; i < 3; ++i)
+					{
+						out_draws << "\t" << "{ ";
+						out_draws << to_string(t.verts[i].x) << "/" << "5500.0f - 1.0f, ";
+						out_draws << "1.0f - " << to_string(t.verts[i].y) << "/" << "4000.0f, ";
+						out_draws << "0.0f, ";
+						out_draws << "1.0f, ";
+						out_draws << "0.0f, ";
+						out_draws << "0.0f, ";
+						out_draws << "1.0f }," << endl;
+					}
+				}
+				
+				out_draws << "};" << endl;
+				
+				out_draws_header << endl << "extern float " << shape_name << "[" << to_string(3*tris.size()) << "][7];" << endl;
+				
+				tag_main << "\t" << "dictionary[" << to_string(shape_id) << "] = (char*) " << shape_name << ";" << endl;
+				tag_main << "\t" << "dictionary_sizes[" << to_string(shape_id) << "] = sizeof(" << shape_name << ");" << endl;
+				
 				break;
 			}
 		}
+	}
+	
+	void SWF::fillShape(const std::vector<Vertex>& shape, std::vector<Tri>& tris)
+	{
+		size_t i = 0;
+		
+		Tri t;
+		
+		for (Vertex v : shape)
+		{
+			if (i == 3)
+			{
+				break;
+			}
+			
+			t.verts[i] = v;
+			i += 1;
+		}
+		
+		tris.push_back(t);
 	}
 };

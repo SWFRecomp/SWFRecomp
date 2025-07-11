@@ -35,10 +35,11 @@ namespace SWFRecomp
 		string output_tag_main = string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "tagMain.c";  // Gross.
 		ofstream tag_main(output_tag_main, ios_base::out);
 		
-		ofstream out_draws(string("") + output_tags_folder + "draws.c", ios_base::out);
-		out_draws << "#include \"recomp.h\"" << endl;
+		ofstream out_draws(string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "draws.c", ios_base::out);
+		out_draws << "#include \"recomp.h\"" << endl
+				  << "#include \"draws.h\"" << endl;
 		
-		ofstream out_draws_header(string("") + output_tags_folder + "draws.h", ios_base::out);
+		ofstream out_draws_header(string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "draws.h", ios_base::out);
 		out_draws_header << "#pragma once" << endl;
 		
 		string output_scripts_folder_slashed = string("") + output_scripts_folder + ((char) fs::path::preferred_separator);

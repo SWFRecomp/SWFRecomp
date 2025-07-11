@@ -83,20 +83,6 @@ namespace SWFRecomp
 				break;
 			}
 			
-			case SWF_FIELD_UB:
-			{
-				parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left);
-				
-				if (is_nbits)
-				{
-					nbits = (u32) value;
-				}
-				
-				prev_was_bitfield = true;
-				
-				break;
-			}
-			
 			case SWF_FIELD_SB:
 			{
 				u8 length = (bit_length == 0) ? nbits : bit_length;
@@ -118,6 +104,51 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_FIELD_UB:
+			{
+				parseBitField(field_buffer, (bit_length == 0) ? nbits : bit_length, cur_byte_bits_left);
+				
+				if (is_nbits)
+				{
+					nbits = (u32) value;
+				}
+				
+				prev_was_bitfield = true;
+				
+				break;
+			}
+			
+			case SWF_FIELD_FB:
+			{
+				u32 length = (bit_length == 0) ? nbits : bit_length;
+				
+				parseBitField(field_buffer, length, cur_byte_bits_left);
+				
+				float f = 0.0f;
+				float bit_float = 0.0000152587890625f;
+				
+				for (u32 i = 0; i < length; ++i)
+				{
+					if (((u32) value) & (1 << i))
+					{
+						if (i == 31)
+						{
+							f *= -1;
+							break;
+						}
+						
+						f += bit_float;
+						bit_float *= 2.0f;
+					}
+				}
+				
+				value = VAL(u32, &f);
+				
+				prev_was_bitfield = true;
+				
+				break;
+			}
+			
 			default:
 			{
 				EXC_ARG("Field type %d not implemented.\n", type);
@@ -129,6 +160,8 @@ namespace SWFRecomp
 	
 	void SWFField::parseBitField(char*& field_buffer, u32 nbits, u32& cur_byte_bits_left)
 	{
+		value = 0;
+		
 		// How many bits does it have left to read?
 		u8 cur_field_bits_left = nbits;
 		
