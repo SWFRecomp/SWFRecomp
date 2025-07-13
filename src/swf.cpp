@@ -620,8 +620,8 @@ namespace SWFRecomp
 				u32 last_fill_style_0 = 0;
 				u32 last_fill_style_1 = 0;
 				
-				std::vector<std::vector<Vertex>> shapes;
-				shapes.push_back(std::vector<Vertex>());
+				std::vector<Shape> shapes;
+				shapes.push_back(Shape());
 				
 				s32 last_x = 0;
 				s32 last_y = 0;
@@ -674,9 +674,9 @@ namespace SWFRecomp
 								
 								Vertex v;
 								v.x = last_x + (s32) delta_x;
-								v.y = last_y + (s32) delta_y;
+								v.y = last_y - (s32) delta_y;
 								
-								shapes[0].push_back(v);
+								shapes[0].verts.push_back(v);
 								
 								last_x = v.x;
 								last_y = v.y;
@@ -702,7 +702,7 @@ namespace SWFRecomp
 							
 							if (is_vertical_line)
 							{
-								v.y += (s32) delta;
+								v.y -= (s32) delta;
 							}
 							
 							else
@@ -710,7 +710,7 @@ namespace SWFRecomp
 								v.x += (s32) delta;
 							}
 							
-							shapes[0].push_back(v);
+							shapes[0].verts.push_back(v);
 							
 							last_x = v.x;
 							last_y = v.y;
@@ -799,14 +799,12 @@ namespace SWFRecomp
 						
 						Vertex v;
 						v.x = last_x + move_delta_x;
-						v.y = last_y + move_delta_y;
+						v.y = 8000 - (last_y + move_delta_y);
 						
-						shapes[0].push_back(v);
+						shapes[0].verts.push_back(v);
 						
 						last_x = v.x;
 						last_y = v.y;
-						
-						fprintf(stderr, "move bits: %d, delta x: %d, delta y: %d\n", move_bits, move_delta_x, move_delta_y);
 					}
 					
 					if (state_fill_style_0)
@@ -818,21 +816,21 @@ namespace SWFRecomp
 							
 						//~ }
 						
-						fprintf(stderr, "fill style 0: %d\n", fill_style_0);
+						//~ fprintf(stderr, "fill style 0: %d\n", fill_style_0);
 					}
 					
 					if (state_fill_style_1)
 					{
 						fill_style_1 = (u32) shape_tag.fields[current_field++].value;
 						
-						fprintf(stderr, "fill style 1: %d\n", fill_style_1);
+						//~ fprintf(stderr, "fill style 1: %d\n", fill_style_1);
 					}
 					
 					if (state_line_style)
 					{
 						line_style = (u32) shape_tag.fields[current_field++].value;
 						
-						fprintf(stderr, "line style: %d\n", line_style);
+						//~ fprintf(stderr, "line style: %d\n", line_style);
 					}
 				}
 				
@@ -841,14 +839,11 @@ namespace SWFRecomp
 					cur_pos += 1;
 				}
 				
-				for (size_t i = 0; i < shapes[0].size(); ++i)
-				{
-					fprintf(stderr, "got x: %d, y: %d\n", shapes[0][i].x, shapes[0][i].y);
-				}
-				
 				std::vector<Tri> tris;
 				
-				fillShape(shapes[0], tris);
+				shapes[0].verts.pop_back();
+				
+				fillShapeRight(shapes[0].verts, tris);
 				
 				std::string shape_name = "shape_" + to_string(shape_id) + "_tris";
 				
@@ -863,7 +858,7 @@ namespace SWFRecomp
 					{
 						out_draws << "\t" << "{ ";
 						out_draws << to_string(t.verts[i].x) << "/" << "5500.0f - 1.0f, ";
-						out_draws << "1.0f - " << to_string(t.verts[i].y) << "/" << "4000.0f, ";
+						out_draws << to_string(t.verts[i].y) << "/" << "4000.0f - 1.0f, ";
 						out_draws << "0.0f, ";
 						out_draws << "1.0f, ";
 						out_draws << "0.0f, ";
@@ -884,23 +879,373 @@ namespace SWFRecomp
 		}
 	}
 	
-	void SWF::fillShape(const std::vector<Vertex>& shape, std::vector<Tri>& tris)
+	void SWF::fillShapeLeft(std::vector<Vertex>& shape, std::vector<Tri>& tris)
 	{
-		size_t i = 0;
+		size_t i;
 		
 		Tri t;
 		
-		for (Vertex v : shape)
+		size_t size = shape.size();
+		
+		Vertex* anchor = nullptr;
+		
+		Vertex* prev = nullptr;
+		Vertex* prevprev = nullptr;
+		
+		std::vector<Vertex> skipped_vertices;
+		skipped_vertices.reserve(size);
+		
+		for (i = 0; i < size; ++i)
 		{
-			if (i == 3)
+			Vertex* v = &shape[i];
+			
+			if (prevprev == nullptr)
 			{
+				prevprev = v;
+				continue;
+			}
+			
+			if (prev == nullptr)
+			{
+				prev = v;
+				continue;
+			}
+			
+			Vertex vec_a;
+			Vertex vec_b;
+			
+			vec_a.x = prev->x - prevprev->x;
+			vec_a.y = prev->y - prevprev->y;
+			
+			vec_b.x = v->x - prev->x;
+			vec_b.y = v->y - prev->y;
+			
+			if (CROSS(vec_a, vec_b) < 0)
+			{
+				anchor = prev;
+				prev = nullptr;
+				prevprev = nullptr;
 				break;
 			}
 			
-			t.verts[i] = v;
-			i += 1;
+			prevprev = prev;
+			prev = v;
 		}
 		
-		tris.push_back(t);
+		if (i == size)
+		{
+			anchor = &shape[0];
+			i = 1;
+		}
+		
+		skipped_vertices.push_back(*anchor);
+		
+		Vertex* start_shape = &shape[0];
+		Vertex* started_drawing = anchor;
+		Vertex* stop = &shape[size];
+		prev = nullptr;
+		prevprev = nullptr;
+		
+		while (true)
+		{
+			Vertex* v = &shape[i];
+			
+			if (v == started_drawing)
+			{
+				if (anchor != nullptr && prev != nullptr && anchor != prev && anchor != v)
+				{
+					t.verts[0] = *anchor;
+					t.verts[1] = *prev;
+					t.verts[2] = *v;
+					
+					tris.push_back(t);
+				}
+				
+				break;
+			}
+			
+			if (anchor == nullptr)
+			{
+				anchor = v;
+				prevprev = v;
+				i += 1;
+				i %= size;
+				continue;
+			}
+			
+			if (prev == nullptr)
+			{
+				prev = v;
+				i += 1;
+				i %= size;
+				continue;
+			}
+			
+			size_t after_anchor_i = ((anchor - &shape[0]) + 1) % size;
+			Vertex* after_anchor = &shape[after_anchor_i];
+			
+			Vertex vec_anchor_edge;
+			Vertex vec_anchor_safe_edge;
+			Vertex vec_anchor_new_edge;
+			
+			vec_anchor_safe_edge.x = prev->x - anchor->x;
+			vec_anchor_safe_edge.y = prev->y - anchor->y;
+			
+			if (prev != after_anchor)
+			{
+				vec_anchor_edge.x = after_anchor->x - anchor->x;
+				vec_anchor_edge.y = after_anchor->y - anchor->y;
+				
+				vec_anchor_new_edge.x = v->x - anchor->x;
+				vec_anchor_new_edge.y = v->y - anchor->y;
+				
+				long first_cross = CROSS(vec_anchor_edge, vec_anchor_safe_edge);
+				long second_cross = CROSS(vec_anchor_edge, vec_anchor_new_edge);
+				
+				if ((first_cross < 0 && second_cross > 0) || (first_cross > 0 && second_cross < 0))
+				{
+					if (prev != started_drawing)
+					{
+						skipped_vertices.push_back(*prev);
+					}
+					
+					if (v != started_drawing)
+					{
+						skipped_vertices.push_back(*v);
+					}
+					
+					anchor = v;
+					prev = nullptr;
+					prevprev = v;
+					i += 1;
+					i %= size;
+					continue;
+				}
+			}
+			
+			Vertex vec_prevprev_edge;
+			Vertex vec_prev_edge;
+			
+			vec_prevprev_edge.x = prev->x - prevprev->x;
+			vec_prevprev_edge.y = prev->y - prevprev->y;
+			
+			vec_prev_edge.x = v->x - prev->x;
+			vec_prev_edge.y = v->y - prev->y;
+			
+			if (CROSS(vec_anchor_safe_edge, vec_prev_edge) > 0)
+			{
+				t.verts[0] = *anchor;
+				t.verts[1] = *prev;
+				t.verts[2] = *v;
+				
+				tris.push_back(t);
+			}
+			
+			else
+			{
+				if (prev != started_drawing)
+				{
+					skipped_vertices.push_back(*prev);
+				}
+				
+				anchor = prev;
+			}
+			
+			prevprev = prev;
+			prev = v;
+			
+			i += 1;
+			i %= size;
+		}
+		
+		if (skipped_vertices.size() > 1)
+		{
+			fillShapeLeft(skipped_vertices, tris);
+		}
+	}
+	
+	void SWF::fillShapeRight(std::vector<Vertex>& shape, std::vector<Tri>& tris)
+	{
+		size_t i;
+		
+		Tri t;
+		
+		size_t size = shape.size();
+		
+		Vertex* anchor = nullptr;
+		
+		Vertex* prev = nullptr;
+		Vertex* prevprev = nullptr;
+		
+		std::vector<Vertex> skipped_vertices;
+		skipped_vertices.reserve(size);
+		
+		for (i = 0; i < size; ++i)
+		{
+			Vertex* v = &shape[i];
+			
+			if (prevprev == nullptr)
+			{
+				prevprev = v;
+				continue;
+			}
+			
+			if (prev == nullptr)
+			{
+				prev = v;
+				continue;
+			}
+			
+			Vertex vec_a;
+			Vertex vec_b;
+			
+			vec_a.x = prev->x - prevprev->x;
+			vec_a.y = prev->y - prevprev->y;
+			
+			vec_b.x = v->x - prev->x;
+			vec_b.y = v->y - prev->y;
+			
+			if (CROSS(vec_a, vec_b) > 0)
+			{
+				anchor = prev;
+				prev = nullptr;
+				prevprev = nullptr;
+				break;
+			}
+			
+			prevprev = prev;
+			prev = v;
+		}
+		
+		if (i == size)
+		{
+			anchor = &shape[0];
+			i = 1;
+		}
+		
+		skipped_vertices.push_back(*anchor);
+		
+		Vertex* start_shape = &shape[0];
+		Vertex* started_drawing = anchor;
+		Vertex* stop = &shape[size];
+		prev = nullptr;
+		prevprev = nullptr;
+		
+		while (true)
+		{
+			Vertex* v = &shape[i];
+			
+			if (v == started_drawing)
+			{
+				if (anchor != nullptr && prev != nullptr && anchor != prev && anchor != v)
+				{
+					t.verts[0] = *anchor;
+					t.verts[1] = *prev;
+					t.verts[2] = *v;
+					
+					tris.push_back(t);
+				}
+				
+				break;
+			}
+			
+			if (anchor == nullptr)
+			{
+				anchor = v;
+				prevprev = v;
+				i += 1;
+				i %= size;
+				continue;
+			}
+			
+			if (prev == nullptr)
+			{
+				prev = v;
+				i += 1;
+				i %= size;
+				continue;
+			}
+			
+			size_t after_anchor_i = ((anchor - &shape[0]) + 1) % size;
+			Vertex* after_anchor = &shape[after_anchor_i];
+			
+			Vertex vec_anchor_edge;
+			Vertex vec_anchor_safe_edge;
+			Vertex vec_anchor_new_edge;
+			
+			vec_anchor_safe_edge.x = prev->x - anchor->x;
+			vec_anchor_safe_edge.y = prev->y - anchor->y;
+			
+			if (prev != after_anchor)
+			{
+				vec_anchor_edge.x = after_anchor->x - anchor->x;
+				vec_anchor_edge.y = after_anchor->y - anchor->y;
+				
+				vec_anchor_new_edge.x = v->x - anchor->x;
+				vec_anchor_new_edge.y = v->y - anchor->y;
+				
+				long first_cross = CROSS(vec_anchor_edge, vec_anchor_safe_edge);
+				long second_cross = CROSS(vec_anchor_edge, vec_anchor_new_edge);
+				
+				if ((first_cross < 0 && second_cross > 0) || (first_cross > 0 && second_cross < 0))
+				{
+					if (prev != started_drawing)
+					{
+						skipped_vertices.push_back(*prev);
+					}
+					
+					if (v != started_drawing)
+					{
+						skipped_vertices.push_back(*v);
+					}
+					
+					anchor = v;
+					prev = nullptr;
+					prevprev = v;
+					i += 1;
+					i %= size;
+					continue;
+				}
+			}
+			
+			Vertex vec_prevprev_edge;
+			Vertex vec_prev_edge;
+			
+			vec_prevprev_edge.x = prev->x - prevprev->x;
+			vec_prevprev_edge.y = prev->y - prevprev->y;
+			
+			vec_prev_edge.x = v->x - prev->x;
+			vec_prev_edge.y = v->y - prev->y;
+			
+			if (CROSS(vec_anchor_safe_edge, vec_prev_edge) < 0)
+			{
+				t.verts[0] = *anchor;
+				t.verts[1] = *prev;
+				t.verts[2] = *v;
+				
+				tris.push_back(t);
+			}
+			
+			else
+			{
+				if (prev != started_drawing)
+				{
+					skipped_vertices.push_back(*prev);
+				}
+				
+				anchor = prev;
+			}
+			
+			prevprev = prev;
+			prev = v;
+			
+			i += 1;
+			i %= size;
+		}
+		
+		if (skipped_vertices.size() > 1)
+		{
+			fillShapeRight(skipped_vertices, tris);
+		}
 	}
 };

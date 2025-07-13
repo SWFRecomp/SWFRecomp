@@ -25,13 +25,18 @@ namespace SWFRecomp
 	{
 		s32 x;
 		s32 y;
-		u32 style;
 	};
 	
 	struct Tri
 	{
 		Vertex verts[3];
-		u32 style;
+	};
+	
+	struct Shape
+	{
+		std::vector<Vertex> verts;
+		u32 fill_style;
+		bool fill_right;
 	};
 	
 	class SWFHeader
@@ -74,6 +79,7 @@ namespace SWFRecomp
 		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
-		void fillShape(const std::vector<Vertex>& shape, std::vector<Tri>& tris);
+		void fillShapeLeft(std::vector<Vertex>& shape, std::vector<Tri>& tris);
+		void fillShapeRight(std::vector<Vertex>& shape, std::vector<Tri>& tris);
 	};
 };
