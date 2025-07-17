@@ -32,11 +32,20 @@ namespace SWFRecomp
 		Vertex verts[3];
 	};
 	
-	struct Shape
+	struct Path
 	{
 		std::vector<Vertex> verts;
+		bool counts_up;
+		Path* next_path;
+	};
+	
+	struct Shape
+	{
+		Path* earliest_path;
+		Path* latest_path;
 		u32 fill_style;
 		bool fill_right;
+		bool closed;
 	};
 	
 	class SWFHeader
