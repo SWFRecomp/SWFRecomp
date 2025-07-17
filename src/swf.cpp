@@ -15,6 +15,9 @@
 
 #define CROSS(v1, v2) (v1.x*v2.y - v2.x*v1.y)
 
+#define FRAME_WIDTH (frame_size.xmax - frame_size.xmin)
+#define FRAME_HEIGHT (frame_size.ymax - frame_size.ymin)
+
 using std::to_string;
 
 using std::ifstream;
@@ -570,6 +573,14 @@ namespace SWFRecomp
 					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
 					
 					shape_tag.parseFields(cur_pos);
+					
+					u8 fill_type = (u8) shape_tag.fields[0].value;
+					
+					u8 r = (u8) shape_tag.fields[1].value;
+					u8 g = (u8) shape_tag.fields[2].value;
+					u8 b = (u8) shape_tag.fields[3].value;
+					
+					fprintf(stderr, "fill style %d: %d, %d, %d\n", i + 1, r, g, b);
 				}
 				
 				// LINESTYLEARRAY
@@ -621,10 +632,15 @@ namespace SWFRecomp
 				u32 last_fill_style_1 = 0;
 				
 				std::vector<Shape> shapes;
-				shapes.push_back(Shape());
+				std::vector<Path> paths;
+				
+				shapes.reserve(16);
+				paths.reserve(512);
+				
+				Path* current_path = nullptr;
 				
 				s32 last_x = 0;
-				s32 last_y = 0;
+				s32 last_y = FRAME_HEIGHT;
 				
 				u32 cur_byte_bits_left = 8;
 				
@@ -678,6 +694,8 @@ namespace SWFRecomp
 								
 								shapes[0].verts.push_back(v);
 								
+								fprintf(stderr, "got x: %d, y: %d\n", v.x / 20, 400 - (v.y / 20));
+								
 								last_x = v.x;
 								last_y = v.y;
 								
@@ -711,6 +729,8 @@ namespace SWFRecomp
 							}
 							
 							shapes[0].verts.push_back(v);
+							
+							fprintf(stderr, "got x: %d, y: %d\n", v.x / 20, 400 - (v.y / 20));
 							
 							last_x = v.x;
 							last_y = v.y;
@@ -789,6 +809,9 @@ namespace SWFRecomp
 					
 					u32 line_style;
 					
+					bool fill_style_0_change = false;
+					bool fill_style_1_change = false;
+					
 					size_t current_field = 0;
 					
 					if (state_move_to)
@@ -796,15 +819,6 @@ namespace SWFRecomp
 						move_bits = (u8) shape_tag.fields[current_field++].value;
 						move_delta_x = (u32) shape_tag.fields[current_field++].value;
 						move_delta_y = (u32) shape_tag.fields[current_field++].value;
-						
-						Vertex v;
-						v.x = last_x + move_delta_x;
-						v.y = 8000 - (last_y + move_delta_y);
-						
-						shapes[0].verts.push_back(v);
-						
-						last_x = v.x;
-						last_y = v.y;
 					}
 					
 					if (state_fill_style_0)
@@ -816,14 +830,18 @@ namespace SWFRecomp
 							
 						//~ }
 						
-						//~ fprintf(stderr, "fill style 0: %d\n", fill_style_0);
+						fprintf(stderr, "fill style 0: %d\n", fill_style_0);
+						
+						fill_style_0_change = fill_style_0 != last_fill_style_0;
 					}
 					
 					if (state_fill_style_1)
 					{
 						fill_style_1 = (u32) shape_tag.fields[current_field++].value;
 						
-						//~ fprintf(stderr, "fill style 1: %d\n", fill_style_1);
+						fprintf(stderr, "fill style 1: %d\n", fill_style_1);
+						
+						fill_style_1_change = fill_style_1 != last_fill_style_1;
 					}
 					
 					if (state_line_style)
@@ -832,6 +850,126 @@ namespace SWFRecomp
 						
 						//~ fprintf(stderr, "line style: %d\n", line_style);
 					}
+					
+					if (state_move_to || fill_style_0_change || fill_style_1_change)
+					{
+						if (current_path == nullptr)
+						{
+							paths.push_back(Path());
+							current_path = &paths[0];
+							
+							current_path->verts.reserve(512);
+							current_path->next_path = nullptr;
+						}
+						
+						else
+						{
+							if (state_move_to)
+							{
+								
+								
+								last_x = move_delta_x;
+								last_y = FRAME_HEIGHT - move_delta_y;
+								
+								paths.push_back(Path());
+								current_path = &paths.back();
+								
+								current_path->verts.reserve(512);
+								current_path->next_path = nullptr;
+								
+								bool found_left_fill = false;
+								bool found_right_fill = false;
+								
+								for (Shape shape : shapes)
+								{
+									if (shape.latest_path.verts.back().x == last_x && shape.latest_path.verts.back().y == last_y)
+									{
+										if (!shape.fill_right && shape.fill_style == fill_style_0)
+										{
+											shape.latest_path = current_path;
+											found_left_fill = true;
+										}
+										
+										else if (shape.fill_right && shape.fill_style == fill_style_1)
+										{
+											shape.latest_path = current_path;
+											found_right_fill = true;
+										}
+									}
+									
+									if (found_left_fill && found_right_fill)
+									{
+										break;
+									}
+								}
+							}
+							
+							if (fill_style_0_change || fill_style_1_change)
+							{
+								//~ if (shapes.size() == 0)
+								//~ {
+									//~ current_path->counts_up = true;
+									//~ current_path->next_path = nullptr;
+									
+									//~ if (last_fill_style_0 != 0)
+									//~ {
+										//~ shapes.push_back(Shape());
+										//~ shapes[0].earliest_path = nullptr;
+										//~ shapes[0].latest_path = current_path;
+										//~ shapes[0].fill_style = last_fill_style_0;
+										//~ shapes[0].fill_right = true;
+									//~ }
+									
+									//~ if (last_fill_style_1 != 0)
+									//~ {
+										//~ shapes.push_back(Shape());
+										//~ shapes[0].earliest_path = nullptr;
+										//~ shapes[0].latest_path = current_path;
+										//~ shapes[0].fill_style = last_fill_style_1;
+										//~ shapes[0].fill_right = true;
+									//~ }
+								//~ }
+								
+								//~ else
+								//~ {
+									//~ for (size_t i = 0; i < shapes.size(); ++i)
+									//~ {
+										//~ Path* latest_path = shapes[i].latest_path;
+										
+										//~ s32 latest_x = latest_path->verts[latest_path->verts.size() - 1].x;
+										//~ s32 latest_y = latest_path->verts[latest_path->verts.size() - 1].y;
+										
+										//~ if (last_x == latest_x && last_y == latest_y && fill_style_0 == shapes[i].fill_style)
+										//~ {
+											//~ current_left_shape = i;
+											//~ break;
+										//~ }
+										
+										//~ Path* earliest_path = shapes[i].earliest_path;
+										
+										//~ s32 earliest_x;
+										//~ s32 earliest_y;
+										
+										//~ if (earliest_path == nullptr)
+										//~ {
+											//~ earliest_x = latest_path->verts[0].x;
+											//~ earliest_y = latest_path->verts[0].y;
+										//~ }
+										
+										//~ else
+										//~ {
+											//~ // Shapes can pick up and move, but connect an external path to the same shape.
+											
+											//~ earliest_x = earliest_path->verts[]
+										//~ }
+									//~ }
+								//~ }
+							}
+						}
+					}
+					
+					last_fill_style_0 = fill_style_0;
+					last_fill_style_1 = fill_style_1;
 				}
 				
 				if (cur_byte_bits_left != 8)
@@ -841,9 +979,20 @@ namespace SWFRecomp
 				
 				std::vector<Tri> tris;
 				
-				shapes[0].verts.pop_back();
-				
-				fillShapeRight(shapes[0].verts, tris);
+				for (int i = 0; i < shapes.size(); ++i)
+				{
+					shapes[i].verts.pop_back();
+					
+					if (shapes[i].fill_right)
+					{
+						fillShapeRight(shapes[i].verts, tris);
+					}
+					
+					else
+					{
+						fillShapeLeft(shapes[i].verts, tris);
+					}
+				}
 				
 				std::string shape_name = "shape_" + to_string(shape_id) + "_tris";
 				
@@ -856,14 +1005,14 @@ namespace SWFRecomp
 				{
 					for (int i = 0; i < 3; ++i)
 					{
-						out_draws << "\t" << "{ ";
-						out_draws << to_string(t.verts[i].x) << "/" << "5500.0f - 1.0f, ";
-						out_draws << to_string(t.verts[i].y) << "/" << "4000.0f - 1.0f, ";
-						out_draws << "0.0f, ";
-						out_draws << "1.0f, ";
-						out_draws << "0.0f, ";
-						out_draws << "0.0f, ";
-						out_draws << "1.0f }," << endl;
+						out_draws << "\t" << "{ "
+								  << to_string(t.verts[i].x) << "/" << to_string(FRAME_WIDTH/2) << ".0f - 1.0f, "
+								  << to_string(t.verts[i].y) << "/" << to_string(FRAME_HEIGHT/2) << ".0f - 1.0f, "
+								  << "0.0f, "
+								  << "1.0f, "
+								  << "0.0f, "
+								  << "0.0f, "
+								  << "1.0f }," << endl;
 					}
 				}
 				
@@ -1032,13 +1181,22 @@ namespace SWFRecomp
 			vec_prev_edge.x = v->x - prev->x;
 			vec_prev_edge.y = v->y - prev->y;
 			
-			if (CROSS(vec_anchor_safe_edge, vec_prev_edge) > 0)
+			u32 cross = CROSS(vec_anchor_safe_edge, vec_prev_edge);
+			
+			if (cross > 0)
 			{
 				t.verts[0] = *anchor;
 				t.verts[1] = *prev;
 				t.verts[2] = *v;
 				
 				tris.push_back(t);
+			}
+			
+			else if (cross == 0)
+			{
+				i += 1;
+				i %= size;
+				continue;
 			}
 			
 			else
@@ -1217,13 +1375,22 @@ namespace SWFRecomp
 			vec_prev_edge.x = v->x - prev->x;
 			vec_prev_edge.y = v->y - prev->y;
 			
-			if (CROSS(vec_anchor_safe_edge, vec_prev_edge) < 0)
+			u32 cross = CROSS(vec_anchor_safe_edge, vec_prev_edge);
+			
+			if (cross < 0)
 			{
 				t.verts[0] = *anchor;
 				t.verts[1] = *prev;
 				t.verts[2] = *v;
 				
 				tris.push_back(t);
+			}
+			
+			else if (cross == 0)
+			{
+				i += 1;
+				i %= size;
+				continue;
 			}
 			
 			else
