@@ -35,14 +35,12 @@ namespace SWFRecomp
 	struct Path
 	{
 		std::vector<Vertex> verts;
-		bool counts_up;
-		Path* next_path;
+		u32 fill_styles[2];
 	};
 	
 	struct Shape
 	{
-		Path* earliest_path;
-		Path* latest_path;
+		std::vector<Vertex> verts;
 		u32 fill_style;
 		bool fill_right;
 		bool closed;
@@ -88,7 +86,6 @@ namespace SWFRecomp
 		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
-		void fillShapeLeft(std::vector<Vertex>& shape, std::vector<Tri>& tris);
-		void fillShapeRight(std::vector<Vertex>& shape, std::vector<Tri>& tris);
+		void fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right);
 	};
 };
