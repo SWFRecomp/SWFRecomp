@@ -15,8 +15,8 @@
 
 #define CROSS(v1, v2) (v1.x*v2.y - v2.x*v1.y)
 
-#define FRAME_WIDTH (frame_size.xmax - frame_size.xmin)
-#define FRAME_HEIGHT (frame_size.ymax - frame_size.ymin)
+#define FRAME_WIDTH (header.frame_size.xmax - header.frame_size.xmin)
+#define FRAME_HEIGHT (header.frame_size.ymax - header.frame_size.ymin)
 
 using std::to_string;
 
@@ -631,10 +631,7 @@ namespace SWFRecomp
 				u32 last_fill_style_0 = 0;
 				u32 last_fill_style_1 = 0;
 				
-				std::vector<Shape> shapes;
 				std::vector<Path> paths;
-				
-				shapes.reserve(16);
 				paths.reserve(512);
 				
 				Path* current_path = nullptr;
@@ -692,7 +689,7 @@ namespace SWFRecomp
 								v.x = last_x + (s32) delta_x;
 								v.y = last_y - (s32) delta_y;
 								
-								shapes[0].verts.push_back(v);
+								current_path->verts.push_back(v);
 								
 								fprintf(stderr, "got x: %d, y: %d\n", v.x / 20, 400 - (v.y / 20));
 								
@@ -728,7 +725,7 @@ namespace SWFRecomp
 								v.x += (s32) delta;
 							}
 							
-							shapes[0].verts.push_back(v);
+							current_path->verts.push_back(v);
 							
 							fprintf(stderr, "got x: %d, y: %d\n", v.x / 20, 400 - (v.y / 20));
 							
@@ -804,8 +801,8 @@ namespace SWFRecomp
 					u32 move_delta_x;
 					u32 move_delta_y;
 					
-					u32 fill_style_0;
-					u32 fill_style_1;
+					u32 fill_style_0 = last_fill_style_0;
+					u32 fill_style_1 = last_fill_style_1;
 					
 					u32 line_style;
 					
@@ -819,16 +816,14 @@ namespace SWFRecomp
 						move_bits = (u8) shape_tag.fields[current_field++].value;
 						move_delta_x = (u32) shape_tag.fields[current_field++].value;
 						move_delta_y = (u32) shape_tag.fields[current_field++].value;
+						
+						last_x = move_delta_x;
+						last_y = FRAME_HEIGHT - move_delta_y;
 					}
 					
 					if (state_fill_style_0)
 					{
 						fill_style_0 = (u32) shape_tag.fields[current_field++].value;
-						
-						//~ if (fill_style_0 != 0 && fill_style_0 != last_fill_style_0)
-						//~ {
-							
-						//~ }
 						
 						fprintf(stderr, "fill style 0: %d\n", fill_style_0);
 						
@@ -848,124 +843,23 @@ namespace SWFRecomp
 					{
 						line_style = (u32) shape_tag.fields[current_field++].value;
 						
-						//~ fprintf(stderr, "line style: %d\n", line_style);
+						fprintf(stderr, "line style: %d\n", line_style);
 					}
 					
 					if (state_move_to || fill_style_0_change || fill_style_1_change)
 					{
-						if (current_path == nullptr)
-						{
-							paths.push_back(Path());
-							current_path = &paths[0];
-							
-							current_path->verts.reserve(512);
-							current_path->next_path = nullptr;
-						}
+						paths.push_back(Path());
+						current_path = &paths.back();
 						
-						else
-						{
-							if (state_move_to)
-							{
-								
-								
-								last_x = move_delta_x;
-								last_y = FRAME_HEIGHT - move_delta_y;
-								
-								paths.push_back(Path());
-								current_path = &paths.back();
-								
-								current_path->verts.reserve(512);
-								current_path->next_path = nullptr;
-								
-								bool found_left_fill = false;
-								bool found_right_fill = false;
-								
-								for (Shape shape : shapes)
-								{
-									if (shape.latest_path.verts.back().x == last_x && shape.latest_path.verts.back().y == last_y)
-									{
-										if (!shape.fill_right && shape.fill_style == fill_style_0)
-										{
-											shape.latest_path = current_path;
-											found_left_fill = true;
-										}
-										
-										else if (shape.fill_right && shape.fill_style == fill_style_1)
-										{
-											shape.latest_path = current_path;
-											found_right_fill = true;
-										}
-									}
-									
-									if (found_left_fill && found_right_fill)
-									{
-										break;
-									}
-								}
-							}
-							
-							if (fill_style_0_change || fill_style_1_change)
-							{
-								//~ if (shapes.size() == 0)
-								//~ {
-									//~ current_path->counts_up = true;
-									//~ current_path->next_path = nullptr;
-									
-									//~ if (last_fill_style_0 != 0)
-									//~ {
-										//~ shapes.push_back(Shape());
-										//~ shapes[0].earliest_path = nullptr;
-										//~ shapes[0].latest_path = current_path;
-										//~ shapes[0].fill_style = last_fill_style_0;
-										//~ shapes[0].fill_right = true;
-									//~ }
-									
-									//~ if (last_fill_style_1 != 0)
-									//~ {
-										//~ shapes.push_back(Shape());
-										//~ shapes[0].earliest_path = nullptr;
-										//~ shapes[0].latest_path = current_path;
-										//~ shapes[0].fill_style = last_fill_style_1;
-										//~ shapes[0].fill_right = true;
-									//~ }
-								//~ }
-								
-								//~ else
-								//~ {
-									//~ for (size_t i = 0; i < shapes.size(); ++i)
-									//~ {
-										//~ Path* latest_path = shapes[i].latest_path;
-										
-										//~ s32 latest_x = latest_path->verts[latest_path->verts.size() - 1].x;
-										//~ s32 latest_y = latest_path->verts[latest_path->verts.size() - 1].y;
-										
-										//~ if (last_x == latest_x && last_y == latest_y && fill_style_0 == shapes[i].fill_style)
-										//~ {
-											//~ current_left_shape = i;
-											//~ break;
-										//~ }
-										
-										//~ Path* earliest_path = shapes[i].earliest_path;
-										
-										//~ s32 earliest_x;
-										//~ s32 earliest_y;
-										
-										//~ if (earliest_path == nullptr)
-										//~ {
-											//~ earliest_x = latest_path->verts[0].x;
-											//~ earliest_y = latest_path->verts[0].y;
-										//~ }
-										
-										//~ else
-										//~ {
-											//~ // Shapes can pick up and move, but connect an external path to the same shape.
-											
-											//~ earliest_x = earliest_path->verts[]
-										//~ }
-									//~ }
-								//~ }
-							}
-						}
+						current_path->verts.reserve(512);
+						current_path->fill_styles[0] = fill_style_0;
+						current_path->fill_styles[1] = fill_style_1;
+						
+						Vertex v;
+						v.x = last_x;
+						v.y = last_y;
+						
+						current_path->verts.push_back(v);
 					}
 					
 					last_fill_style_0 = fill_style_0;
@@ -977,20 +871,147 @@ namespace SWFRecomp
 					cur_pos += 1;
 				}
 				
+				std::vector<Shape> shapes;
+				
+				shapes.push_back(Shape());
+				
+				size_t i = 0;
+				bool changed = false;
+				
+				while (true)
+				{
+					if (i == paths.size())
+					{
+						if (!changed)
+						{
+							break;
+						}
+						
+						else
+						{
+							i = 0;
+							changed = false;
+						}
+					}
+					
+					if (shapes.back().verts.empty())
+					{
+						for (size_t i = 0; i < paths.size(); ++i)
+						{
+							if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
+							{
+								for (size_t j = 0; j < paths[i].verts.size(); ++j)
+								{
+									shapes.back().verts.push_back(paths[i].verts[j]);
+								}
+								
+								if (paths[i].fill_styles[0] != 0)
+								{
+									shapes.back().fill_right = false;
+									shapes.back().fill_style = paths[i].fill_styles[0];
+									paths[i].fill_styles[0] = 0;
+								}
+								
+								if (paths[i].fill_styles[1] != 0)
+								{
+									shapes.back().fill_right = true;
+									shapes.back().fill_style = paths[i].fill_styles[1];
+									paths[i].fill_styles[1] = 0;
+								}
+								
+								if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
+								{
+									shapes.back().closed = true;
+									shapes.back().verts.pop_back();
+									shapes.push_back(Shape());
+									continue;
+								}
+								
+								break;
+							}
+						}
+						
+						if (shapes.back().verts.empty())
+						{
+							shapes.pop_back();
+							break;
+						}
+					}
+					
+					if (paths[i].fill_styles[0] == 0 && paths[i].fill_styles[1] == 0)
+					{
+						i += 1;
+						continue;
+					}
+					
+					Vertex* path_v = &paths[i].verts[0];
+					Vertex* shape_v = &shapes.back().verts.back();
+					
+					bool fill_right = shapes.back().fill_right;
+					
+					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
+						paths[i].fill_styles[fill_right] == shapes.back().fill_style)
+					{
+						// Skip duplicate vertex
+						for (size_t j = 1; j < paths[i].verts.size(); ++j)
+						{
+							shapes.back().verts.push_back(paths[i].verts[j]);
+						}
+						
+						paths[i].fill_styles[fill_right] = 0;
+						
+						i = 0;
+						
+						changed = true;
+						
+						if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
+						{
+							shapes.back().closed = true;
+							shapes.back().verts.pop_back();
+							shapes.push_back(Shape());
+						}
+						
+						continue;
+					}
+					
+					path_v = &paths[i].verts.back();
+					fill_right ^= true;
+					
+					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
+						paths[i].fill_styles[fill_right] == shapes.back().fill_style)
+					{
+						// Skip duplicate vertex
+						for (s64 j = paths[i].verts.size() - 2; j >= 0; --j)
+						{
+							shapes.back().verts.push_back(paths[i].verts[j]);
+						}
+						
+						paths[i].fill_styles[fill_right] = 0;
+						
+						i = 0;
+						
+						changed = true;
+						
+						if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
+						{
+							shapes.back().closed = true;
+							shapes.back().verts.pop_back();
+							shapes.push_back(Shape());
+						}
+						
+						continue;
+					}
+					
+					i += 1;
+				}
+				
 				std::vector<Tri> tris;
 				
 				for (int i = 0; i < shapes.size(); ++i)
 				{
-					shapes[i].verts.pop_back();
-					
-					if (shapes[i].fill_right)
+					if (shapes[i].closed)
 					{
-						fillShapeRight(shapes[i].verts, tris);
-					}
-					
-					else
-					{
-						fillShapeLeft(shapes[i].verts, tris);
+						fillShape(shapes[i].verts, tris, shapes[i].fill_right);
 					}
 				}
 				
@@ -1028,7 +1049,7 @@ namespace SWFRecomp
 		}
 	}
 	
-	void SWF::fillShapeLeft(std::vector<Vertex>& shape, std::vector<Tri>& tris)
+	void SWF::fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right)
 	{
 		size_t i;
 		
@@ -1069,206 +1090,26 @@ namespace SWFRecomp
 			vec_b.x = v->x - prev->x;
 			vec_b.y = v->y - prev->y;
 			
-			if (CROSS(vec_a, vec_b) < 0)
+			if (fill_right)
 			{
-				anchor = prev;
-				prev = nullptr;
-				prevprev = nullptr;
-				break;
-			}
-			
-			prevprev = prev;
-			prev = v;
-		}
-		
-		if (i == size)
-		{
-			anchor = &shape[0];
-			i = 1;
-		}
-		
-		skipped_vertices.push_back(*anchor);
-		
-		Vertex* start_shape = &shape[0];
-		Vertex* started_drawing = anchor;
-		Vertex* stop = &shape[size];
-		prev = nullptr;
-		prevprev = nullptr;
-		
-		while (true)
-		{
-			Vertex* v = &shape[i];
-			
-			if (v == started_drawing)
-			{
-				if (anchor != nullptr && prev != nullptr && anchor != prev && anchor != v)
+				if (CROSS(vec_a, vec_b) > 0)
 				{
-					t.verts[0] = *anchor;
-					t.verts[1] = *prev;
-					t.verts[2] = *v;
-					
-					tris.push_back(t);
-				}
-				
-				break;
-			}
-			
-			if (anchor == nullptr)
-			{
-				anchor = v;
-				prevprev = v;
-				i += 1;
-				i %= size;
-				continue;
-			}
-			
-			if (prev == nullptr)
-			{
-				prev = v;
-				i += 1;
-				i %= size;
-				continue;
-			}
-			
-			size_t after_anchor_i = ((anchor - &shape[0]) + 1) % size;
-			Vertex* after_anchor = &shape[after_anchor_i];
-			
-			Vertex vec_anchor_edge;
-			Vertex vec_anchor_safe_edge;
-			Vertex vec_anchor_new_edge;
-			
-			vec_anchor_safe_edge.x = prev->x - anchor->x;
-			vec_anchor_safe_edge.y = prev->y - anchor->y;
-			
-			if (prev != after_anchor)
-			{
-				vec_anchor_edge.x = after_anchor->x - anchor->x;
-				vec_anchor_edge.y = after_anchor->y - anchor->y;
-				
-				vec_anchor_new_edge.x = v->x - anchor->x;
-				vec_anchor_new_edge.y = v->y - anchor->y;
-				
-				long first_cross = CROSS(vec_anchor_edge, vec_anchor_safe_edge);
-				long second_cross = CROSS(vec_anchor_edge, vec_anchor_new_edge);
-				
-				if ((first_cross < 0 && second_cross > 0) || (first_cross > 0 && second_cross < 0))
-				{
-					if (prev != started_drawing)
-					{
-						skipped_vertices.push_back(*prev);
-					}
-					
-					if (v != started_drawing)
-					{
-						skipped_vertices.push_back(*v);
-					}
-					
-					anchor = v;
+					anchor = prev;
 					prev = nullptr;
-					prevprev = v;
-					i += 1;
-					i %= size;
-					continue;
+					prevprev = nullptr;
+					break;
 				}
-			}
-			
-			Vertex vec_prevprev_edge;
-			Vertex vec_prev_edge;
-			
-			vec_prevprev_edge.x = prev->x - prevprev->x;
-			vec_prevprev_edge.y = prev->y - prevprev->y;
-			
-			vec_prev_edge.x = v->x - prev->x;
-			vec_prev_edge.y = v->y - prev->y;
-			
-			u32 cross = CROSS(vec_anchor_safe_edge, vec_prev_edge);
-			
-			if (cross > 0)
-			{
-				t.verts[0] = *anchor;
-				t.verts[1] = *prev;
-				t.verts[2] = *v;
-				
-				tris.push_back(t);
-			}
-			
-			else if (cross == 0)
-			{
-				i += 1;
-				i %= size;
-				continue;
 			}
 			
 			else
 			{
-				if (prev != started_drawing)
+				if (CROSS(vec_a, vec_b) < 0)
 				{
-					skipped_vertices.push_back(*prev);
+					anchor = prev;
+					prev = nullptr;
+					prevprev = nullptr;
+					break;
 				}
-				
-				anchor = prev;
-			}
-			
-			prevprev = prev;
-			prev = v;
-			
-			i += 1;
-			i %= size;
-		}
-		
-		if (skipped_vertices.size() > 1)
-		{
-			fillShapeLeft(skipped_vertices, tris);
-		}
-	}
-	
-	void SWF::fillShapeRight(std::vector<Vertex>& shape, std::vector<Tri>& tris)
-	{
-		size_t i;
-		
-		Tri t;
-		
-		size_t size = shape.size();
-		
-		Vertex* anchor = nullptr;
-		
-		Vertex* prev = nullptr;
-		Vertex* prevprev = nullptr;
-		
-		std::vector<Vertex> skipped_vertices;
-		skipped_vertices.reserve(size);
-		
-		for (i = 0; i < size; ++i)
-		{
-			Vertex* v = &shape[i];
-			
-			if (prevprev == nullptr)
-			{
-				prevprev = v;
-				continue;
-			}
-			
-			if (prev == nullptr)
-			{
-				prev = v;
-				continue;
-			}
-			
-			Vertex vec_a;
-			Vertex vec_b;
-			
-			vec_a.x = prev->x - prevprev->x;
-			vec_a.y = prev->y - prevprev->y;
-			
-			vec_b.x = v->x - prev->x;
-			vec_b.y = v->y - prev->y;
-			
-			if (CROSS(vec_a, vec_b) > 0)
-			{
-				anchor = prev;
-				prev = nullptr;
-				prevprev = nullptr;
-				break;
 			}
 			
 			prevprev = prev;
@@ -1375,7 +1216,7 @@ namespace SWFRecomp
 			vec_prev_edge.x = v->x - prev->x;
 			vec_prev_edge.y = v->y - prev->y;
 			
-			u32 cross = CROSS(vec_anchor_safe_edge, vec_prev_edge);
+			s64 cross = (fill_right) ? (CROSS(vec_anchor_safe_edge, vec_prev_edge)) : (-CROSS(vec_anchor_safe_edge, vec_prev_edge));
 			
 			if (cross < 0)
 			{
@@ -1412,7 +1253,7 @@ namespace SWFRecomp
 		
 		if (skipped_vertices.size() > 1)
 		{
-			fillShapeRight(skipped_vertices, tris);
+			fillShape(skipped_vertices, tris, fill_right);
 		}
 	}
 };
