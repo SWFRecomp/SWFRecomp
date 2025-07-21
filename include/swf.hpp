@@ -46,6 +46,14 @@ namespace SWFRecomp
 		bool closed;
 	};
 	
+	struct FillStyle
+	{
+		u8 type;
+		u8 r;
+		u8 g;
+		u8 b;
+	};
+	
 	class SWFHeader
 	{
 	public:

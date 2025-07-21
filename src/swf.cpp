@@ -562,6 +562,8 @@ namespace SWFRecomp
 					fill_style_count = (u16) shape_tag.fields[0].value;
 				}
 				
+				FillStyle* fill_styles = new FillStyle[fill_style_count];
+				
 				for (u16 i = 0; i < fill_style_count; ++i)
 				{
 					shape_tag.clearFields();
@@ -574,13 +576,13 @@ namespace SWFRecomp
 					
 					shape_tag.parseFields(cur_pos);
 					
-					u8 fill_type = (u8) shape_tag.fields[0].value;
+					fill_styles[i].type = (u8) shape_tag.fields[0].value;
 					
-					u8 r = (u8) shape_tag.fields[1].value;
-					u8 g = (u8) shape_tag.fields[2].value;
-					u8 b = (u8) shape_tag.fields[3].value;
+					fill_styles[i].r = (u8) shape_tag.fields[1].value;
+					fill_styles[i].g = (u8) shape_tag.fields[2].value;
+					fill_styles[i].b = (u8) shape_tag.fields[3].value;
 					
-					fprintf(stderr, "fill style %d: %d, %d, %d\n", i + 1, r, g, b);
+					fprintf(stderr, "fill style %d: %d, %d, %d\n", i + 1, fill_styles[i].r, fill_styles[i].g, fill_styles[i].b);
 				}
 				
 				// LINESTYLEARRAY
@@ -1005,13 +1007,34 @@ namespace SWFRecomp
 					i += 1;
 				}
 				
-				std::vector<Tri> tris;
+				std::string tris_str = "";
+				
+				size_t tris_size = 0;
 				
 				for (int i = 0; i < shapes.size(); ++i)
 				{
 					if (shapes[i].closed)
 					{
+						std::vector<Tri> tris;
+						
 						fillShape(shapes[i].verts, tris, shapes[i].fill_right);
+						
+						tris_size += tris.size();
+						
+						for (Tri t : tris)
+						{
+							for (int j = 0; j < 3; ++j)
+							{
+								tris_str += std::string("\t") + "{ "
+										  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
+										  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
+										  + "0.0f, "
+										  + to_string(fill_styles[shapes[i].fill_style - 1].r) + ".0f/255.0f, "
+										  + to_string(fill_styles[shapes[i].fill_style - 1].g) + ".0f/255.0f, "
+										  + to_string(fill_styles[shapes[i].fill_style - 1].b) + ".0f/255.0f, "
+										  + "1.0f },\n";
+							}
+						}
 					}
 				}
 				
@@ -1019,27 +1042,14 @@ namespace SWFRecomp
 				
 				out_draws << endl;
 				
-				out_draws << "float " << shape_name << "[" << to_string(3*tris.size()) << "][7] =" << endl
+				out_draws << "float " << shape_name << "[" << to_string(3*tris_size) << "][7] =" << endl
 						  << "{" << endl;
 				
-				for (Tri t : tris)
-				{
-					for (int i = 0; i < 3; ++i)
-					{
-						out_draws << "\t" << "{ "
-								  << to_string(t.verts[i].x) << "/" << to_string(FRAME_WIDTH/2) << ".0f - 1.0f, "
-								  << to_string(t.verts[i].y) << "/" << to_string(FRAME_HEIGHT/2) << ".0f - 1.0f, "
-								  << "0.0f, "
-								  << "1.0f, "
-								  << "0.0f, "
-								  << "0.0f, "
-								  << "1.0f }," << endl;
-					}
-				}
+				out_draws << tris_str;
 				
 				out_draws << "};" << endl;
 				
-				out_draws_header << endl << "extern float " << shape_name << "[" << to_string(3*tris.size()) << "][7];" << endl;
+				out_draws_header << endl << "extern float " << shape_name << "[" << to_string(3*tris_size) << "][7];" << endl;
 				
 				tag_main << "\t" << "dictionary[" << to_string(shape_id) << "] = (char*) " << shape_name << ";" << endl;
 				tag_main << "\t" << "dictionary_sizes[" << to_string(shape_id) << "] = sizeof(" << shape_name << ");" << endl;
