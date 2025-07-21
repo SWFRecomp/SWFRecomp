@@ -950,7 +950,7 @@ namespace SWFRecomp
 					bool fill_right = shapes.back().fill_right;
 					
 					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
-						paths[i].fill_styles[fill_right] == shapes.back().fill_style)
+						(paths[i].fill_styles[fill_right] == shapes.back().fill_style || (paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().fill_style)))
 					{
 						// Skip duplicate vertex
 						for (size_t j = 1; j < paths[i].verts.size(); ++j)
@@ -978,7 +978,7 @@ namespace SWFRecomp
 					fill_right ^= true;
 					
 					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
-						paths[i].fill_styles[fill_right] == shapes.back().fill_style)
+						(paths[i].fill_styles[fill_right] == shapes.back().fill_style || (paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().fill_style)))
 					{
 						// Skip duplicate vertex
 						for (s64 j = paths[i].verts.size() - 2; j >= 0; --j)
@@ -1049,6 +1049,89 @@ namespace SWFRecomp
 		}
 	}
 	
+	/*
+	 * Some notes on this next function (fillShape):
+	 * 
+	 * This is the fill (triangulation) algorithm I designed a year ago.
+	 * Given the information that a SWF file normally provides, it is an
+	 * algorithm that executes in (mostly) O(n) time, where n is the
+	 * number of vertices in the shape. It accepts a list of vertices
+	 * in order of the path of the shape, and outputs a list of triangles
+	 * that perfectly fill the shape, with no seams or gaps to speak of.
+	 * 
+	 * So the big question: what does "mostly" mean? Well, on some occasions,
+	 * the vertices don't play nice: two occasions in particular.
+	 * 
+	 * The first is when we encounter three vertices that form a
+	 * concave angle. When this happens, we cannot draw the current triangle
+	 * since it lies outside our shape, and we cannot (with this strategy)
+	 * know where the vertices we actually want to draw really are.
+	 * What happens in the current implementation, is the middle vertex of
+	 * the offending angle is added to a list of "skipped" vertices
+	 * (where the vertex we start from is always the first vertex
+	 * in the list), which collectively become the new shape vector which
+	 * is run through the function again recursively.
+	 * 
+	 * The second is when we encounter a vertex that goes beyond the bounds
+	 * of the edges of the anchor. A bit of help from our friend the cross
+	 * product can detect this condition with violent O(1) efficiency, but
+	 * unfortunately it requires that we invalidate the current anchor and
+	 * iterate through the shape until we find the next concave vertex,
+	 * adding every single vertex along the way to the skipped vertices
+	 * to be retried on the next iteration.
+	 * 
+	 * This recursive approach is easy enough to implement and is perfectly
+	 * acceptable for the recompiler step, but I doubt I'll be pleased with
+	 * the results when this algorithm is moved to the runtime (and it
+	 * inevitably *must* move to the runtime, for use by ActionScript
+	 * graphics commands). This *technically* performs at O(n), but
+	 * performance may take a sizable hit on these edge cases.
+	 * 
+	 * My current thinking is written here, otherwise I would kick myself when
+	 * I predictably forget months in the future. ActionScript graphics
+	 * commands must declare their edges in order. They may not change the
+	 * fill style before the path is finished, nor may they move the cursor.
+	 * An attempt to move the cursor in particular will cause a firm
+	 * finger-wagging from Flash Player as it connects the last implicit edge
+	 * of your shape, fills it, and begins a new path with the same fill.
+	 * Those last two assumptions alone would allow us to implement an already
+	 * quite efficient version of this function, but all three of them
+	 * allow us to write a vertex-crunching powerhouse.
+	 * 
+	 * Because the commands must execute before the shape is drawn, and
+	 * in order, that allows us to calculate the cross products on the fly
+	 * and cache the concave ones in an array of their indices into the shape
+	 * list in ascending order. Let this array be `s32 concave[]` First, the
+	 * initial iteration to find the first concave vertex vanishes, you only
+	 * need to look to `concave[0]`. It can also be used to vastly improve the
+	 * handling of both above edge cases.
+	 * 
+	 * We can use the array (after the shape has been run through one time)
+	 * to fill the normally skipped vertices (since we always add concave
+	 * vertices to skipped) without a recursive solution. This works at
+	 * least once, though perhaps there is some nuance as to how to run
+	 * again if there are more concavities. I imagine we could fill a new,
+	 * shorter array of concavities as we go along and repeat until there are
+	 * no concavities.
+	 * 
+	 * This next part I'm less sure about, but I must write it down before
+	 * I lose my mind. When we encounter a vertex that is outside the bounds,
+	 * we inquire as to the next concave vertex after it and move the anchor
+	 * there. There are a few choices as to how to handle this from here,
+	 * we may either check if the farthest vertex from the anchor breaks
+	 * the edge boundaries and then fill normally, or we may enter a special
+	 * loop where we temporarily fill in the opposite direction from the anchor
+	 * to the farthest vertex (which, all things considered, may be a fantastic
+	 * optimization in general for the algorithm, and might be possible given
+	 * the concave array).
+	 * 
+	 * I am not willing to complicate the recompiler's fill algorithm any
+	 * further, since it is not critical code and does not require complexity
+	 * for the sake of performance. That time will come when the algorithm
+	 * is given over to the runtime. Then, and only then, will I be willing
+	 * to experiment further to obliterate this reprehensible graphics format.
+	 * 
+	 */
 	void SWF::fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right)
 	{
 		size_t i;
@@ -1128,7 +1211,7 @@ namespace SWFRecomp
 		Vertex* started_drawing = anchor;
 		Vertex* stop = &shape[size];
 		prev = nullptr;
-		prevprev = nullptr;
+		prevprev = anchor;
 		
 		while (true)
 		{
@@ -1165,48 +1248,6 @@ namespace SWFRecomp
 				continue;
 			}
 			
-			size_t after_anchor_i = ((anchor - &shape[0]) + 1) % size;
-			Vertex* after_anchor = &shape[after_anchor_i];
-			
-			Vertex vec_anchor_edge;
-			Vertex vec_anchor_safe_edge;
-			Vertex vec_anchor_new_edge;
-			
-			vec_anchor_safe_edge.x = prev->x - anchor->x;
-			vec_anchor_safe_edge.y = prev->y - anchor->y;
-			
-			if (prev != after_anchor)
-			{
-				vec_anchor_edge.x = after_anchor->x - anchor->x;
-				vec_anchor_edge.y = after_anchor->y - anchor->y;
-				
-				vec_anchor_new_edge.x = v->x - anchor->x;
-				vec_anchor_new_edge.y = v->y - anchor->y;
-				
-				long first_cross = CROSS(vec_anchor_edge, vec_anchor_safe_edge);
-				long second_cross = CROSS(vec_anchor_edge, vec_anchor_new_edge);
-				
-				if ((first_cross < 0 && second_cross > 0) || (first_cross > 0 && second_cross < 0))
-				{
-					if (prev != started_drawing)
-					{
-						skipped_vertices.push_back(*prev);
-					}
-					
-					if (v != started_drawing)
-					{
-						skipped_vertices.push_back(*v);
-					}
-					
-					anchor = v;
-					prev = nullptr;
-					prevprev = v;
-					i += 1;
-					i %= size;
-					continue;
-				}
-			}
-			
 			Vertex vec_prevprev_edge;
 			Vertex vec_prev_edge;
 			
@@ -1216,15 +1257,140 @@ namespace SWFRecomp
 			vec_prev_edge.x = v->x - prev->x;
 			vec_prev_edge.y = v->y - prev->y;
 			
-			s64 cross = (fill_right) ? (CROSS(vec_anchor_safe_edge, vec_prev_edge)) : (-CROSS(vec_anchor_safe_edge, vec_prev_edge));
+			s64 cross = (fill_right) ? CROSS(vec_prevprev_edge, vec_prev_edge) : -CROSS(vec_prevprev_edge, vec_prev_edge);
 			
 			if (cross < 0)
 			{
-				t.verts[0] = *anchor;
-				t.verts[1] = *prev;
-				t.verts[2] = *v;
+				size_t after_anchor_i = ((anchor - &shape[0]) + 1) % size;
+				Vertex* after_anchor = &shape[after_anchor_i];
 				
-				tris.push_back(t);
+				if (prev != after_anchor)
+				{
+					size_t before_anchor_i = ((anchor - &shape[0]) - 1 + size) % size;
+					Vertex* before_anchor = &shape[before_anchor_i];
+					
+					Vertex vec_anchor_edge;
+					Vertex vec_before_anchor_edge;
+					Vertex vec_anchor_new_edge;
+					
+					vec_anchor_edge.x = after_anchor->x - anchor->x;
+					vec_anchor_edge.y = after_anchor->y - anchor->y;
+					
+					vec_before_anchor_edge.x = anchor->x - before_anchor->x;
+					vec_before_anchor_edge.y = anchor->y - before_anchor->y;
+					
+					vec_anchor_new_edge.x = v->x - anchor->x;
+					vec_anchor_new_edge.y = v->y - anchor->y;
+					
+					long first_cross = fill_right ? CROSS(vec_anchor_edge, vec_anchor_new_edge) : -CROSS(vec_anchor_edge, vec_anchor_new_edge);
+					long second_cross = fill_right ? CROSS(vec_before_anchor_edge, vec_anchor_new_edge) : -CROSS(vec_before_anchor_edge, vec_anchor_new_edge);
+					
+					if (first_cross > 0 && second_cross > 0)
+					{
+						if (prev != started_drawing)
+						{
+							skipped_vertices.push_back(*prev);
+						}
+						
+						if (v != started_drawing)
+						{
+							skipped_vertices.push_back(*v);
+						}
+						
+						bool full_break = false;
+						
+						anchor = nullptr;
+						
+						while (anchor == nullptr)
+						{
+							v = &shape[i];
+							
+							if (v == started_drawing)
+							{
+								full_break = true;
+								break;
+							}
+							
+							skipped_vertices.push_back(*v);
+							
+							if (prevprev == nullptr)
+							{
+								prevprev = v;
+								continue;
+							}
+							
+							if (prev == nullptr)
+							{
+								prev = v;
+								continue;
+							}
+							
+							Vertex vec_a;
+							Vertex vec_b;
+							
+							vec_a.x = prev->x - prevprev->x;
+							vec_a.y = prev->y - prevprev->y;
+							
+							vec_b.x = v->x - prev->x;
+							vec_b.y = v->y - prev->y;
+							
+							if (fill_right)
+							{
+								if (CROSS(vec_a, vec_b) > 0)
+								{
+									anchor = prev;
+									prev = nullptr;
+									prevprev = nullptr;
+									break;
+								}
+							}
+							
+							else
+							{
+								if (CROSS(vec_a, vec_b) < 0)
+								{
+									anchor = prev;
+									prev = nullptr;
+									prevprev = nullptr;
+									break;
+								}
+							}
+							
+							prevprev = prev;
+							prev = v;
+							
+							i += 1;
+							i %= size;
+						}
+						
+						if (full_break)
+						{
+							break;
+						}
+						
+						i += 1;
+						i %= size;
+						continue;
+					}
+					
+					else
+					{
+						t.verts[0] = *anchor;
+						t.verts[1] = *prev;
+						t.verts[2] = *v;
+						
+						tris.push_back(t);
+					}
+				}
+				
+				else
+				{
+					t.verts[0] = *anchor;
+					t.verts[1] = *prev;
+					t.verts[2] = *v;
+					
+					tris.push_back(t);
+				}
 			}
 			
 			else if (cross == 0)
