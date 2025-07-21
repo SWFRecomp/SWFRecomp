@@ -693,8 +693,6 @@ namespace SWFRecomp
 								
 								current_path->verts.push_back(v);
 								
-								fprintf(stderr, "got x: %d, y: %d\n", v.x / 20, 400 - (v.y / 20));
-								
 								last_x = v.x;
 								last_y = v.y;
 								
@@ -728,8 +726,6 @@ namespace SWFRecomp
 							}
 							
 							current_path->verts.push_back(v);
-							
-							fprintf(stderr, "got x: %d, y: %d\n", v.x / 20, 400 - (v.y / 20));
 							
 							last_x = v.x;
 							last_y = v.y;
