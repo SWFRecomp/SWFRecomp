@@ -581,8 +581,6 @@ namespace SWFRecomp
 					fill_styles[i].r = (u8) shape_tag.fields[1].value;
 					fill_styles[i].g = (u8) shape_tag.fields[2].value;
 					fill_styles[i].b = (u8) shape_tag.fields[3].value;
-					
-					fprintf(stderr, "fill style %d: %d, %d, %d\n", i + 1, fill_styles[i].r, fill_styles[i].g, fill_styles[i].b);
 				}
 				
 				// LINESTYLEARRAY
@@ -823,16 +821,12 @@ namespace SWFRecomp
 					{
 						fill_style_0 = (u32) shape_tag.fields[current_field++].value;
 						
-						fprintf(stderr, "fill style 0: %d\n", fill_style_0);
-						
 						fill_style_0_change = fill_style_0 != last_fill_style_0;
 					}
 					
 					if (state_fill_style_1)
 					{
 						fill_style_1 = (u32) shape_tag.fields[current_field++].value;
-						
-						fprintf(stderr, "fill style 1: %d\n", fill_style_1);
 						
 						fill_style_1_change = fill_style_1 != last_fill_style_1;
 					}
