@@ -32,11 +32,31 @@ namespace SWFRecomp
 		Vertex verts[3];
 	};
 	
+	struct Path
+	{
+		std::vector<Vertex> verts;
+		u32 fill_styles[2];
+	};
+	
 	struct Shape
 	{
 		std::vector<Vertex> verts;
-		u32 fill_style;
-		bool fill_right;
+		Vertex min;
+		Vertex max;
+		bool got_min_max;
+		u32 inner_fill;
+		u32 outer_fill;
+		int fill_right;
+		bool closed;
+		bool hole;
+	};
+	
+	struct FillStyle
+	{
+		u8 type;
+		u8 r;
+		u8 g;
+		u8 b;
 	};
 	
 	class SWFHeader
@@ -79,7 +99,6 @@ namespace SWFRecomp
 		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
-		void fillShapeLeft(std::vector<Vertex>& shape, std::vector<Tri>& tris);
-		void fillShapeRight(std::vector<Vertex>& shape, std::vector<Tri>& tris);
+		void fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right);
 	};
 };
