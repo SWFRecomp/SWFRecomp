@@ -847,6 +847,8 @@ namespace SWFRecomp
 						current_path->verts.reserve(512);
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
+						current_path->read_style[0] = false;
+						current_path->read_style[1] = false;
 						
 						Vertex v;
 						v.x = last_x;
@@ -896,27 +898,33 @@ namespace SWFRecomp
 						
 						for (size_t i = 0; i < paths.size(); ++i)
 						{
-							if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
+							if ((!paths[i].read_style[0] && paths[i].fill_styles[0] != 0) ||
+								(!paths[i].read_style[1] && paths[i].fill_styles[1] != 0))
 							{
 								for (size_t j = 0; j < paths[i].verts.size(); ++j)
 								{
 									shapes.back().verts.push_back(paths[i].verts[j]);
 								}
 								
-								if (paths[i].fill_styles[0] != 0)
+								if (!paths[i].read_style[0] && paths[i].fill_styles[0] != 0)
 								{
+									if (paths[i].fill_styles[0] == 5)
+									{
+										fprintf(stderr, "got left fill style 5\n");
+									}
+									
 									shapes.back().fill_right = false;
 									shapes.back().inner_fill = paths[i].fill_styles[0];
 									shapes.back().outer_fill = paths[i].fill_styles[1];
-									paths[i].fill_styles[0] = 0;
+									paths[i].read_style[0] = true;
 								}
 								
-								else if (paths[i].fill_styles[1] != 0)
+								else if (!paths[i].read_style[1] && paths[i].fill_styles[1] != 0)
 								{
 									shapes.back().fill_right = true;
 									shapes.back().inner_fill = paths[i].fill_styles[1];
 									shapes.back().outer_fill = paths[i].fill_styles[0];
-									paths[i].fill_styles[1] = 0;
+									paths[i].read_style[1] = true;
 								}
 								
 								if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
@@ -943,7 +951,7 @@ namespace SWFRecomp
 						}
 					}
 					
-					if (paths[i].fill_styles[0] == 0 && paths[i].fill_styles[1] == 0)
+					if ((paths[i].fill_styles[0] == 0 || paths[i].read_style[0]) && (paths[i].fill_styles[1] == 0 || paths[i].read_style[1]))
 					{
 						i += 1;
 						continue;
@@ -964,7 +972,7 @@ namespace SWFRecomp
 							shapes.back().verts.push_back(paths[i].verts[j]);
 						}
 						
-						paths[i].fill_styles[fill_right] = 0;
+						paths[i].read_style[fill_right] = true;
 						
 						i = 0;
 						
@@ -980,7 +988,7 @@ namespace SWFRecomp
 						if (paths[i].fill_styles[fill_right] == 0 &&
 							paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)
 						{
-							paths[i].fill_styles[!fill_right] = 0;
+							paths[i].read_style[!fill_right] = true;
 						}
 						
 						if (paths[i].fill_styles[!fill_right] != 0 && shapes.back().outer_fill != 0 &&
@@ -997,7 +1005,7 @@ namespace SWFRecomp
 					
 					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
 						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
-						paths[i].fill_styles[fill_right] == 0 || paths[i].fill_styles[!fill_right] == shapes.back().inner_fill))
+						(paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
 					{
 						// Skip duplicate vertex
 						for (s64 j = paths[i].verts.size() - 2; j >= 0; --j)
@@ -1005,7 +1013,7 @@ namespace SWFRecomp
 							shapes.back().verts.push_back(paths[i].verts[j]);
 						}
 						
-						paths[i].fill_styles[fill_right] = 0;
+						paths[i].read_style[fill_right] = true;
 						
 						i = 0;
 						
@@ -1020,7 +1028,7 @@ namespace SWFRecomp
 						
 						if (paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)
 						{
-							paths[i].fill_styles[!fill_right] = 0;
+							paths[i].read_style[!fill_right] = true;
 						}
 						
 						if (paths[i].fill_styles[!fill_right] != 0 && shapes.back().outer_fill != 0 &&
@@ -1159,6 +1167,8 @@ namespace SWFRecomp
 				
 				for (int i = 0; i < holes.size(); ++i)
 				{
+					fprintf(stderr, "triangulating hole with first vertex (%d, %d)\n", holes[i].verts[0].x / 20, (FRAME_HEIGHT - holes[i].verts[0].y) / 20);
+					
 					std::vector<Tri> tris;
 					
 					fillShape(holes[i].verts, tris, holes[i].fill_right);

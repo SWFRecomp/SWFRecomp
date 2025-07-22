@@ -36,6 +36,7 @@ namespace SWFRecomp
 	{
 		std::vector<Vertex> verts;
 		u32 fill_styles[2];
+		bool read_style[2];
 	};
 	
 	struct Shape
