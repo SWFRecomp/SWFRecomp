@@ -41,9 +41,14 @@ namespace SWFRecomp
 	struct Shape
 	{
 		std::vector<Vertex> verts;
-		u32 fill_style;
-		bool fill_right;
+		Vertex min;
+		Vertex max;
+		bool got_min_max;
+		u32 inner_fill;
+		u32 outer_fill;
+		int fill_right;
 		bool closed;
+		bool hole;
 	};
 	
 	struct FillStyle

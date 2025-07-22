@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include <zlib.h>
 #include <lzma.h>
@@ -888,6 +889,11 @@ namespace SWFRecomp
 					
 					if (shapes.back().verts.empty())
 					{
+						shapes.back().got_min_max = false;
+						shapes.back().hole = false;
+						
+						bool shape_closed = false;
+						
 						for (size_t i = 0; i < paths.size(); ++i)
 						{
 							if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
@@ -900,14 +906,16 @@ namespace SWFRecomp
 								if (paths[i].fill_styles[0] != 0)
 								{
 									shapes.back().fill_right = false;
-									shapes.back().fill_style = paths[i].fill_styles[0];
+									shapes.back().inner_fill = paths[i].fill_styles[0];
+									shapes.back().outer_fill = paths[i].fill_styles[1];
 									paths[i].fill_styles[0] = 0;
 								}
 								
-								if (paths[i].fill_styles[1] != 0)
+								else if (paths[i].fill_styles[1] != 0)
 								{
 									shapes.back().fill_right = true;
-									shapes.back().fill_style = paths[i].fill_styles[1];
+									shapes.back().inner_fill = paths[i].fill_styles[1];
+									shapes.back().outer_fill = paths[i].fill_styles[0];
 									paths[i].fill_styles[1] = 0;
 								}
 								
@@ -916,11 +924,16 @@ namespace SWFRecomp
 									shapes.back().closed = true;
 									shapes.back().verts.pop_back();
 									shapes.push_back(Shape());
-									continue;
+									shape_closed = true;
 								}
 								
 								break;
 							}
+						}
+						
+						if (shape_closed)
+						{
+							continue;
 						}
 						
 						if (shapes.back().verts.empty())
@@ -942,7 +955,8 @@ namespace SWFRecomp
 					bool fill_right = shapes.back().fill_right;
 					
 					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
-						(paths[i].fill_styles[fill_right] == shapes.back().fill_style || (paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().fill_style)))
+						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
+						(paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
 					{
 						// Skip duplicate vertex
 						for (size_t j = 1; j < paths[i].verts.size(); ++j)
@@ -963,6 +977,18 @@ namespace SWFRecomp
 							shapes.push_back(Shape());
 						}
 						
+						if (paths[i].fill_styles[fill_right] == 0 &&
+							paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)
+						{
+							paths[i].fill_styles[!fill_right] = 0;
+						}
+						
+						if (paths[i].fill_styles[!fill_right] != 0 && shapes.back().outer_fill != 0 &&
+							paths[i].fill_styles[!fill_right] != shapes.back().outer_fill)
+						{
+							shapes.back().outer_fill = 0;
+						}
+						
 						continue;
 					}
 					
@@ -970,7 +996,8 @@ namespace SWFRecomp
 					fill_right ^= true;
 					
 					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
-						(paths[i].fill_styles[fill_right] == shapes.back().fill_style || (paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().fill_style)))
+						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
+						paths[i].fill_styles[fill_right] == 0 || paths[i].fill_styles[!fill_right] == shapes.back().inner_fill))
 					{
 						// Skip duplicate vertex
 						for (s64 j = paths[i].verts.size() - 2; j >= 0; --j)
@@ -991,19 +1018,103 @@ namespace SWFRecomp
 							shapes.push_back(Shape());
 						}
 						
+						if (paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)
+						{
+							paths[i].fill_styles[!fill_right] = 0;
+						}
+						
+						if (paths[i].fill_styles[!fill_right] != 0 && shapes.back().outer_fill != 0 &&
+							paths[i].fill_styles[!fill_right] != shapes.back().outer_fill)
+						{
+							shapes.back().outer_fill = 0;
+						}
+						
 						continue;
 					}
 					
 					i += 1;
 				}
 				
+				for (int j = 0; j < shapes.size(); ++j)
+				{
+					if (!shapes[j].closed || shapes[j].inner_fill == 0)
+					{
+						continue;
+					}
+					
+					shapes[j].min.x = shapes[j].verts[0].x;
+					shapes[j].min.y = shapes[j].verts[0].y;
+					shapes[j].max.x = shapes[j].verts[0].x;
+					shapes[j].max.y = shapes[j].verts[0].y;
+					
+					for (int k = 1; k < shapes[j].verts.size(); ++k)
+					{
+						if (shapes[j].verts[k].x < shapes[j].min.x)
+						{
+							shapes[j].min.x = shapes[j].verts[k].x;
+						}
+						
+						if (shapes[j].verts[k].y < shapes[j].min.y)
+						{
+							shapes[j].min.y = shapes[j].verts[k].y;
+						}
+						
+						if (shapes[j].verts[k].x > shapes[j].max.x)
+						{
+							shapes[j].max.x = shapes[j].verts[k].x;
+						}
+						
+						if (shapes[j].verts[k].y > shapes[j].max.y)
+						{
+							shapes[j].max.y = shapes[j].verts[k].y;
+						}
+					}
+					
+					shapes[j].got_min_max = true;
+				}
+				
 				std::string tris_str = "";
 				
 				size_t tris_size = 0;
 				
+				std::vector<Shape> holes;
+				
 				for (int i = 0; i < shapes.size(); ++i)
 				{
-					if (shapes[i].closed)
+					if (shapes[i].outer_fill != 0)
+					{
+						shapes[i].hole = true;
+						
+						for (int j = 0; j < shapes.size(); ++j)
+						{
+							if (i == j)
+							{
+								continue;
+							}
+							
+							bool hole_found = true;
+							
+							for (int k = 0; k < shapes[j].verts.size(); ++k)
+							{
+								if (shapes[i].verts[k].x != shapes[j].verts[k].x || shapes[i].verts[k].y != shapes[j].verts[k].y)
+								{
+									hole_found = false;
+									break;
+								}
+							}
+							
+							if (hole_found)
+							{
+								shapes[j].hole = true;
+								holes.push_back(shapes[j]);
+							}
+						}
+					}
+				}
+				
+				for (int i = 0; i < shapes.size(); ++i)
+				{
+					if (shapes[i].closed && shapes[i].inner_fill != 0 && !shapes[i].hole)
 					{
 						std::vector<Tri> tris;
 						
@@ -1019,11 +1130,53 @@ namespace SWFRecomp
 										  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
 										  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
 										  + "0.0f, "
-										  + to_string(fill_styles[shapes[i].fill_style - 1].r) + ".0f/255.0f, "
-										  + to_string(fill_styles[shapes[i].fill_style - 1].g) + ".0f/255.0f, "
-										  + to_string(fill_styles[shapes[i].fill_style - 1].b) + ".0f/255.0f, "
+										  + to_string(fill_styles[shapes[i].inner_fill - 1].r) + ".0f/255.0f, "
+										  + to_string(fill_styles[shapes[i].inner_fill - 1].g) + ".0f/255.0f, "
+										  + to_string(fill_styles[shapes[i].inner_fill - 1].b) + ".0f/255.0f, "
 										  + "1.0f },\n";
 							}
+						}
+					}
+				}
+				
+				auto compareArea = [](const Shape& a, const Shape& b)
+				{
+					u64 width = a.max.x - a.min.x;
+					u64 height = a.max.y - a.min.y;
+					
+					u64 area_a = width*height;
+					
+					width = b.max.x - b.min.x;
+					height = b.max.y - b.min.y;
+					
+					u64 area_b = width*height;
+					
+					return area_a > area_b;
+				};
+				
+				// Sort holes by area of bounding box
+				std::sort(holes.begin(), holes.end(), compareArea);
+				
+				for (int i = 0; i < holes.size(); ++i)
+				{
+					std::vector<Tri> tris;
+					
+					fillShape(holes[i].verts, tris, holes[i].fill_right);
+					
+					tris_size += tris.size();
+					
+					for (Tri t : tris)
+					{
+						for (int j = 0; j < 3; ++j)
+						{
+							tris_str += std::string("\t") + "{ "
+									  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
+									  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
+									  + "0.0f, "
+									  + to_string(fill_styles[holes[i].inner_fill - 1].r) + ".0f/255.0f, "
+									  + to_string(fill_styles[holes[i].inner_fill - 1].g) + ".0f/255.0f, "
+									  + to_string(fill_styles[holes[i].inner_fill - 1].b) + ".0f/255.0f, "
+									  + "1.0f },\n";
 						}
 					}
 				}
@@ -1130,6 +1283,8 @@ namespace SWFRecomp
 	 * for the sake of performance. That time will come when the algorithm
 	 * is given over to the runtime. Then, and only then, will I be willing
 	 * to experiment further to obliterate this reprehensible graphics format.
+	 * 
+	 * Also yes, I am well aware that it's terribly written.
 	 * 
 	 */
 	void SWF::fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right)
