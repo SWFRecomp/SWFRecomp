@@ -847,6 +847,7 @@ namespace SWFRecomp
 						current_path->verts.reserve(512);
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
+						current_path->read = false;
 						
 						Vertex v;
 						v.x = last_x;
@@ -864,12 +865,28 @@ namespace SWFRecomp
 					cur_pos += 1;
 				}
 				
+				std::vector<Path> paths_copy = paths;
+				
 				std::vector<Shape> shapes;
 				
 				shapes.push_back(Shape());
 				
 				size_t i = 0;
 				bool changed = false;
+				
+				for (size_t l = 0; l < paths.size(); ++l)
+				{
+					if (paths[l].fill_styles[0] != 0 || paths[l].fill_styles[1] != 0)
+					{
+						fprintf(stderr, "path %zu with fill %d and %d\n", l, paths[l].fill_styles[0], paths[l].fill_styles[1]);
+						for (size_t j = 0; j < paths[l].verts.size(); ++j)
+						{
+							fprintf(stderr, "has (%d, %d)\n", paths[l].verts[j].x / 20, (FRAME_HEIGHT - paths[l].verts[j].y) / 20);
+						}
+					}
+				}
+				
+				int tries = 0;
 				
 				while (true)
 				{
@@ -894,29 +911,40 @@ namespace SWFRecomp
 						
 						bool shape_closed = false;
 						
-						for (size_t i = 0; i < paths.size(); ++i)
+						for (size_t l = 0; l < paths.size(); ++l)
 						{
-							if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
+							if (paths[l].read)
 							{
-								for (size_t j = 0; j < paths[i].verts.size(); ++j)
+								continue;
+							}
+							
+							fprintf(stderr, "looking at path %zu\n", l);
+							
+							if (paths[l].fill_styles[0] != 0 || paths[l].fill_styles[1] != 0)
+							{
+								fprintf(stderr, "using path %zu\n", l);
+								
+								for (size_t j = 0; j < paths[l].verts.size(); ++j)
 								{
-									shapes.back().verts.push_back(paths[i].verts[j]);
+									shapes.back().verts.push_back(paths[l].verts[j]);
+									fprintf(stderr, "pushed (%d, %d)\n", paths[l].verts[j].x / 20, (FRAME_HEIGHT - paths[l].verts[j].y) / 20);
 								}
 								
-								if (paths[i].fill_styles[0] != 0)
+								if (paths[l].fill_styles[0] != 0)
 								{
 									shapes.back().fill_right = false;
-									shapes.back().inner_fill = paths[i].fill_styles[0];
-									shapes.back().outer_fill = paths[i].fill_styles[1];
-									paths[i].fill_styles[0] = 0;
+									shapes.back().inner_fill = paths[l].fill_styles[0];
+									shapes.back().outer_fill = paths[l].fill_styles[1];
+									paths[l].fill_styles[0] = 0;
+									paths[l].fill_styles[1] = 0;
 								}
 								
-								else if (paths[i].fill_styles[1] != 0)
+								else if (paths[l].fill_styles[1] != 0)
 								{
 									shapes.back().fill_right = true;
-									shapes.back().inner_fill = paths[i].fill_styles[1];
-									shapes.back().outer_fill = paths[i].fill_styles[0];
-									paths[i].fill_styles[1] = 0;
+									shapes.back().inner_fill = paths[l].fill_styles[1];
+									shapes.back().outer_fill = paths[l].fill_styles[0];
+									paths[l].fill_styles[1] = 0;
 								}
 								
 								if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
@@ -926,6 +954,9 @@ namespace SWFRecomp
 									shapes.push_back(Shape());
 									shape_closed = true;
 								}
+								
+								i = l + 1;
+								paths[l].read = true;
 								
 								break;
 							}
@@ -945,23 +976,29 @@ namespace SWFRecomp
 					
 					if (paths[i].fill_styles[0] == 0 && paths[i].fill_styles[1] == 0)
 					{
+						fprintf(stderr, "no fills, incing to %zu\n", i);
 						i += 1;
 						continue;
 					}
 					
+					fprintf(stderr, "trying path %zu\n", i);
+					
 					Vertex* path_v = &paths[i].verts[0];
+					Vertex* next_path_v = &paths[i].verts[1];
 					Vertex* shape_v = &shapes.back().verts.back();
+					Vertex* last_shape_v = &shapes.back().verts[shapes.back().verts.size() - 2];
 					
 					bool fill_right = shapes.back().fill_right;
 					
 					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
 						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
-						(paths[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
+						(paths_copy[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
 					{
 						// Skip duplicate vertex
 						for (size_t j = 1; j < paths[i].verts.size(); ++j)
 						{
 							shapes.back().verts.push_back(paths[i].verts[j]);
+							fprintf(stderr, "upper pushed (%d, %d)\n", paths[i].verts[j].x / 20, (FRAME_HEIGHT - paths[i].verts[j].y) / 20);
 						}
 						
 						paths[i].fill_styles[fill_right] = 0;
@@ -983,26 +1020,36 @@ namespace SWFRecomp
 							paths[i].fill_styles[!fill_right] = 0;
 						}
 						
-						if (paths[i].fill_styles[!fill_right] != 0 && shapes.back().outer_fill != 0 &&
-							paths[i].fill_styles[!fill_right] != shapes.back().outer_fill)
-						{
-							shapes.back().outer_fill = 0;
-						}
+						i += 1;
 						
 						continue;
 					}
 					
 					path_v = &paths[i].verts.back();
+					next_path_v = &paths[i].verts[paths[i].verts.size() - 2];
 					fill_right ^= true;
 					
-					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
+					if (next_path_v->x == last_shape_v->x && next_path_v->y == last_shape_v->y)
+					{
+						fprintf(stderr, "bad path %zu (%d, %d) to (%d, %d)\n", i, path_v->x / 20, (FRAME_HEIGHT - path_v->y) / 20, next_path_v->x / 20, (FRAME_HEIGHT - next_path_v->y) / 20);
+						
+						if (tries == 2)
+						{
+							exit(EXIT_FAILURE);
+						}
+						
+						tries += 1;
+					}
+					
+					if (path_v->x == shape_v->x && path_v->y == shape_v->y && (next_path_v->x != last_shape_v->x || next_path_v->y != last_shape_v->y) &&
 						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
-						paths[i].fill_styles[fill_right] == 0 || paths[i].fill_styles[!fill_right] == shapes.back().inner_fill))
+						(paths_copy[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
 					{
 						// Skip duplicate vertex
 						for (s64 j = paths[i].verts.size() - 2; j >= 0; --j)
 						{
 							shapes.back().verts.push_back(paths[i].verts[j]);
+							fprintf(stderr, "lower pushed (%d, %d)\n", paths[i].verts[j].x / 20, (FRAME_HEIGHT - paths[i].verts[j].y) / 20);
 						}
 						
 						paths[i].fill_styles[fill_right] = 0;
@@ -1023,11 +1070,7 @@ namespace SWFRecomp
 							paths[i].fill_styles[!fill_right] = 0;
 						}
 						
-						if (paths[i].fill_styles[!fill_right] != 0 && shapes.back().outer_fill != 0 &&
-							paths[i].fill_styles[!fill_right] != shapes.back().outer_fill)
-						{
-							shapes.back().outer_fill = 0;
-						}
+						i += 1;
 						
 						continue;
 					}
@@ -1042,13 +1085,29 @@ namespace SWFRecomp
 						continue;
 					}
 					
+					s64 signed_area = 0;
+					
+					Vertex last_point;
+					last_point.x = shapes[j].verts[0].x;
+					last_point.y = shapes[j].verts[0].y;
+					
 					shapes[j].min.x = shapes[j].verts[0].x;
 					shapes[j].min.y = shapes[j].verts[0].y;
 					shapes[j].max.x = shapes[j].verts[0].x;
 					shapes[j].max.y = shapes[j].verts[0].y;
 					
+					Vertex point;
+					
 					for (int k = 1; k < shapes[j].verts.size(); ++k)
 					{
+						point.x = shapes[j].verts[k].x;
+						point.y = shapes[j].verts[k].y;
+						
+						signed_area += CROSS(last_point, point);
+						
+						last_point.x = point.x;
+						last_point.y = point.y;
+						
 						if (shapes[j].verts[k].x < shapes[j].min.x)
 						{
 							shapes[j].min.x = shapes[j].verts[k].x;
@@ -1070,6 +1129,13 @@ namespace SWFRecomp
 						}
 					}
 					
+					point.x = shapes[j].verts[0].x;
+					point.y = shapes[j].verts[0].y;
+					
+					signed_area += CROSS(last_point, point);
+					
+					shapes[j].fill_right = signed_area < 0;
+					
 					shapes[j].got_min_max = true;
 				}
 				
@@ -1083,7 +1149,11 @@ namespace SWFRecomp
 				{
 					if (shapes[i].outer_fill != 0)
 					{
+						fprintf(stderr, "found hole\n");
+						
 						shapes[i].hole = true;
+						
+						bool hole_found_final = false;
 						
 						for (int j = 0; j < shapes.size(); ++j)
 						{
@@ -1094,7 +1164,7 @@ namespace SWFRecomp
 							
 							bool hole_found = true;
 							
-							for (int k = 0; k < shapes[j].verts.size(); ++k)
+							for (int k = 0; k < shapes[i].verts.size(); ++k)
 							{
 								if (shapes[i].verts[k].x != shapes[j].verts[k].x || shapes[i].verts[k].y != shapes[j].verts[k].y)
 								{
@@ -1106,8 +1176,29 @@ namespace SWFRecomp
 							if (hole_found)
 							{
 								shapes[j].hole = true;
-								holes.push_back(shapes[j]);
+								
+								if (shapes[i].fill_right)
+								{
+									fprintf(stderr, "hole fill right\n");
+									holes.push_back(shapes[j]);
+								}
+								
+								else
+								{
+									fprintf(stderr, "hole fill left\n");
+									holes.push_back(shapes[i]);
+								}
+								
+								hole_found_final = true;
+								
+								break;
 							}
+						}
+						
+						if (!hole_found_final)
+						{
+							fprintf(stderr, "hole not found, pushing original\n");
+							holes.push_back(shapes[i]);
 						}
 					}
 				}
