@@ -848,6 +848,7 @@ namespace SWFRecomp
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
 						current_path->read = false;
+						current_path->self_closed = false;
 						
 						Vertex v;
 						v.x = last_x;
@@ -871,272 +872,143 @@ namespace SWFRecomp
 				
 				shapes.push_back(Shape());
 				
-				size_t i = 0;
 				bool changed = false;
 				
-				for (size_t l = 0; l < paths.size(); ++l)
+				for (size_t i = 0; i < paths.size(); ++i)
 				{
-					if (paths[l].fill_styles[0] != 0 || paths[l].fill_styles[1] != 0)
+					if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
 					{
-						fprintf(stderr, "path %zu with fill %d and %d\n", l, paths[l].fill_styles[0], paths[l].fill_styles[1]);
-						for (size_t j = 0; j < paths[l].verts.size(); ++j)
+						fprintf(stderr, "path %zu with fill %d and %d\n", i, paths[i].fill_styles[0], paths[i].fill_styles[1]);
+						for (size_t j = 0; j < paths[i].verts.size(); ++j)
 						{
-							fprintf(stderr, "has (%d, %d)\n", paths[l].verts[j].x / 20, (FRAME_HEIGHT - paths[l].verts[j].y) / 20);
+							fprintf(stderr, "has (%d, %d)\n", paths[i].verts[j].x / 20, (FRAME_HEIGHT - paths[i].verts[j].y) / 20);
 						}
 					}
 				}
 				
-				int tries = 0;
-				
-				while (true)
+				for (size_t i = 0; i < paths.size(); ++i)
 				{
-					if (i == paths.size())
+					if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
 					{
-						if (!changed)
+						Vertex path_end;
+						path_end.x = paths[i].verts.back().x;
+						path_end.y = paths[i].verts.back().y;
+						
+						if (paths[i].verts[0].x == path_end.x &&
+							paths[i].verts[0].y == path_end.y)
 						{
-							break;
+							fprintf(stderr, "path is self closed\n");
+							
+							paths[i].self_closed = true;
+							continue;
 						}
 						
-						else
+						for (size_t j = 0; j < paths.size(); ++j)
 						{
-							i = 0;
-							changed = false;
-						}
-					}
-					
-					if (shapes.back().verts.empty())
-					{
-						shapes.back().got_min_max = false;
-						shapes.back().hole = false;
-						
-						bool shape_closed = false;
-						
-						for (size_t l = 0; l < paths.size(); ++l)
-						{
-							if (paths[l].read)
+							if (i == j)
 							{
 								continue;
 							}
 							
-							fprintf(stderr, "looking at path %zu\n", l);
+							Vertex this_path_start;
+							this_path_start.x = paths[j].verts[0].x;
+							this_path_start.y = paths[j].verts[0].y;
 							
-							if (paths[l].fill_styles[0] != 0 || paths[l].fill_styles[1] != 0)
+							if (path_end.x == this_path_start.x &&
+								path_end.y == this_path_start.y &&
+								std::find(paths[i].next_neighbors_forward.begin(), paths[i].next_neighbors_forward.end(), &paths[j]) == paths[i].next_neighbors_forward.end() &&
+								std::find(paths[j].next_neighbors_forward.begin(), paths[j].next_neighbors_forward.end(), &paths[i]) == paths[j].next_neighbors_forward.end())
 							{
-								fprintf(stderr, "using path %zu\n", l);
-								
-								for (size_t j = 0; j < paths[l].verts.size(); ++j)
-								{
-									shapes.back().verts.push_back(paths[l].verts[j]);
-									fprintf(stderr, "pushed (%d, %d)\n", paths[l].verts[j].x / 20, (FRAME_HEIGHT - paths[l].verts[j].y) / 20);
-								}
-								
-								if (paths[l].fill_styles[0] != 0)
-								{
-									shapes.back().fill_right = false;
-									shapes.back().inner_fill = paths[l].fill_styles[0];
-									shapes.back().outer_fill = paths[l].fill_styles[1];
-									paths[l].fill_styles[0] = 0;
-									paths[l].fill_styles[1] = 0;
-								}
-								
-								else if (paths[l].fill_styles[1] != 0)
-								{
-									shapes.back().fill_right = true;
-									shapes.back().inner_fill = paths[l].fill_styles[1];
-									shapes.back().outer_fill = paths[l].fill_styles[0];
-									paths[l].fill_styles[1] = 0;
-								}
-								
-								if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
-								{
-									shapes.back().closed = true;
-									shapes.back().verts.pop_back();
-									shapes.push_back(Shape());
-									shape_closed = true;
-								}
-								
-								i = l + 1;
-								paths[l].read = true;
-								
-								break;
+								paths[i].next_neighbors_forward.push_back(&paths[j]);
+								fprintf(stderr, "path with end (%d, %d) is connected to path with start (%d, %d)\n", path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, this_path_start.x / 20, (FRAME_HEIGHT - this_path_start.y) / 20);
+							}
+							
+							Vertex this_path_end;
+							this_path_end.x = paths[j].verts.back().x;
+							this_path_end.y = paths[j].verts.back().y;
+							
+							if (path_end.x == this_path_end.x &&
+								path_end.y == this_path_end.y &&
+								std::find(paths[i].next_neighbors_backward.begin(), paths[i].next_neighbors_backward.end(), &paths[j]) == paths[i].next_neighbors_backward.end() &&
+								std::find(paths[j].next_neighbors_backward.begin(), paths[j].next_neighbors_backward.end(), &paths[i]) == paths[j].next_neighbors_backward.end())
+							{
+								paths[i].next_neighbors_backward.push_back(&paths[j]);
+								fprintf(stderr, "path with end (%d, %d) is connected to path with end (%d, %d)\n", path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, this_path_end.x / 20, (FRAME_HEIGHT - this_path_end.y) / 20);
+							}
+						}
+					}
+				}
+				
+				for (size_t i = 0; i < paths.size(); ++i)
+				{
+					if (paths[i].self_closed)
+					{
+						fprintf(stderr, "processing self closed\n");
+						
+						shapes.push_back(Shape());
+						shapes.back().closed = true;
+						shapes.back().hole = false;
+						
+						for (size_t k = 0; k < paths[i].verts.size(); ++k)
+						{
+							shapes.back().verts.push_back(paths[i].verts[k]);
+						}
+						
+						s64 signed_area = 0;
+						
+						Vertex last_point;
+						last_point.x = shapes.back().verts[0].x;
+						last_point.y = shapes.back().verts[0].y;
+						
+						shapes.back().min.x = shapes.back().verts[0].x;
+						shapes.back().min.y = shapes.back().verts[0].y;
+						shapes.back().max.x = shapes.back().verts[0].x;
+						shapes.back().max.y = shapes.back().verts[0].y;
+						
+						Vertex point;
+						
+						for (size_t k = 1; k < shapes.back().verts.size(); ++k)
+						{
+							point.x = shapes.back().verts[k].x;
+							point.y = shapes.back().verts[k].y;
+							
+							signed_area += CROSS(last_point, point);
+							
+							last_point.x = point.x;
+							last_point.y = point.y;
+							
+							if (shapes.back().verts[k].x < shapes.back().min.x)
+							{
+								shapes.back().min.x = shapes.back().verts[k].x;
+							}
+							
+							if (shapes.back().verts[k].y < shapes.back().min.y)
+							{
+								shapes.back().min.y = shapes.back().verts[k].y;
+							}
+							
+							if (shapes.back().verts[k].x > shapes.back().max.x)
+							{
+								shapes.back().max.x = shapes.back().verts[k].x;
+							}
+							
+							if (shapes.back().verts[k].y > shapes.back().max.y)
+							{
+								shapes.back().max.y = shapes.back().verts[k].y;
 							}
 						}
 						
-						if (shape_closed)
-						{
-							continue;
-						}
-						
-						if (shapes.back().verts.empty())
-						{
-							shapes.pop_back();
-							break;
-						}
-					}
-					
-					if (paths[i].fill_styles[0] == 0 && paths[i].fill_styles[1] == 0)
-					{
-						fprintf(stderr, "no fills, incing to %zu\n", i);
-						i += 1;
-						continue;
-					}
-					
-					fprintf(stderr, "trying path %zu\n", i);
-					
-					Vertex* path_v = &paths[i].verts[0];
-					Vertex* next_path_v = &paths[i].verts[1];
-					Vertex* shape_v = &shapes.back().verts.back();
-					Vertex* last_shape_v = &shapes.back().verts[shapes.back().verts.size() - 2];
-					
-					bool fill_right = shapes.back().fill_right;
-					
-					if (path_v->x == shape_v->x && path_v->y == shape_v->y &&
-						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
-						(paths_copy[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
-					{
-						// Skip duplicate vertex
-						for (size_t j = 1; j < paths[i].verts.size(); ++j)
-						{
-							shapes.back().verts.push_back(paths[i].verts[j]);
-							fprintf(stderr, "upper pushed (%d, %d)\n", paths[i].verts[j].x / 20, (FRAME_HEIGHT - paths[i].verts[j].y) / 20);
-						}
-						
-						paths[i].fill_styles[fill_right] = 0;
-						
-						i = 0;
-						
-						changed = true;
-						
-						if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
-						{
-							shapes.back().closed = true;
-							shapes.back().verts.pop_back();
-							shapes.push_back(Shape());
-						}
-						
-						if (paths[i].fill_styles[fill_right] == 0 &&
-							paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)
-						{
-							paths[i].fill_styles[!fill_right] = 0;
-						}
-						
-						i += 1;
-						
-						continue;
-					}
-					
-					path_v = &paths[i].verts.back();
-					next_path_v = &paths[i].verts[paths[i].verts.size() - 2];
-					fill_right ^= true;
-					
-					if (next_path_v->x == last_shape_v->x && next_path_v->y == last_shape_v->y)
-					{
-						fprintf(stderr, "bad path %zu (%d, %d) to (%d, %d)\n", i, path_v->x / 20, (FRAME_HEIGHT - path_v->y) / 20, next_path_v->x / 20, (FRAME_HEIGHT - next_path_v->y) / 20);
-						
-						if (tries == 2)
-						{
-							exit(EXIT_FAILURE);
-						}
-						
-						tries += 1;
-					}
-					
-					if (path_v->x == shape_v->x && path_v->y == shape_v->y && (next_path_v->x != last_shape_v->x || next_path_v->y != last_shape_v->y) &&
-						(paths[i].fill_styles[fill_right] == shapes.back().inner_fill ||
-						(paths_copy[i].fill_styles[fill_right] == 0 && paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)))
-					{
-						// Skip duplicate vertex
-						for (s64 j = paths[i].verts.size() - 2; j >= 0; --j)
-						{
-							shapes.back().verts.push_back(paths[i].verts[j]);
-							fprintf(stderr, "lower pushed (%d, %d)\n", paths[i].verts[j].x / 20, (FRAME_HEIGHT - paths[i].verts[j].y) / 20);
-						}
-						
-						paths[i].fill_styles[fill_right] = 0;
-						
-						i = 0;
-						
-						changed = true;
-						
-						if (shapes.back().verts[0].x == shapes.back().verts.back().x && shapes.back().verts[0].y == shapes.back().verts.back().y)
-						{
-							shapes.back().closed = true;
-							shapes.back().verts.pop_back();
-							shapes.push_back(Shape());
-						}
-						
-						if (paths[i].fill_styles[!fill_right] == shapes.back().inner_fill)
-						{
-							paths[i].fill_styles[!fill_right] = 0;
-						}
-						
-						i += 1;
-						
-						continue;
-					}
-					
-					i += 1;
-				}
-				
-				for (int j = 0; j < shapes.size(); ++j)
-				{
-					if (!shapes[j].closed || shapes[j].inner_fill == 0)
-					{
-						continue;
-					}
-					
-					s64 signed_area = 0;
-					
-					Vertex last_point;
-					last_point.x = shapes[j].verts[0].x;
-					last_point.y = shapes[j].verts[0].y;
-					
-					shapes[j].min.x = shapes[j].verts[0].x;
-					shapes[j].min.y = shapes[j].verts[0].y;
-					shapes[j].max.x = shapes[j].verts[0].x;
-					shapes[j].max.y = shapes[j].verts[0].y;
-					
-					Vertex point;
-					
-					for (int k = 1; k < shapes[j].verts.size(); ++k)
-					{
-						point.x = shapes[j].verts[k].x;
-						point.y = shapes[j].verts[k].y;
+						point.x = shapes.back().verts[0].x;
+						point.y = shapes.back().verts[0].y;
 						
 						signed_area += CROSS(last_point, point);
 						
-						last_point.x = point.x;
-						last_point.y = point.y;
+						shapes.back().fill_right = signed_area < 0;
 						
-						if (shapes[j].verts[k].x < shapes[j].min.x)
-						{
-							shapes[j].min.x = shapes[j].verts[k].x;
-						}
+						shapes.back().inner_fill = paths[i].fill_styles[signed_area < 0];
 						
-						if (shapes[j].verts[k].y < shapes[j].min.y)
-						{
-							shapes[j].min.y = shapes[j].verts[k].y;
-						}
-						
-						if (shapes[j].verts[k].x > shapes[j].max.x)
-						{
-							shapes[j].max.x = shapes[j].verts[k].x;
-						}
-						
-						if (shapes[j].verts[k].y > shapes[j].max.y)
-						{
-							shapes[j].max.y = shapes[j].verts[k].y;
-						}
+						shapes.back().got_min_max = true;
 					}
-					
-					point.x = shapes[j].verts[0].x;
-					point.y = shapes[j].verts[0].y;
-					
-					signed_area += CROSS(last_point, point);
-					
-					shapes[j].fill_right = signed_area < 0;
-					
-					shapes[j].got_min_max = true;
 				}
 				
 				std::string tris_str = "";
@@ -1145,7 +1017,7 @@ namespace SWFRecomp
 				
 				std::vector<Shape> holes;
 				
-				for (int i = 0; i < shapes.size(); ++i)
+				for (size_t i = 0; i < shapes.size(); ++i)
 				{
 					if (shapes[i].outer_fill != 0)
 					{
@@ -1203,7 +1075,7 @@ namespace SWFRecomp
 					}
 				}
 				
-				for (int i = 0; i < shapes.size(); ++i)
+				for (size_t i = 0; i < shapes.size(); ++i)
 				{
 					if (shapes[i].closed && shapes[i].inner_fill != 0 && !shapes[i].hole)
 					{
@@ -1248,7 +1120,7 @@ namespace SWFRecomp
 				// Sort holes by area of bounding box
 				std::sort(holes.begin(), holes.end(), compareArea);
 				
-				for (int i = 0; i < holes.size(); ++i)
+				for (size_t i = 0; i < holes.size(); ++i)
 				{
 					std::vector<Tri> tris;
 					

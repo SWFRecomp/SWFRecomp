@@ -37,6 +37,9 @@ namespace SWFRecomp
 		std::vector<Vertex> verts;
 		u32 fill_styles[2];
 		bool read;
+		bool self_closed;
+		std::vector<Path*> next_neighbors_forward;
+		std::vector<Path*> next_neighbors_backward;
 	};
 	
 	struct Shape
@@ -47,7 +50,7 @@ namespace SWFRecomp
 		bool got_min_max;
 		u32 inner_fill;
 		u32 outer_fill;
-		int fill_right;
+		bool fill_right;
 		bool closed;
 		bool hole;
 	};
