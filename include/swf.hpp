@@ -36,10 +36,14 @@ namespace SWFRecomp
 	{
 		std::vector<Vertex> verts;
 		u32 fill_styles[2];
-		bool read;
+		Path* original_key;
+		bool used;
 		bool self_closed;
+		bool backward;
 		std::vector<Path*> next_neighbors_forward;
 		std::vector<Path*> next_neighbors_backward;
+		std::vector<Path*> last_neighbors_forward;
+		std::vector<Path*> last_neighbors_backward;
 	};
 	
 	struct Shape
@@ -103,6 +107,8 @@ namespace SWFRecomp
 		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
+		void processShape(Shape& shape, const Path& path);
+		void traverse(Path* path, std::vector<std::vector<Path>>& closed_paths);
 		void fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right);
 	};
 };
