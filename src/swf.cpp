@@ -16,6 +16,11 @@
 
 #define CROSS(v1, v2) (v1.x*v2.y - v2.x*v1.y)
 
+#define NOT_SHARED_LINKS(path1, path2) (std::find(path1.next_neighbors_forward.begin(), path1.next_neighbors_forward.end(), &path2) == path1.next_neighbors_forward.end() && \
+										std::find(path2.next_neighbors_forward.begin(), path2.next_neighbors_forward.end(), &path1) == path2.next_neighbors_forward.end() && \
+										std::find(path1.next_neighbors_backward.begin(), path1.next_neighbors_backward.end(), &path2) == path1.next_neighbors_backward.end() && \
+										std::find(path2.next_neighbors_backward.begin(), path2.next_neighbors_backward.end(), &path1) == path2.next_neighbors_backward.end())
+
 #define FRAME_WIDTH (header.frame_size.xmax - header.frame_size.xmin)
 #define FRAME_HEIGHT (header.frame_size.ymax - header.frame_size.ymin)
 
@@ -847,7 +852,7 @@ namespace SWFRecomp
 						current_path->verts.reserve(512);
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
-						current_path->read = false;
+						current_path->used = false;
 						current_path->self_closed = false;
 						
 						Vertex v;
@@ -890,15 +895,17 @@ namespace SWFRecomp
 				{
 					if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
 					{
+						Vertex path_start;
+						path_start.x = paths[i].verts[0].x;
+						path_start.y = paths[i].verts[0].y;
+						
 						Vertex path_end;
 						path_end.x = paths[i].verts.back().x;
 						path_end.y = paths[i].verts.back().y;
 						
-						if (paths[i].verts[0].x == path_end.x &&
-							paths[i].verts[0].y == path_end.y)
+						if (path_start.x == path_end.x &&
+							path_start.y == path_end.y)
 						{
-							fprintf(stderr, "path is self closed\n");
-							
 							paths[i].self_closed = true;
 							continue;
 						}
@@ -916,11 +923,16 @@ namespace SWFRecomp
 							
 							if (path_end.x == this_path_start.x &&
 								path_end.y == this_path_start.y &&
-								std::find(paths[i].next_neighbors_forward.begin(), paths[i].next_neighbors_forward.end(), &paths[j]) == paths[i].next_neighbors_forward.end() &&
-								std::find(paths[j].next_neighbors_forward.begin(), paths[j].next_neighbors_forward.end(), &paths[i]) == paths[j].next_neighbors_forward.end())
+								NOT_SHARED_LINKS(paths[i], paths[j]))
 							{
 								paths[i].next_neighbors_forward.push_back(&paths[j]);
-								fprintf(stderr, "path with end (%d, %d) is connected to path with start (%d, %d)\n", path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, this_path_start.x / 20, (FRAME_HEIGHT - this_path_start.y) / 20);
+							}
+							
+							if (path_start.x == this_path_start.x &&
+								path_start.y == this_path_start.y &&
+								NOT_SHARED_LINKS(paths[i], paths[j]))
+							{
+								paths[i].last_neighbors_forward.push_back(&paths[j]);
 							}
 							
 							Vertex this_path_end;
@@ -929,11 +941,16 @@ namespace SWFRecomp
 							
 							if (path_end.x == this_path_end.x &&
 								path_end.y == this_path_end.y &&
-								std::find(paths[i].next_neighbors_backward.begin(), paths[i].next_neighbors_backward.end(), &paths[j]) == paths[i].next_neighbors_backward.end() &&
-								std::find(paths[j].next_neighbors_backward.begin(), paths[j].next_neighbors_backward.end(), &paths[i]) == paths[j].next_neighbors_backward.end())
+								NOT_SHARED_LINKS(paths[i], paths[j]))
 							{
 								paths[i].next_neighbors_backward.push_back(&paths[j]);
-								fprintf(stderr, "path with end (%d, %d) is connected to path with end (%d, %d)\n", path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, this_path_end.x / 20, (FRAME_HEIGHT - this_path_end.y) / 20);
+							}
+							
+							if (path_start.x == this_path_start.x &&
+								path_start.y == this_path_end.y &&
+								NOT_SHARED_LINKS(paths[i], paths[j]))
+							{
+								paths[i].last_neighbors_backward.push_back(&paths[j]);
 							}
 						}
 					}
@@ -941,6 +958,8 @@ namespace SWFRecomp
 				
 				for (size_t i = 0; i < paths.size(); ++i)
 				{
+					fprintf(stderr, "path: %p\n", &paths[i]);
+					
 					if (paths[i].self_closed)
 					{
 						fprintf(stderr, "processing self closed\n");
@@ -954,62 +973,38 @@ namespace SWFRecomp
 							shapes.back().verts.push_back(paths[i].verts[k]);
 						}
 						
-						s64 signed_area = 0;
-						
-						Vertex last_point;
-						last_point.x = shapes.back().verts[0].x;
-						last_point.y = shapes.back().verts[0].y;
-						
-						shapes.back().min.x = shapes.back().verts[0].x;
-						shapes.back().min.y = shapes.back().verts[0].y;
-						shapes.back().max.x = shapes.back().verts[0].x;
-						shapes.back().max.y = shapes.back().verts[0].y;
-						
-						Vertex point;
-						
-						for (size_t k = 1; k < shapes.back().verts.size(); ++k)
-						{
-							point.x = shapes.back().verts[k].x;
-							point.y = shapes.back().verts[k].y;
-							
-							signed_area += CROSS(last_point, point);
-							
-							last_point.x = point.x;
-							last_point.y = point.y;
-							
-							if (shapes.back().verts[k].x < shapes.back().min.x)
-							{
-								shapes.back().min.x = shapes.back().verts[k].x;
-							}
-							
-							if (shapes.back().verts[k].y < shapes.back().min.y)
-							{
-								shapes.back().min.y = shapes.back().verts[k].y;
-							}
-							
-							if (shapes.back().verts[k].x > shapes.back().max.x)
-							{
-								shapes.back().max.x = shapes.back().verts[k].x;
-							}
-							
-							if (shapes.back().verts[k].y > shapes.back().max.y)
-							{
-								shapes.back().max.y = shapes.back().verts[k].y;
-							}
-						}
-						
-						point.x = shapes.back().verts[0].x;
-						point.y = shapes.back().verts[0].y;
-						
-						signed_area += CROSS(last_point, point);
-						
-						shapes.back().fill_right = signed_area < 0;
-						
-						shapes.back().inner_fill = paths[i].fill_styles[signed_area < 0];
-						
-						shapes.back().got_min_max = true;
+						processShape(shapes.back(), paths[i]);
 					}
 				}
+				
+				std::vector<std::vector<Path>> closed_paths;
+				
+				for (size_t i = 0; i < paths.size(); ++i)
+				{
+					if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
+					{
+						fprintf(stderr, "path %zu is first\n", i);
+						traverse(&paths[i], closed_paths);
+						break;
+					}
+				}
+				
+				for (size_t i = 0; i < closed_paths.size(); ++i)
+				{
+					fprintf(stderr, "got path:\n");
+					
+					for (size_t j = 0; j < closed_paths[i].size(); ++j)
+					{
+						size_t offset = (closed_paths[i][j].backward) ? -1 : 1;
+						
+						for (size_t k = (closed_paths[i][j].backward) ? closed_paths[i][j].verts.size() - 2 : 1; k < closed_paths[i][j].verts.size(); k += offset)
+						{
+							fprintf(stderr, "(%d, %d)\n", closed_paths[i][j].verts[k].x / 20, (FRAME_HEIGHT - closed_paths[i][j].verts[k].y) / 20);
+						}
+					}
+				}
+				
+				fprintf(stderr, "finished traversing and processing\n");
 				
 				std::string tris_str = "";
 				
@@ -1074,6 +1069,8 @@ namespace SWFRecomp
 						}
 					}
 				}
+				
+				fprintf(stderr, "finished preprocessing holes\n");
 				
 				for (size_t i = 0; i < shapes.size(); ++i)
 				{
@@ -1163,6 +1160,188 @@ namespace SWFRecomp
 				break;
 			}
 		}
+	}
+	
+	void SWF::processShape(Shape& shape, const Path& path)
+	{
+		s64 signed_area = 0;
+		
+		Vertex last_point;
+		last_point.x = shape.verts[0].x;
+		last_point.y = shape.verts[0].y;
+		
+		shape.min.x = shape.verts[0].x;
+		shape.min.y = shape.verts[0].y;
+		shape.max.x = shape.verts[0].x;
+		shape.max.y = shape.verts[0].y;
+		
+		Vertex point;
+		
+		for (size_t k = 1; k < shape.verts.size(); ++k)
+		{
+			point.x = shape.verts[k].x;
+			point.y = shape.verts[k].y;
+			
+			signed_area += CROSS(last_point, point);
+			
+			last_point.x = point.x;
+			last_point.y = point.y;
+			
+			if (shape.verts[k].x < shape.min.x)
+			{
+				shape.min.x = shape.verts[k].x;
+			}
+			
+			if (shape.verts[k].y < shape.min.y)
+			{
+				shape.min.y = shape.verts[k].y;
+			}
+			
+			if (shape.verts[k].x > shape.max.x)
+			{
+				shape.max.x = shape.verts[k].x;
+			}
+			
+			if (shape.verts[k].y > shape.max.y)
+			{
+				shape.max.y = shape.verts[k].y;
+			}
+		}
+		
+		point.x = shape.verts[0].x;
+		point.y = shape.verts[0].y;
+		
+		signed_area += CROSS(last_point, point);
+		
+		shape.fill_right = signed_area < 0;
+		
+		shape.inner_fill = path.fill_styles[signed_area < 0];
+		
+		shape.got_min_max = true;
+	}
+	
+	void detectCycle(Path* path, std::vector<Path>& path_stack, std::vector<Path*>& visited, std::vector<std::vector<Path>>& closed_paths)
+	{
+		size_t path_index = path_stack.capacity();
+		
+		for (size_t i = 0; i < path_stack.size(); ++i)
+		{
+			if (path_stack[i].original_key == path)
+			{
+				path_index = i;
+				break;
+			}
+		}
+		
+		if (path_index != path_stack.capacity())
+		{
+			std::vector<Path> cycle;
+			
+			for (size_t i = path_index; i < path_stack.size(); ++i)
+			{
+				cycle.push_back(path_stack[i]);
+			}
+			
+			closed_paths.push_back(cycle);
+		}
+	}
+	
+	void traverseBackwardIteration(Path* path, std::vector<Path>& path_stack, std::vector<Path*>& visited, std::vector<std::vector<Path>>& closed_paths);
+	
+	void traverseForwardIteration(Path* path, std::vector<Path>& path_stack, std::vector<Path*>& visited, std::vector<std::vector<Path>>& closed_paths)
+	{
+		Path* parent = nullptr;
+		
+		if (path_stack.size() != 0)
+		{
+			parent = path_stack.back().original_key;
+		}
+		
+		path_stack.push_back(*path);
+		visited.push_back(path);
+		
+		path_stack.back().original_key = path;
+		path_stack.back().backward = false;
+		
+		for (Path* neighbor : path->next_neighbors_forward)
+		{
+			if (neighbor != parent)
+			{
+				detectCycle(neighbor, path_stack, visited, closed_paths);
+				
+				if (std::find(visited.begin(), visited.end(), neighbor) == visited.end())
+				{
+					traverseForwardIteration(neighbor, path_stack, visited, closed_paths);
+				}
+			}
+		}
+		
+		for (Path* neighbor : path->next_neighbors_backward)
+		{
+			if (neighbor != parent)
+			{
+				detectCycle(neighbor, path_stack, visited, closed_paths);
+				
+				if (std::find(visited.begin(), visited.end(), neighbor) == visited.end())
+				{
+					traverseBackwardIteration(neighbor, path_stack, visited, closed_paths);
+				}
+			}
+		}
+		
+		path_stack.pop_back();
+	}
+	
+	void traverseBackwardIteration(Path* path, std::vector<Path>& path_stack, std::vector<Path*>& visited, std::vector<std::vector<Path>>& closed_paths)
+	{
+		Path* parent = nullptr;
+		
+		if (path_stack.size() != 0)
+		{
+			parent = path_stack.back().original_key;
+		}
+		
+		path_stack.push_back(*path);
+		visited.push_back(path);
+		
+		path_stack.back().original_key = path;
+		path_stack.back().backward = true;
+		
+		for (Path* neighbor : path->last_neighbors_forward)
+		{
+			if (neighbor != parent)
+			{
+				detectCycle(neighbor, path_stack, visited, closed_paths);
+				
+				if (std::find(visited.begin(), visited.end(), neighbor) == visited.end())
+				{
+					traverseForwardIteration(neighbor, path_stack, visited, closed_paths);
+				}
+			}
+		}
+		
+		for (Path* neighbor : path->last_neighbors_backward)
+		{
+			if (neighbor != parent)
+			{
+				detectCycle(neighbor, path_stack, visited, closed_paths);
+				
+				if (std::find(visited.begin(), visited.end(), neighbor) == visited.end())
+				{
+					traverseBackwardIteration(neighbor, path_stack, visited, closed_paths);
+				}
+			}
+		}
+		
+		path_stack.pop_back();
+	}
+	
+	void SWF::traverse(Path* path, std::vector<std::vector<Path>>& closed_paths)
+	{
+		std::vector<Path> path_stack;
+		std::vector<Path*> visited;
+		
+		traverseForwardIteration(path, path_stack, visited, closed_paths);
 	}
 	
 	/*
