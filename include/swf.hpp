@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <string>
+#include <unordered_map>
 
 #include <common.h>
 #include <tag.hpp>
@@ -57,6 +58,7 @@ namespace SWFRecomp
 		bool fill_right;
 		bool closed;
 		bool hole;
+		bool invalid;
 	};
 	
 	struct FillStyle
@@ -107,8 +109,8 @@ namespace SWFRecomp
 		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
-		void processShape(Shape& shape, const Path& path);
-		void traverse(Path* path, std::vector<std::vector<Path>>& closed_paths);
+		void processShape(Shape& shape, u32* fill_styles);
+		void traverse(std::vector<Path>& paths, std::vector<Path>& path_stack, std::unordered_map<Path*, bool> blocked, std::unordered_map<Path*, std::vector<Path*>> blocked_map, std::vector<std::vector<Path>>& closed_paths);
 		void fillShape(std::vector<Vertex>& shape, std::vector<Tri>& tris, bool fill_right);
 	};
 };
