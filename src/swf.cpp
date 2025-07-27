@@ -1249,7 +1249,8 @@ namespace SWFRecomp
 					this_path_start.y = paths[j].verts[0].y;
 					
 					if (path_end.x == this_path_start.x &&
-						path_end.y == this_path_start.y)
+						path_end.y == this_path_start.y &&
+						std::find(paths[j].last_neighbors_backward.begin(), paths[j].last_neighbors_forward.end(), path) == paths[j].last_neighbors_backward.end())
 					{
 						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_end.x / 20, (8000 - path_end.y) / 20, j, this_path_start.x / 20, (8000 - this_path_start.y) / 20);
 						path->next_neighbors_forward.push_back(&paths[j]);
@@ -1265,7 +1266,8 @@ namespace SWFRecomp
 					this_path_end.y = paths[j].verts.back().y;
 					
 					if (path_end.x == this_path_end.x &&
-						path_end.y == this_path_end.y)
+						path_end.y == this_path_end.y &&
+						std::find(paths[j].next_neighbors_backward.begin(), paths[j].next_neighbors_backward.end(), path) == paths[j].next_neighbors_backward.end())
 					{
 						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_end.x / 20, (8000 - path_end.y) / 20, j, this_path_end.x / 20, (8000 - this_path_end.y) / 20);
 						path->next_neighbors_backward.push_back(&paths[j]);
@@ -1314,7 +1316,8 @@ namespace SWFRecomp
 					this_path_start.y = paths[j].verts[0].y;
 					
 					if (path_start.x == this_path_start.x &&
-						path_start.y == this_path_start.y)
+						path_start.y == this_path_start.y &&
+						std::find(paths[j].last_neighbors_forward.begin(), paths[j].last_neighbors_forward.end(), path) == paths[j].last_neighbors_forward.end())
 					{
 						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_start.x / 20, (8000 - path_start.y) / 20, j, this_path_start.x / 20, (8000 - this_path_start.y) / 20);
 						path->last_neighbors_forward.push_back(&paths[j]);
@@ -1330,7 +1333,8 @@ namespace SWFRecomp
 					this_path_end.y = paths[j].verts.back().y;
 					
 					if (path_start.x == this_path_end.x &&
-						path_start.y == this_path_end.y)
+						path_start.y == this_path_end.y &&
+						std::find(paths[j].next_neighbors_forward.begin(), paths[j].next_neighbors_forward.end(), path) == paths[j].next_neighbors_forward.end())
 					{
 						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_start.x / 20, (8000 - path_start.y) / 20, j, this_path_end.x / 20, (8000 - this_path_end.y) / 20);
 						path->last_neighbors_backward.push_back(&paths[j]);
