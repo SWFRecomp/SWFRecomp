@@ -1465,23 +1465,20 @@ namespace SWFRecomp
 			}
 		}
 		
-		if (!cycle_found)
+		for (Path* neighbor : path->next_neighbors_backward)
 		{
-			for (Path* neighbor : path->next_neighbors_backward)
+			if (neighbor->used)
 			{
-				if (neighbor->used)
-				{
-					continue;
-				}
-				
-				fprintf(stderr, "path has next backward neighbor %p\n", neighbor);
-				
-				cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, true);
-				
-				if (cycle_found)
-				{
-					cycle_paths.push_back(neighbor);
-				}
+				continue;
+			}
+			
+			fprintf(stderr, "path has next backward neighbor %p\n", neighbor);
+			
+			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, true);
+			
+			if (cycle_found)
+			{
+				cycle_paths.push_back(neighbor);
 			}
 		}
 		
@@ -1530,23 +1527,20 @@ namespace SWFRecomp
 			}
 		}
 		
-		if (!cycle_found)
+		for (Path* neighbor : path->last_neighbors_backward)
 		{
-			for (Path* neighbor : path->last_neighbors_backward)
+			if (neighbor->used)
 			{
-				if (neighbor->used)
-				{
-					continue;
-				}
-				
-				fprintf(stderr, "path has last backward neighbor %p\n", neighbor);
-				
-				cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, true);
-				
-				if (cycle_found)
-				{
-					cycle_paths.push_back(neighbor);
-				}
+				continue;
+			}
+			
+			fprintf(stderr, "path has last backward neighbor %p\n", neighbor);
+			
+			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, true);
+			
+			if (cycle_found)
+			{
+				cycle_paths.push_back(neighbor);
 			}
 		}
 		
@@ -1573,10 +1567,6 @@ namespace SWFRecomp
 			fprintf(stderr, "START ITERATION\n");
 			traverseForwardIteration(&p, path_stack, blocked, blocked_map, closed_paths);
 			p.used = true;
-			p.next_neighbors_forward.clear();
-			p.next_neighbors_backward.clear();
-			p.last_neighbors_forward.clear();
-			p.last_neighbors_backward.clear();
 		}
 	}
 	
