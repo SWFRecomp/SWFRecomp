@@ -1,4 +1,6 @@
+#define _USE_MATH_DEFINES
 #include <algorithm>
+#include <cmath>
 
 #include <zlib.h>
 #include <lzma.h>
@@ -606,6 +608,8 @@ namespace SWFRecomp
 					line_style_count = (u16) shape_tag.fields[0].value;
 				}
 				
+				LineStyle* line_styles = new LineStyle[line_style_count];
+				
 				for (u16 i = 0; i < line_style_count; ++i)
 				{
 					shape_tag.clearFields();
@@ -617,6 +621,16 @@ namespace SWFRecomp
 					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
 					
 					shape_tag.parseFields(cur_pos);
+					
+					line_styles[i].width = (u16) shape_tag.fields[0].value;
+					
+					fprintf(stderr, "got width: %d\n", line_styles[i].width);
+					
+					line_styles[i].r = (u8) shape_tag.fields[1].value;
+					line_styles[i].g = (u8) shape_tag.fields[2].value;
+					line_styles[i].b = (u8) shape_tag.fields[3].value;
+					
+					fprintf(stderr, "got color %d, %d, %d\n", line_styles[i].r, line_styles[i].g, line_styles[i].b);
 				}
 				
 				shape_tag.clearFields();
@@ -848,6 +862,7 @@ namespace SWFRecomp
 						current_path->verts.reserve(512);
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
+						current_path->line_style = line_style;
 						current_path->self_closed = false;
 						
 						Vertex v;
@@ -1050,6 +1065,37 @@ namespace SWFRecomp
 										  + to_string(fill_styles[shapes[i].inner_fill - 1].r) + ".0f/255.0f, "
 										  + to_string(fill_styles[shapes[i].inner_fill - 1].g) + ".0f/255.0f, "
 										  + to_string(fill_styles[shapes[i].inner_fill - 1].b) + ".0f/255.0f, "
+										  + "1.0f },\n";
+							}
+						}
+					}
+				}
+				
+				for (size_t i = 0; i < paths.size(); ++i)
+				{
+					u8 line_style_i = paths[i].line_style;
+					
+					if (line_style_i != 0)
+					{
+						LineStyle line_style = line_styles[line_style_i - 1];
+						
+						std::vector<Tri> tris;
+						
+						drawLines(paths[i], line_style.width, tris);
+						
+						tris_size += tris.size();
+						
+						for (Tri t : tris)
+						{
+							for (int j = 0; j < 3; ++j)
+							{
+								tris_str += std::string("\t") + "{ "
+										  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
+										  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
+										  + "0.0f, "
+										  + to_string(line_style.r) + ".0f/255.0f, "
+										  + to_string(line_style.g) + ".0f/255.0f, "
+										  + to_string(line_style.b) + ".0f/255.0f, "
 										  + "1.0f },\n";
 							}
 						}
@@ -1713,6 +1759,42 @@ namespace SWFRecomp
 		if (skipped_vertices.size() > 1)
 		{
 			fillShape(skipped_vertices, tris, fill_right);
+		}
+	}
+	
+	void SWF::drawLines(const Path& path, u16 width, std::vector<Tri>& tris)
+	{
+		width = (u16) std::max(width, (u16) 20);
+		
+		u16 halfwidth = width/2;
+		
+		Vertex last_v = path.verts[0];
+		
+		for (Vertex v : path.verts)
+		{
+			Tri t;
+			
+			double angle = atan2(v.y - last_v.y, v.x - last_v.x) - M_PI/2.0;
+			
+			t.verts[0].x = last_v.x + ((s32) std::round(halfwidth*cos(angle)));
+			t.verts[0].y = last_v.y + ((s32) std::round(halfwidth*sin(angle)));
+			
+			t.verts[2].x = v.x + ((s32) std::round(halfwidth*cos(angle)));
+			t.verts[2].y = v.y + ((s32) std::round(halfwidth*sin(angle)));
+			
+			angle += M_PI;
+			
+			t.verts[1].x = last_v.x + ((s32) std::round(halfwidth*cos(angle)));
+			t.verts[1].y = last_v.y + ((s32) std::round(halfwidth*sin(angle)));
+			
+			tris.push_back(t);
+			
+			t.verts[0].x = v.x + ((s32) std::round(halfwidth*cos(angle)));
+			t.verts[0].y = v.y + ((s32) std::round(halfwidth*sin(angle)));
+			
+			tris.push_back(t);
+			
+			last_v = v;
 		}
 	}
 };
