@@ -848,7 +848,6 @@ namespace SWFRecomp
 						current_path->verts.reserve(512);
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
-						current_path->used = false;
 						current_path->self_closed = false;
 						
 						Vertex v;
@@ -885,11 +884,11 @@ namespace SWFRecomp
 					}
 				}
 				
-				std::unordered_map<Path*, bool> visited;
+				std::vector<Node> nodes;
 				
-				constructEdges(paths, visited);
+				constructEdges(paths, nodes);
 				
-				fprintf(stderr, "shapes: %zu\n", shapes.size());
+				fprintf(stderr, "shapes: %zu, nodes: %zu\n", shapes.size(), nodes.size());
 				
 				for (size_t i = 0; i < paths.size(); ++i)
 				{
@@ -912,22 +911,16 @@ namespace SWFRecomp
 					}
 				}
 				
+				std::vector<Path> path_stack;
+				std::unordered_map<Node*, bool> blocked;
+				std::unordered_map<Node*, std::vector<Node*>> blocked_map;
 				std::vector<std::vector<Path>> closed_paths;
 				
-				for (size_t i = 0; i < paths.size(); ++i)
-				{
-					if (!paths[i].self_closed && (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0))
-					{
-						std::vector<Path> path_stack;
-						std::unordered_map<Path*, bool> blocked;
-						std::unordered_map<Path*, std::vector<Path*>> blocked_map;
-						fprintf(stderr, "traversing path %zu\n", i);
-						johnson(paths, path_stack, blocked, blocked_map, closed_paths);
-						break;
-					}
-				}
+				johnson(nodes, path_stack, blocked, blocked_map, closed_paths);
 				
 				fprintf(stderr, "shapes: %zu, cycles: %zu\n", shapes.size(), closed_paths.size());
+				
+				size_t shape_cycles_start = shapes.size();
 				
 				for (auto cycle : closed_paths)
 				{
@@ -954,10 +947,10 @@ namespace SWFRecomp
 				
 				fprintf(stderr, "shapes: %zu, cycles: %zu\n", shapes.size(), closed_paths.size());
 				
-				for (size_t i = 0; i < shapes.size(); ++i)
+				for (size_t i = 0; i < closed_paths.size(); ++i)
 				{
 					fprintf(stderr, "iterating through shapes\n");
-					Shape& shape = shapes[i];
+					Shape& shape = shapes[shape_cycles_start + i];
 					std::vector<Path>& cycle = closed_paths[i];
 					fprintf(stderr, "read shape and cycle with size %zu\n", cycle.size());
 					
@@ -1065,6 +1058,24 @@ namespace SWFRecomp
 				
 				fprintf(stderr, "finished preprocessing holes\n");
 				
+				auto compareArea = [](const Shape& a, const Shape& b)
+				{
+					u64 width = a.max.x - a.min.x;
+					u64 height = a.max.y - a.min.y;
+					
+					u64 area_a = width*height;
+					
+					width = b.max.x - b.min.x;
+					height = b.max.y - b.min.y;
+					
+					u64 area_b = width*height;
+					
+					return area_a > area_b;
+				};
+				
+				// Sort shapes by area of bounding box
+				std::sort(shapes.begin(), shapes.end(), compareArea);
+				
 				for (size_t i = 0; i < shapes.size(); ++i)
 				{
 					if (!shapes[i].invalid && shapes[i].closed && shapes[i].inner_fill != 0 && !shapes[i].hole)
@@ -1091,21 +1102,6 @@ namespace SWFRecomp
 						}
 					}
 				}
-				
-				auto compareArea = [](const Shape& a, const Shape& b)
-				{
-					u64 width = a.max.x - a.min.x;
-					u64 height = a.max.y - a.min.y;
-					
-					u64 area_a = width*height;
-					
-					width = b.max.x - b.min.x;
-					height = b.max.y - b.min.y;
-					
-					u64 area_b = width*height;
-					
-					return area_a > area_b;
-				};
 				
 				// Sort holes by area of bounding box
 				std::sort(holes.begin(), holes.end(), compareArea);
@@ -1213,202 +1209,139 @@ namespace SWFRecomp
 		shape.got_min_max = true;
 	}
 	
-	void dfsBackwardIteration(Path* path, std::vector<Path>& paths, std::unordered_map<Path*, bool>& visited);
-	
-	void dfsForwardIteration(Path* path, std::vector<Path>& paths, std::unordered_map<Path*, bool>& visited)
+	void SWF::constructEdges(std::vector<Path>& paths, std::vector<Node>& nodes)
 	{
-		if (path->fill_styles[0] != 0 || path->fill_styles[1] != 0)
+		fprintf(stderr, "construct edges\n");
+		
+		nodes.reserve(2*paths.size());
+		
+		for (size_t i = 0; i < nodes.capacity(); ++i)
 		{
-			visited[path] = true;
+			nodes.push_back(Node());
+			nodes.back().used = false;
+		}
+		
+		for (size_t i = 0; i < paths.size(); ++i)
+		{
+			Node* front = &nodes[2*i];
+			Node* back = &nodes[2*i + 1];
 			
-			Vertex path_start;
-			path_start.x = path->verts[0].x;
-			path_start.y = path->verts[0].y;
+			front->path = &paths[i];
+			back->path = &paths[i];
 			
-			Vertex path_end;
-			path_end.x = path->verts.back().x;
-			path_end.y = path->verts.back().y;
-			
-			if (path_start.x == path_end.x &&
-				path_start.y == path_end.y)
+			paths[i].front = front;
+			paths[i].back = back;
+		}
+		
+		for (size_t i = 0; i < paths.size(); ++i)
+		{
+			if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
 			{
-				path->self_closed = true;
-				return;
-			}
-			
-			size_t i = path - &paths[0];
-			
-			for (size_t j = 0; j < paths.size(); ++j)
-			{
-				if (i != j && (paths[j].fill_styles[0] != 0 || paths[j].fill_styles[1] != 0))
+				Vertex path_start;
+				path_start.x = paths[i].verts[0].x;
+				path_start.y = paths[i].verts[0].y;
+				
+				Vertex path_end;
+				path_end.x = paths[i].verts.back().x;
+				path_end.y = paths[i].verts.back().y;
+				
+				if (path_start.x == path_end.x &&
+					path_start.y == path_end.y)
 				{
-					fprintf(stderr, "forward: trying path %zu against path %zu\n", i, j);
+					paths[i].self_closed = true;
+					continue;
+				}
+				
+				Node* front = paths[i].front;
+				Node* back = paths[i].back;
+				
+				fprintf(stderr, "front: %p, back: %p\n", front, back);
+				
+				for (size_t j = 0; j < paths.size(); ++j)
+				{
+					if (i == j)
+					{
+						continue;
+					}
+					
+					fprintf(stderr, "front: %p, back: %p\n", paths[j].front, paths[j].back);
+					
+					fprintf(stderr, "looking for path starts\n");
 					
 					Vertex this_path_start;
 					this_path_start.x = paths[j].verts[0].x;
 					this_path_start.y = paths[j].verts[0].y;
 					
 					if (path_end.x == this_path_start.x &&
-						path_end.y == this_path_start.y &&
-						std::find(paths[j].last_neighbors_backward.begin(), paths[j].last_neighbors_forward.end(), path) == paths[j].last_neighbors_backward.end())
+						path_end.y == this_path_start.y)
 					{
-						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_end.x / 20, (8000 - path_end.y) / 20, j, this_path_start.x / 20, (8000 - this_path_start.y) / 20);
-						path->next_neighbors_forward.push_back(&paths[j]);
-						
-						if (!visited[&paths[j]])
-						{
-							dfsForwardIteration(&paths[j], paths, visited);
-						}
+						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, j, this_path_start.x / 20, (FRAME_HEIGHT - this_path_start.y) / 20);
+						back->neighbors.push_back(paths[j].back);
 					}
+					
+					if (path_start.x == this_path_start.x &&
+						path_start.y == this_path_start.y)
+					{
+						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_start.x / 20, (FRAME_HEIGHT - path_start.y) / 20, j, this_path_start.x / 20, (FRAME_HEIGHT - this_path_start.y) / 20);
+						front->neighbors.push_back(paths[j].back);
+					}
+					
+					fprintf(stderr, "looking for path ends\n");
 					
 					Vertex this_path_end;
 					this_path_end.x = paths[j].verts.back().x;
 					this_path_end.y = paths[j].verts.back().y;
 					
 					if (path_end.x == this_path_end.x &&
-						path_end.y == this_path_end.y &&
-						std::find(paths[j].next_neighbors_backward.begin(), paths[j].next_neighbors_backward.end(), path) == paths[j].next_neighbors_backward.end())
+						path_end.y == this_path_end.y)
 					{
-						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_end.x / 20, (8000 - path_end.y) / 20, j, this_path_end.x / 20, (8000 - this_path_end.y) / 20);
-						path->next_neighbors_backward.push_back(&paths[j]);
-						
-						if (!visited[&paths[j]])
-						{
-							dfsBackwardIteration(&paths[j], paths, visited);
-						}
+						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, j, this_path_end.x / 20, (FRAME_HEIGHT - this_path_end.y) / 20);
+						back->neighbors.push_back(paths[j].front);
 					}
-				}
-			}
-		}
-	}
-	
-	void dfsBackwardIteration(Path* path, std::vector<Path>& paths, std::unordered_map<Path*, bool>& visited)
-	{
-		if (path->fill_styles[0] != 0 || path->fill_styles[1] != 0)
-		{
-			visited[path] = true;
-			
-			Vertex path_start;
-			path_start.x = path->verts[0].x;
-			path_start.y = path->verts[0].y;
-			
-			Vertex path_end;
-			path_end.x = path->verts.back().x;
-			path_end.y = path->verts.back().y;
-			
-			if (path_start.x == path_end.x &&
-				path_start.y == path_end.y)
-			{
-				path->self_closed = true;
-				return;
-			}
-			
-			size_t i = path - &paths[0];
-			
-			for (size_t j = 0; j < paths.size(); ++j)
-			{
-				if (i != j && (paths[j].fill_styles[0] != 0 || paths[j].fill_styles[1] != 0))
-				{
-					fprintf(stderr, "backward: trying path %zu against path %zu\n", i, j);
-					
-					Vertex this_path_start;
-					this_path_start.x = paths[j].verts[0].x;
-					this_path_start.y = paths[j].verts[0].y;
-					
-					if (path_start.x == this_path_start.x &&
-						path_start.y == this_path_start.y &&
-						std::find(paths[j].last_neighbors_forward.begin(), paths[j].last_neighbors_forward.end(), path) == paths[j].last_neighbors_forward.end())
-					{
-						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_start.x / 20, (8000 - path_start.y) / 20, j, this_path_start.x / 20, (8000 - this_path_start.y) / 20);
-						path->last_neighbors_forward.push_back(&paths[j]);
-						
-						if (!visited[&paths[j]])
-						{
-							dfsForwardIteration(&paths[j], paths, visited);
-						}
-					}
-					
-					Vertex this_path_end;
-					this_path_end.x = paths[j].verts.back().x;
-					this_path_end.y = paths[j].verts.back().y;
 					
 					if (path_start.x == this_path_end.x &&
-						path_start.y == this_path_end.y &&
-						std::find(paths[j].next_neighbors_forward.begin(), paths[j].next_neighbors_forward.end(), path) == paths[j].next_neighbors_forward.end())
+						path_start.y == this_path_end.y)
 					{
-						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_start.x / 20, (8000 - path_start.y) / 20, j, this_path_end.x / 20, (8000 - this_path_end.y) / 20);
-						path->last_neighbors_backward.push_back(&paths[j]);
-						
-						if (!visited[&paths[j]])
-						{
-							dfsBackwardIteration(&paths[j], paths, visited);
-						}
+						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_start.x / 20, (FRAME_HEIGHT - path_start.y) / 20, j, this_path_end.x / 20, (FRAME_HEIGHT - this_path_end.y) / 20);
+						front->neighbors.push_back(paths[j].front);
 					}
 				}
 			}
 		}
 	}
 	
-	void SWF::constructEdges(std::vector<Path>& paths, std::unordered_map<Path*, bool>& visited)
+	void blockInMap(Node* node, std::unordered_map<Node*, std::vector<Node*>>& blocked_map)
 	{
-		fprintf(stderr, "construct edges\n");
-		dfsForwardIteration(&paths[0], paths, visited);
-	}
-	
-	void blockInMap(Path* path, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, bool backward)
-	{
-		blocked_map[path].clear();
+		blocked_map[node].clear();
 		
-		if (backward)
+		for (Node* neighbor : node->neighbors)
 		{
-			for (Path* neighbor : path->last_neighbors_forward)
-			{
-				blocked_map[path].push_back(neighbor);
-			}
-			
-			for (Path* neighbor : path->last_neighbors_backward)
-			{
-				blocked_map[path].push_back(neighbor);
-			}
-		}
-		
-		else
-		{
-			for (Path* neighbor : path->next_neighbors_forward)
-			{
-				blocked_map[path].push_back(neighbor);
-			}
-			
-			for (Path* neighbor : path->next_neighbors_backward)
-			{
-				blocked_map[path].push_back(neighbor);
-			}
+			blocked_map[node].push_back(neighbor);
 		}
 	}
 	
-	void unblock(Path* path, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map)
+	void unblock(Node* node, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map)
 	{
-		blocked[path] = false;
+		blocked[node] = false;
 		
-		for (Path* p : blocked_map[path])
+		for (Node* n : blocked_map[node])
 		{
-			if (blocked[p])
+			if (blocked[n])
 			{
-				unblock(p, blocked, blocked_map);
+				unblock(n, blocked, blocked_map);
 			}
 		}
 		
-		blocked_map[path].clear();
+		blocked_map[node].clear();
 	}
 	
-	bool traverseForwardIteration(Path* path, std::vector<Path>& path_stack, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths);
-	bool traverseBackwardIteration(Path* path, std::vector<Path>& path_stack, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths);
+	bool traverseIteration(Node* path, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths);
 	
-	bool detectCycle(Path* path, std::vector<Path>& path_stack, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths, bool backward)
+	bool detectCycle(Node* node, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
 	{
-		fprintf(stderr, "trying path %p\n", path);
+		fprintf(stderr, "trying node %p\n", node);
 		
-		if (path == path_stack[0].original_key)
+		if (node == path_stack[0].front || node == path_stack[0].back)
 		{
 			fprintf(stderr, "cycle?!\n");
 			
@@ -1424,153 +1357,67 @@ namespace SWFRecomp
 			return true;
 		}
 		
-		if (blocked[path])
+		if (blocked[node])
 		{
 			return false;
 		}
 		
-		if (backward)
-		{
-			return traverseBackwardIteration(path, path_stack, blocked, blocked_map, closed_paths);
-		}
-		
-		return traverseForwardIteration(path, path_stack, blocked, blocked_map, closed_paths);
+		return traverseIteration(node, path_stack, blocked, blocked_map, closed_paths);
 	}
 	
-	bool traverseForwardIteration(Path* path, std::vector<Path>& path_stack, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
+	bool traverseIteration(Node* node, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
 	{
-		fprintf(stderr, "iterating path %p\n", path);
+		fprintf(stderr, "iterating node %p of path %p\n", node, node->path);
 		
-		path_stack.push_back(*path);
+		path_stack.push_back(*node->path);
 		
-		path_stack.back().original_key = path;
-		path_stack.back().backward = false;
+		fprintf(stderr, "pushed back path\n");
 		
-		blocked[path] = true;
+		path_stack.back().backward = node == node->path->front;
+		
+		fprintf(stderr, "evaluated backward\n");
+		
+		blocked[node] = true;
 		
 		bool cycle_found = false;
 		
-		std::vector<Path*> cycle_paths;
-		
-		for (Path* neighbor : path->next_neighbors_forward)
+		for (Node* neighbor : node->neighbors)
 		{
+			fprintf(stderr, "checking used of neighbor %p\n", neighbor);
+			
 			if (neighbor->used)
 			{
 				continue;
 			}
 			
-			fprintf(stderr, "path has next forward neighbor %p\n", neighbor);
+			fprintf(stderr, "path has neighbor %p\n", neighbor);
 			
-			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, false);
-			
-			if (cycle_found)
-			{
-				cycle_paths.push_back(neighbor);
-			}
-		}
-		
-		for (Path* neighbor : path->next_neighbors_backward)
-		{
-			if (neighbor->used)
-			{
-				continue;
-			}
-			
-			fprintf(stderr, "path has next backward neighbor %p\n", neighbor);
-			
-			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, true);
-			
-			if (cycle_found)
-			{
-				cycle_paths.push_back(neighbor);
-			}
+			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths);
 		}
 		
 		path_stack.pop_back();
 		
 		if (cycle_found)
 		{
-			unblock(path, blocked, blocked_map);
+			unblock(node, blocked, blocked_map);
 			return true;
 		}
 		
-		blockInMap(path, blocked, blocked_map, false);
+		blockInMap(node, blocked_map);
 		
 		return false;
 	}
 	
-	bool traverseBackwardIteration(Path* path, std::vector<Path>& path_stack, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
+	void SWF::johnson(std::vector<Node>& nodes, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
 	{
-		fprintf(stderr, "iterating path %p\n", path);
-		
-		path_stack.push_back(*path);
-		
-		path_stack.back().original_key = path;
-		path_stack.back().backward = true;
-		
-		blocked[path] = true;
-		
-		bool cycle_found = false;
-		
-		std::vector<Path*> cycle_paths;
-		
-		for (Path* neighbor : path->last_neighbors_forward)
-		{
-			if (neighbor->used)
-			{
-				continue;
-			}
-			
-			fprintf(stderr, "path has last forward neighbor %p\n", neighbor);
-			
-			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, false);
-			
-			if (cycle_found)
-			{
-				cycle_paths.push_back(neighbor);
-			}
-		}
-		
-		for (Path* neighbor : path->last_neighbors_backward)
-		{
-			if (neighbor->used)
-			{
-				continue;
-			}
-			
-			fprintf(stderr, "path has last backward neighbor %p\n", neighbor);
-			
-			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths, true);
-			
-			if (cycle_found)
-			{
-				cycle_paths.push_back(neighbor);
-			}
-		}
-		
-		path_stack.pop_back();
-		
-		if (cycle_found)
-		{
-			unblock(path, blocked, blocked_map);
-			return true;
-		}
-		
-		blockInMap(path, blocked, blocked_map, true);
-		
-		return false;
-	}
-	
-	void SWF::johnson(std::vector<Path>& paths, std::vector<Path>& path_stack, std::unordered_map<Path*, bool>& blocked, std::unordered_map<Path*, std::vector<Path*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
-	{
-		for (Path& p : paths)
+		for (Node& n : nodes)
 		{
 			blocked.clear();
 			blocked_map.clear();
 			
 			fprintf(stderr, "START ITERATION\n");
-			traverseForwardIteration(&p, path_stack, blocked, blocked_map, closed_paths);
-			p.used = true;
+			traverseIteration(&n, path_stack, blocked, blocked_map, closed_paths);
+			n.used = true;
 		}
 	}
 	
