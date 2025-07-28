@@ -624,13 +624,9 @@ namespace SWFRecomp
 					
 					line_styles[i].width = (u16) shape_tag.fields[0].value;
 					
-					fprintf(stderr, "got width: %d\n", line_styles[i].width);
-					
 					line_styles[i].r = (u8) shape_tag.fields[1].value;
 					line_styles[i].g = (u8) shape_tag.fields[2].value;
 					line_styles[i].b = (u8) shape_tag.fields[3].value;
-					
-					fprintf(stderr, "got color %d, %d, %d\n", line_styles[i].r, line_styles[i].g, line_styles[i].b);
 				}
 				
 				shape_tag.clearFields();
@@ -850,8 +846,6 @@ namespace SWFRecomp
 					if (state_line_style)
 					{
 						line_style = (u32) shape_tag.fields[current_field++].value;
-						
-						fprintf(stderr, "line style: %d\n", line_style);
 					}
 					
 					if (state_move_to || fill_style_0_change || fill_style_1_change)
@@ -885,34 +879,14 @@ namespace SWFRecomp
 				
 				std::vector<Shape> shapes;
 				
-				bool changed = false;
-				
-				for (size_t i = 0; i < paths.size(); ++i)
-				{
-					if (paths[i].fill_styles[0] != 0 || paths[i].fill_styles[1] != 0)
-					{
-						fprintf(stderr, "path %zu with fill %d and %d\n", i, paths[i].fill_styles[0], paths[i].fill_styles[1]);
-						for (size_t j = 0; j < paths[i].verts.size(); ++j)
-						{
-							fprintf(stderr, "has (%d, %d)\n", paths[i].verts[j].x / 20, (FRAME_HEIGHT - paths[i].verts[j].y) / 20);
-						}
-					}
-				}
-				
 				std::vector<Node> nodes;
 				
 				constructEdges(paths, nodes);
 				
-				fprintf(stderr, "shapes: %zu, nodes: %zu\n", shapes.size(), nodes.size());
-				
 				for (size_t i = 0; i < paths.size(); ++i)
 				{
-					fprintf(stderr, "path: %p\n", &paths[i]);
-					
 					if (paths[i].self_closed)
 					{
-						fprintf(stderr, "processing self closed\n");
-						
 						shapes.push_back(Shape());
 						shapes.back().closed = true;
 						shapes.back().hole = false;
@@ -933,14 +907,10 @@ namespace SWFRecomp
 				
 				johnson(nodes, path_stack, blocked, blocked_map, closed_paths);
 				
-				fprintf(stderr, "shapes: %zu, cycles: %zu\n", shapes.size(), closed_paths.size());
-				
 				size_t shape_cycles_start = shapes.size();
 				
 				for (auto cycle : closed_paths)
 				{
-					fprintf(stderr, "processing cycle\n");
-					
 					shapes.push_back(Shape());
 					shapes.back().closed = true;
 					shapes.back().hole = false;
@@ -960,67 +930,29 @@ namespace SWFRecomp
 					processShape(shapes.back(), cycle[0].fill_styles);
 				}
 				
-				fprintf(stderr, "shapes: %zu, cycles: %zu\n", shapes.size(), closed_paths.size());
-				
 				for (size_t i = 0; i < closed_paths.size(); ++i)
 				{
-					fprintf(stderr, "iterating through shapes\n");
 					Shape& shape = shapes[shape_cycles_start + i];
 					std::vector<Path>& cycle = closed_paths[i];
-					fprintf(stderr, "read shape and cycle with size %zu\n", cycle.size());
 					
 					u32 last_fill_style = fill_style_count + 1;
 					
 					for (size_t j = 0; j < cycle.size(); ++j)
 					{
-						fprintf(stderr, "reading path from cycle\n");
 						Path& p = cycle[j];
 						if (last_fill_style == fill_style_count + 1)
 						{
 							last_fill_style = p.fill_styles[shape.fill_right];
 							continue;
 						}
-						fprintf(stderr, "checking fill style\n");
+						
 						if (last_fill_style != p.fill_styles[shape.fill_right ^ p.backward])
 						{
-							fprintf(stderr, "shape %zu is invalid\n", i);
 							shape.invalid = true;
 							break;
 						}
 					}
 				}
-				
-				for (size_t i = 0; i < closed_paths.size(); ++i)
-				{
-					fprintf(stderr, "got path:\n");
-					
-					for (size_t j = 0; j < closed_paths[i].size(); ++j)
-					{
-						size_t offset = (closed_paths[i][j].backward) ? -1 : 1;
-						
-						for (size_t k = (closed_paths[i][j].backward) ? closed_paths[i][j].verts.size() - 2 : 1; k < closed_paths[i][j].verts.size(); k += offset)
-						{
-							fprintf(stderr, "(%d, %d)\n", closed_paths[i][j].verts[k].x / 20, (FRAME_HEIGHT - closed_paths[i][j].verts[k].y) / 20);
-						}
-					}
-				}
-				
-				for (size_t i = 0; i < shapes.size(); ++i)
-				{
-					if (shapes[i].invalid)
-					{
-						continue;
-					}
-					
-					fprintf(stderr, "got valid shape:\n");
-					
-					for (size_t j = 0; j < shapes[i].verts.size(); ++j)
-					{
-						fprintf(stderr, "(%d, %d)\n", shapes[i].verts[j].x / 20, (FRAME_HEIGHT - shapes[i].verts[j].y) / 20);
-					}
-				}
-				
-				fprintf(stderr, "finished traversing and processing\n");
 				
 				std::string tris_str = "";
 				
@@ -1183,8 +1115,6 @@ namespace SWFRecomp
 	
 	void SWF::constructEdges(std::vector<Path>& paths, std::vector<Node>& nodes)
 	{
-		fprintf(stderr, "construct edges\n");
-		
 		nodes.reserve(2*paths.size());
 		
 		for (size_t i = 0; i < nodes.capacity(); ++i)
@@ -1227,18 +1157,12 @@ namespace SWFRecomp
 				Node* front = paths[i].front;
 				Node* back = paths[i].back;
 				
-				fprintf(stderr, "front: %p, back: %p\n", front, back);
-				
 				for (size_t j = 0; j < paths.size(); ++j)
 				{
 					if (i == j)
 					{
 						continue;
 					}
-					
-					fprintf(stderr, "front: %p, back: %p\n", paths[j].front, paths[j].back);
-					
-					fprintf(stderr, "looking for path starts\n");
 					
 					Vertex this_path_start;
 					this_path_start.x = paths[j].verts[0].x;
@@ -1247,18 +1171,14 @@ namespace SWFRecomp
 					if (path_end.x == this_path_start.x &&
 						path_end.y == this_path_start.y)
 					{
-						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, j, this_path_start.x / 20, (FRAME_HEIGHT - this_path_start.y) / 20);
 						back->neighbors.push_back(paths[j].back);
 					}
 					
 					if (path_start.x == this_path_start.x &&
 						path_start.y == this_path_start.y)
 					{
-						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with start (%d, %d)\n", i, path_start.x / 20, (FRAME_HEIGHT - path_start.y) / 20, j, this_path_start.x / 20, (FRAME_HEIGHT - this_path_start.y) / 20);
 						front->neighbors.push_back(paths[j].back);
 					}
-					
-					fprintf(stderr, "looking for path ends\n");
 					
 					Vertex this_path_end;
 					this_path_end.x = paths[j].verts.back().x;
@@ -1267,14 +1187,12 @@ namespace SWFRecomp
 					if (path_end.x == this_path_end.x &&
 						path_end.y == this_path_end.y)
 					{
-						fprintf(stderr, "path %zu with end (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_end.x / 20, (FRAME_HEIGHT - path_end.y) / 20, j, this_path_end.x / 20, (FRAME_HEIGHT - this_path_end.y) / 20);
 						back->neighbors.push_back(paths[j].front);
 					}
 					
 					if (path_start.x == this_path_end.x &&
 						path_start.y == this_path_end.y)
 					{
-						fprintf(stderr, "path %zu with start (%d, %d) is connected to path %zu with end (%d, %d)\n", i, path_start.x / 20, (FRAME_HEIGHT - path_start.y) / 20, j, this_path_end.x / 20, (FRAME_HEIGHT - this_path_end.y) / 20);
 						front->neighbors.push_back(paths[j].front);
 					}
 				}
@@ -1311,12 +1229,8 @@ namespace SWFRecomp
 	
 	bool detectCycle(Node* node, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
 	{
-		fprintf(stderr, "trying node %p\n", node);
-		
 		if (node == path_stack[0].front || node == path_stack[0].back)
 		{
-			fprintf(stderr, "cycle?!\n");
-			
 			std::vector<Path> cycle;
 			
 			for (size_t i = 0; i < path_stack.size(); ++i)
@@ -1339,15 +1253,9 @@ namespace SWFRecomp
 	
 	bool traverseIteration(Node* node, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths)
 	{
-		fprintf(stderr, "iterating node %p of path %p\n", node, node->path);
-		
 		path_stack.push_back(*node->path);
 		
-		fprintf(stderr, "pushed back path\n");
-		
 		path_stack.back().backward = node == node->path->front;
-		
-		fprintf(stderr, "evaluated backward\n");
 		
 		blocked[node] = true;
 		
@@ -1355,14 +1263,10 @@ namespace SWFRecomp
 		
 		for (Node* neighbor : node->neighbors)
 		{
-			fprintf(stderr, "checking used of neighbor %p\n", neighbor);
-			
 			if (neighbor->used)
 			{
 				continue;
 			}
-			
-			fprintf(stderr, "path has neighbor %p\n", neighbor);
 			
 			cycle_found |= detectCycle(neighbor, path_stack, blocked, blocked_map, closed_paths);
 		}
@@ -1387,7 +1291,6 @@ namespace SWFRecomp
 			blocked.clear();
 			blocked_map.clear();
 			
-			fprintf(stderr, "START ITERATION\n");
 			traverseIteration(&n, path_stack, blocked, blocked_map, closed_paths);
 			n.used = true;
 		}
