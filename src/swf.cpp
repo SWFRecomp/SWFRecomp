@@ -996,68 +996,6 @@ namespace SWFRecomp
 				
 				size_t tris_size = 0;
 				
-				std::vector<Shape> holes;
-				
-				for (size_t i = 0; i < shapes.size(); ++i)
-				{
-					if (!shapes[i].invalid && shapes[i].outer_fill != 0)
-					{
-						fprintf(stderr, "found hole\n");
-						
-						shapes[i].hole = true;
-						
-						bool hole_found_final = false;
-						
-						for (int j = 0; j < shapes.size(); ++j)
-						{
-							if (i == j)
-							{
-								continue;
-							}
-							
-							bool hole_found = true;
-							
-							for (int k = 0; k < shapes[i].verts.size(); ++k)
-							{
-								if (shapes[i].verts[k].x != shapes[j].verts[k].x || shapes[i].verts[k].y != shapes[j].verts[k].y)
-								{
-									hole_found = false;
-									break;
-								}
-							}
-							
-							if (hole_found)
-							{
-								shapes[j].hole = true;
-								
-								if (shapes[i].fill_right)
-								{
-									fprintf(stderr, "hole fill right\n");
-									holes.push_back(shapes[j]);
-								}
-								
-								else
-								{
-									fprintf(stderr, "hole fill left\n");
-									holes.push_back(shapes[i]);
-								}
-								
-								hole_found_final = true;
-								
-								break;
-							}
-						}
-						
-						if (!hole_found_final)
-						{
-							fprintf(stderr, "hole not found, pushing original\n");
-							holes.push_back(shapes[i]);
-						}
-					}
-				}
-				
-				fprintf(stderr, "finished preprocessing holes\n");
-				
 				auto compareArea = [](const Shape& a, const Shape& b)
 				{
 					u64 width = a.max.x - a.min.x;
@@ -1099,33 +1037,6 @@ namespace SWFRecomp
 										  + to_string(fill_styles[shapes[i].inner_fill - 1].b) + ".0f/255.0f, "
 										  + "1.0f },\n";
 							}
-						}
-					}
-				}
-				
-				// Sort holes by area of bounding box
-				std::sort(holes.begin(), holes.end(), compareArea);
-				
-				for (size_t i = 0; i < holes.size(); ++i)
-				{
-					std::vector<Tri> tris;
-					
-					fillShape(holes[i].verts, tris, holes[i].fill_right);
-					
-					tris_size += tris.size();
-					
-					for (Tri t : tris)
-					{
-						for (int j = 0; j < 3; ++j)
-						{
-							tris_str += std::string("\t") + "{ "
-									  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
-									  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
-									  + "0.0f, "
-									  + to_string(fill_styles[holes[i].inner_fill - 1].r) + ".0f/255.0f, "
-									  + to_string(fill_styles[holes[i].inner_fill - 1].g) + ".0f/255.0f, "
-									  + to_string(fill_styles[holes[i].inner_fill - 1].b) + ".0f/255.0f, "
-									  + "1.0f },\n";
 						}
 					}
 				}
