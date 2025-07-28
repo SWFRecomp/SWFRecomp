@@ -990,6 +990,21 @@ namespace SWFRecomp
 					}
 				}
 				
+				for (size_t i = 0; i < shapes.size(); ++i)
+				{
+					if (shapes[i].invalid)
+					{
+						continue;
+					}
+					
+					fprintf(stderr, "got valid shape:\n");
+					
+					for (size_t j = 0; j < shapes[i].verts.size(); ++j)
+					{
+						fprintf(stderr, "(%d, %d)\n", shapes[i].verts[j].x / 20, (FRAME_HEIGHT - shapes[i].verts[j].y) / 20);
+					}
+				}
+				
 				fprintf(stderr, "finished traversing and processing\n");
 				
 				std::string tris_str = "";
@@ -1544,7 +1559,7 @@ namespace SWFRecomp
 			
 			s64 cross = (fill_right) ? CROSS(vec_prevprev_edge, vec_prev_edge) : -CROSS(vec_prevprev_edge, vec_prev_edge);
 			
-			if (cross < 0)
+			if (cross <= 0)
 			{
 				size_t after_anchor_i = ((anchor - &shape[0]) + 1) % size;
 				Vertex* after_anchor = &shape[after_anchor_i];
@@ -1676,13 +1691,6 @@ namespace SWFRecomp
 					
 					tris.push_back(t);
 				}
-			}
-			
-			else if (cross == 0)
-			{
-				i += 1;
-				i %= size;
-				continue;
 			}
 			
 			else
