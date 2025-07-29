@@ -643,6 +643,8 @@ namespace SWFRecomp
 				u32 last_fill_style_0 = 0;
 				u32 last_fill_style_1 = 0;
 				
+				u32 last_line_style = 0;
+				
 				std::vector<Path> paths;
 				paths.reserve(512);
 				
@@ -760,6 +762,23 @@ namespace SWFRecomp
 						s16 anchor_delta_x = (s16) shape_tag.fields[2].value;
 						s16 anchor_delta_y = (s16) shape_tag.fields[3].value;
 						
+						Vertex current;
+						current.x = last_x;
+						current.y = last_y;
+						
+						Vertex control;
+						control.x = last_x + control_delta_x;
+						control.y = last_y - control_delta_y;
+						
+						Vertex anchor;
+						anchor.x = control.x + anchor_delta_x;
+						anchor.y = control.y - anchor_delta_y;
+						
+						addCurvedEdge(current_path, current, control, anchor, 6);
+						
+						last_x = anchor.x;
+						last_y = anchor.y;
+						
 						continue;
 					}
 					
@@ -812,7 +831,7 @@ namespace SWFRecomp
 					u32 fill_style_0 = last_fill_style_0;
 					u32 fill_style_1 = last_fill_style_1;
 					
-					u32 line_style;
+					u32 line_style = last_line_style;
 					
 					bool fill_style_0_change = false;
 					bool fill_style_1_change = false;
@@ -1052,6 +1071,27 @@ namespace SWFRecomp
 				
 				break;
 			}
+		}
+	}
+	
+	void SWF::addCurvedEdge(Path* path, Vertex current, Vertex control, Vertex anchor, u32 passes)
+	{
+		std::vector<Vertex> left_points;
+		std::vector<Vertex> right_points;
+		
+		for (u32 i = 1; i <= passes; ++i)
+		{
+			float t = (float) i / passes;
+			float u = 1.0f - t;
+			
+			s32 x = (s32) (u*u*current.x + 2*u*t*control.x + t*t*anchor.x);
+			s32 y = (s32) (u*u*current.y + 2*u*t*control.y + t*t*anchor.y);
+			
+			Vertex v;
+			v.x = x;
+			v.y = y;
+			
+			path->verts.push_back(v);
 		}
 	}
 	
@@ -1667,7 +1707,10 @@ namespace SWFRecomp
 	
 	void SWF::drawLines(const Path& path, u16 width, std::vector<Tri>& tris)
 	{
-		width = (u16) std::max(width, (u16) 20);
+		if (width != 0)
+		{
+			width = (u16) std::max(width, (u16) 20);
+		}
 		
 		u16 halfwidth = width/2;
 		

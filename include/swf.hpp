@@ -123,6 +123,7 @@ namespace SWFRecomp
 		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
 		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
+		void addCurvedEdge(Path* path, Vertex current, Vertex control, Vertex anchor, u32 passes);
 		void processShape(Shape& shape, u32* fill_styles);
 		void constructEdges(std::vector<Path>& paths, std::vector<Node>& nodes);
 		void johnson(std::vector<Node>& nodes, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths);
