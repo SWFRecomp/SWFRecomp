@@ -309,6 +309,7 @@ namespace SWFRecomp
 			}
 			
 			case SWF_TAG_DEFINE_SHAPE:
+			case SWF_TAG_DEFINE_SHAPE_2:
 			{
 				interpretShape(tag, tag_main, out_draws, out_draws_header);
 				
@@ -531,6 +532,7 @@ namespace SWFRecomp
 		switch (shape_tag.code)
 		{
 			case SWF_TAG_DEFINE_SHAPE:
+			case SWF_TAG_DEFINE_SHAPE_2:
 			{
 				shape_tag.setFieldCount(6);
 				
@@ -566,7 +568,11 @@ namespace SWFRecomp
 					fill_style_count = (u16) shape_tag.fields[0].value;
 				}
 				
+				std::vector<FillStyle*> all_fill_styles;
+				
 				FillStyle* fill_styles = new FillStyle[fill_style_count];
+				
+				all_fill_styles.push_back(fill_styles);
 				
 				for (u16 i = 0; i < fill_style_count; ++i)
 				{
@@ -608,7 +614,11 @@ namespace SWFRecomp
 					line_style_count = (u16) shape_tag.fields[0].value;
 				}
 				
+				std::vector<LineStyle*> all_line_styles;
+				
 				LineStyle* line_styles = new LineStyle[line_style_count];
+				
+				all_line_styles.push_back(line_styles);
 				
 				for (u16 i = 0; i < line_style_count; ++i)
 				{
@@ -639,6 +649,9 @@ namespace SWFRecomp
 				
 				u8 fill_bits = (u8) shape_tag.fields[0].value;
 				u8 line_bits = (u8) shape_tag.fields[1].value;
+				
+				u32 current_fill_style_list = 0;
+				u32 current_line_style_list = 0;
 				
 				u32 last_fill_style_0 = 0;
 				u32 last_fill_style_1 = 0;
@@ -836,6 +849,8 @@ namespace SWFRecomp
 					bool fill_style_0_change = false;
 					bool fill_style_1_change = false;
 					
+					bool line_style_change = false;
+					
 					size_t current_field = 0;
 					
 					if (state_move_to)
@@ -865,14 +880,135 @@ namespace SWFRecomp
 					if (state_line_style)
 					{
 						line_style = (u32) shape_tag.fields[current_field++].value;
+						
+						line_style_change = line_style != last_line_style;
 					}
 					
-					if (state_move_to || fill_style_0_change || fill_style_1_change)
+					if (state_new_styles)
 					{
+						if (cur_byte_bits_left != 8)
+						{
+							cur_pos += 1;
+							cur_byte_bits_left = 8;
+						}
+						
+						// FILLSTYLEARRAY
+						shape_tag.clearFields();
+						shape_tag.setFieldCount(1);
+						
+						shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+						
+						shape_tag.parseFields(cur_pos);
+						
+						u16 fill_style_count = (u8) shape_tag.fields[0].value;
+						
+						if (fill_style_count == 0xFF)
+						{
+							shape_tag.clearFields();
+							
+							shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+							
+							shape_tag.parseFields(cur_pos);
+							
+							fill_style_count = (u16) shape_tag.fields[0].value;
+						}
+						
+						FillStyle* fill_styles = new FillStyle[fill_style_count];
+						
+						all_fill_styles.push_back(fill_styles);
+						
+						current_fill_style_list += 1;
+						
+						for (u16 i = 0; i < fill_style_count; ++i)
+						{
+							shape_tag.clearFields();
+							shape_tag.setFieldCount(4);
+							
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							
+							shape_tag.parseFields(cur_pos);
+							
+							fill_styles[i].type = (u8) shape_tag.fields[0].value;
+							
+							fill_styles[i].r = (u8) shape_tag.fields[1].value;
+							fill_styles[i].g = (u8) shape_tag.fields[2].value;
+							fill_styles[i].b = (u8) shape_tag.fields[3].value;
+						}
+						
+						// LINESTYLEARRAY
+						shape_tag.clearFields();
+						shape_tag.setFieldCount(1);
+						
+						shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+						
+						shape_tag.parseFields(cur_pos);
+						
+						u16 line_style_count = (u8) shape_tag.fields[0].value;
+						
+						if (line_style_count == 0xFF)
+						{
+							shape_tag.clearFields();
+							
+							shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+							
+							shape_tag.parseFields(cur_pos);
+							
+							line_style_count = (u16) shape_tag.fields[0].value;
+						}
+						
+						LineStyle* line_styles = new LineStyle[line_style_count];
+						
+						all_line_styles.push_back(line_styles);
+						
+						current_line_style_list += 1;
+						
+						for (u16 i = 0; i < line_style_count; ++i)
+						{
+							shape_tag.clearFields();
+							shape_tag.setFieldCount(4);
+							
+							shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+							
+							shape_tag.parseFields(cur_pos);
+							
+							line_styles[i].width = (u16) shape_tag.fields[0].value;
+							
+							line_styles[i].r = (u8) shape_tag.fields[1].value;
+							line_styles[i].g = (u8) shape_tag.fields[2].value;
+							line_styles[i].b = (u8) shape_tag.fields[3].value;
+						}
+						
+						shape_tag.clearFields();
+						shape_tag.setFieldCount(2);
+						
+						shape_tag.configureNextField(SWF_FIELD_UB, 4);
+						shape_tag.configureNextField(SWF_FIELD_UB, 4);
+						
+						shape_tag.parseFields(cur_pos);
+						
+						fill_bits = (u8) shape_tag.fields[0].value;
+						line_bits = (u8) shape_tag.fields[1].value;
+					}
+					
+					if (state_new_styles || state_move_to || fill_style_0_change || fill_style_1_change || line_style_change)
+					{
+						if (paths.back().verts.size() == 1)
+						{
+							paths.pop_back();
+						}
+						
 						paths.push_back(Path());
 						current_path = &paths.back();
 						
 						current_path->verts.reserve(512);
+						current_path->fill_style_list = current_fill_style_list;
+						current_path->line_style_list = current_line_style_list;
 						current_path->fill_styles[0] = fill_style_0;
 						current_path->fill_styles[1] = fill_style_1;
 						current_path->line_style = line_style;
@@ -894,8 +1030,6 @@ namespace SWFRecomp
 					cur_pos += 1;
 				}
 				
-				std::vector<Path> paths_copy = paths;
-				
 				std::vector<Shape> shapes;
 				
 				std::vector<Node> nodes;
@@ -912,10 +1046,19 @@ namespace SWFRecomp
 						
 						for (size_t k = 0; k < paths[i].verts.size(); ++k)
 						{
+							if (k >= 1 &&
+								shapes.back().verts.back().x == paths[i].verts[k].x &&
+								shapes.back().verts.back().y == paths[i].verts[k].y)
+							{
+								continue;
+							}
+							
 							shapes.back().verts.push_back(paths[i].verts[k]);
 						}
 						
 						processShape(shapes.back(), paths[i].fill_styles);
+						
+						shapes.back().fill_style_list = paths[i].fill_style_list;
 					}
 				}
 				
@@ -942,11 +1085,19 @@ namespace SWFRecomp
 						
 						for (size_t k = start; k < cycle[j].verts.size(); k += offset)
 						{
+							if (shapes.back().verts.back().x == cycle[j].verts[k].x &&
+								shapes.back().verts.back().y == cycle[j].verts[k].y)
+							{
+								continue;
+							}
+							
 							shapes.back().verts.push_back(cycle[j].verts[k]);
 						}
 					}
 					
 					processShape(shapes.back(), cycle[0].fill_styles);
+					
+					shapes.back().fill_style_list = cycle[0].fill_style_list;
 				}
 				
 				for (size_t i = 0; i < closed_paths.size(); ++i)
@@ -970,6 +1121,14 @@ namespace SWFRecomp
 							shape.invalid = true;
 							break;
 						}
+					}
+				}
+				
+				for (size_t i = 0; i < shapes.size(); ++i)
+				{
+					if (shapes[i].verts.size() < 3)
+					{
+						shapes[i].invalid = true;
 					}
 				}
 				
@@ -1013,9 +1172,9 @@ namespace SWFRecomp
 										  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
 										  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
 										  + "0.0f, "
-										  + to_string(fill_styles[shapes[i].inner_fill - 1].r) + ".0f/255.0f, "
-										  + to_string(fill_styles[shapes[i].inner_fill - 1].g) + ".0f/255.0f, "
-										  + to_string(fill_styles[shapes[i].inner_fill - 1].b) + ".0f/255.0f, "
+										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].r) + ".0f/255.0f, "
+										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].g) + ".0f/255.0f, "
+										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].b) + ".0f/255.0f, "
 										  + "1.0f },\n";
 							}
 						}
@@ -1028,7 +1187,7 @@ namespace SWFRecomp
 					
 					if (line_style_i != 0)
 					{
-						LineStyle line_style = line_styles[line_style_i - 1];
+						LineStyle line_style = all_line_styles[paths[i].line_style_list][line_style_i - 1];
 						
 						std::vector<Tri> tris;
 						
@@ -1496,9 +1655,7 @@ namespace SWFRecomp
 		
 		skipped_vertices.push_back(*anchor);
 		
-		Vertex* start_shape = &shape[0];
 		Vertex* started_drawing = anchor;
-		Vertex* stop = &shape[size];
 		prev = nullptr;
 		prevprev = anchor;
 		
@@ -1537,16 +1694,16 @@ namespace SWFRecomp
 				continue;
 			}
 			
-			Vertex vec_prevprev_edge;
+			Vertex vec_prev_anchor_edge;
 			Vertex vec_prev_edge;
 			
-			vec_prevprev_edge.x = prev->x - prevprev->x;
-			vec_prevprev_edge.y = prev->y - prevprev->y;
+			vec_prev_anchor_edge.x = prev->x - anchor->x;
+			vec_prev_anchor_edge.y = prev->y - anchor->y;
 			
 			vec_prev_edge.x = v->x - prev->x;
 			vec_prev_edge.y = v->y - prev->y;
 			
-			s64 cross = (fill_right) ? CROSS(vec_prevprev_edge, vec_prev_edge) : -CROSS(vec_prevprev_edge, vec_prev_edge);
+			s64 cross = (fill_right) ? CROSS(vec_prev_anchor_edge, vec_prev_edge) : -CROSS(vec_prev_anchor_edge, vec_prev_edge);
 			
 			if (cross <= 0)
 			{
@@ -1629,7 +1786,7 @@ namespace SWFRecomp
 								{
 									anchor = prev;
 									prev = nullptr;
-									prevprev = nullptr;
+									prevprev = anchor;
 									break;
 								}
 							}
@@ -1640,7 +1797,7 @@ namespace SWFRecomp
 								{
 									anchor = prev;
 									prev = nullptr;
-									prevprev = nullptr;
+									prevprev = anchor;
 									break;
 								}
 							}
@@ -1699,7 +1856,7 @@ namespace SWFRecomp
 			i %= size;
 		}
 		
-		if (skipped_vertices.size() > 1)
+		if (skipped_vertices.size() > 2 && size != skipped_vertices.size())
 		{
 			fillShape(skipped_vertices, tris, fill_right);
 		}

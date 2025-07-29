@@ -38,6 +38,8 @@ namespace SWFRecomp
 	struct Path
 	{
 		std::vector<Vertex> verts;
+		u32 fill_style_list;
+		u32 line_style_list;
 		u32 fill_styles[2];
 		u32 line_style;
 		bool self_closed;
@@ -59,6 +61,8 @@ namespace SWFRecomp
 		Vertex min;
 		Vertex max;
 		bool got_min_max;
+		u32 fill_style_list;
+		u32 line_style_list;
 		u32 inner_fill;
 		u32 outer_fill;
 		bool fill_right;
