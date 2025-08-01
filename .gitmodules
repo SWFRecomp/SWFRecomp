@@ -4,3 +4,6 @@
 [submodule "lib/lzma"]
 	path = lib/lzma
 	url = https://github.com/SWFRecomp/lzma.git
+[submodule "lib/earcut"]
+	path = lib/earcut
+	url = https://github.com/mapbox/earcut.hpp.git
