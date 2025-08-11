@@ -1033,6 +1033,8 @@ namespace SWFRecomp
 					
 					last_fill_style_0 = fill_style_0;
 					last_fill_style_1 = fill_style_1;
+					
+					last_line_style = line_style;
 				}
 				
 				if (cur_byte_bits_left != 8)
@@ -1676,42 +1678,188 @@ namespace SWFRecomp
 		}
 	}
 	
+	void drawLineJoin(const Vertex& a, const Vertex& b, const Vertex& c, u16 halfwidth, std::vector<Tri>& tris)
+	{
+		Vertex vec_a_b;
+		vec_a_b.x = b.x - a.x;
+		vec_a_b.y = b.y - a.y;
+		
+		Vertex vec_b_c;
+		vec_b_c.x = c.x - b.x;
+		vec_b_c.y = c.y - b.y;
+		
+		s32 cross = CROSS(vec_a_b, vec_b_c);
+		
+		double angle_a_b = atan2(vec_a_b.y, vec_a_b.x);
+		double angle_b_c = atan2(vec_b_c.y, vec_b_c.x);
+		
+		if (cross < 0)
+		{
+			angle_a_b += M_PI/2;
+			angle_b_c += M_PI/2;
+		}
+		
+		else if (cross > 0)
+		{
+			angle_a_b -= M_PI/2;
+			angle_b_c -= M_PI/2;
+		}
+		
+		int num_midpoints = 5;
+		
+		double start_angle;
+		double end_angle;
+		
+		if (angle_a_b < angle_b_c)
+		{
+			start_angle = angle_a_b;
+			end_angle = angle_b_c;
+		}
+		
+		else
+		{
+			start_angle = angle_b_c;
+			end_angle = angle_a_b;
+		}
+		
+		double angle_delta = (end_angle - start_angle)/num_midpoints;
+		
+		Vertex last_point;
+		last_point.x = (s32) std::round(b.x + halfwidth*cos(start_angle));
+		last_point.y = (s32) std::round(b.y + halfwidth*sin(start_angle));
+		
+		Tri t;
+		t.verts[0] = b;
+		
+		for (double current_angle = start_angle + angle_delta; current_angle < end_angle; current_angle += angle_delta)
+		{
+			t.verts[1] = last_point;
+			
+			t.verts[2].x = (s32) std::round(b.x + halfwidth*cos(current_angle));
+			t.verts[2].y = (s32) std::round(b.y + halfwidth*sin(current_angle));
+			
+			tris.push_back(t);
+			
+			last_point = t.verts[2];
+		}
+		
+		t.verts[1] = last_point;
+		
+		t.verts[2].x = (s32) std::round(b.x + halfwidth*cos(end_angle));
+		t.verts[2].y = (s32) std::round(b.y + halfwidth*sin(end_angle));
+		
+		tris.push_back(t);
+	}
+	
+	void drawLineCap(const Vertex& a, const Vertex& b, u16 halfwidth, std::vector<Tri>& tris)
+	{
+		Vertex vec_a_b;
+		vec_a_b.x = b.x - a.x;
+		vec_a_b.y = b.y - a.y;
+		
+		double angle_a_b = atan2(vec_a_b.y, vec_a_b.x);
+		
+		int num_midpoints = 5;
+		
+		double start_angle = angle_a_b + M_PI/2.0;
+		double end_angle = start_angle + M_PI;
+		
+		double angle_delta = (end_angle - start_angle)/num_midpoints;
+		
+		Vertex last_point;
+		last_point.x = (s32) std::round(a.x + halfwidth*cos(start_angle));
+		last_point.y = (s32) std::round(a.y + halfwidth*sin(start_angle));
+		
+		Tri t;
+		t.verts[0] = a;
+		
+		for (double current_angle = start_angle + angle_delta; current_angle < end_angle; current_angle += angle_delta)
+		{
+			t.verts[1] = last_point;
+			
+			t.verts[2].x = (s32) std::round(a.x + halfwidth*cos(current_angle));
+			t.verts[2].y = (s32) std::round(a.y + halfwidth*sin(current_angle));
+			
+			tris.push_back(t);
+			
+			last_point = t.verts[2];
+		}
+		
+		t.verts[1] = last_point;
+		
+		t.verts[2].x = (s32) std::round(a.x + halfwidth*cos(end_angle));
+		t.verts[2].y = (s32) std::round(a.y + halfwidth*sin(end_angle));
+		
+		tris.push_back(t);
+	}
+	
 	void SWF::drawLines(const Path& path, u16 width, std::vector<Tri>& tris)
 	{
-		if (width != 0)
+		if (width != 0 && width < 20)
 		{
-			width = (u16) std::max(width, (u16) 20);
+			width = 20;
+		}
+		
+		else if (width == 0)
+		{
+			return;
 		}
 		
 		u16 halfwidth = width/2;
 		
 		Vertex last_v = path.verts[0];
 		
-		for (Vertex v : path.verts)
+		for (size_t i = 1; i < path.verts.size(); ++i)
 		{
+			const Vertex& v = path.verts[i];
+			
 			Tri t;
 			
 			double angle = atan2(v.y - last_v.y, v.x - last_v.x) - M_PI/2.0;
 			
-			t.verts[0].x = last_v.x + ((s32) std::round(halfwidth*cos(angle)));
-			t.verts[0].y = last_v.y + ((s32) std::round(halfwidth*sin(angle)));
+			if (i > 1)
+			{
+				const Vertex& last_last_v = path.verts[i - 2];
+				
+				drawLineJoin(last_last_v, last_v, v, halfwidth, tris);
+			}
 			
-			t.verts[2].x = v.x + ((s32) std::round(halfwidth*cos(angle)));
-			t.verts[2].y = v.y + ((s32) std::round(halfwidth*sin(angle)));
+			t.verts[0].x = (s32) std::round(last_v.x + halfwidth*cos(angle));
+			t.verts[0].y = (s32) std::round(last_v.y + halfwidth*sin(angle));
+			
+			t.verts[2].x = (s32) std::round(v.x + halfwidth*cos(angle));
+			t.verts[2].y = (s32) std::round(v.y + halfwidth*sin(angle));
 			
 			angle += M_PI;
 			
-			t.verts[1].x = last_v.x + ((s32) std::round(halfwidth*cos(angle)));
-			t.verts[1].y = last_v.y + ((s32) std::round(halfwidth*sin(angle)));
+			t.verts[1].x = (s32) std::round(last_v.x + halfwidth*cos(angle));
+			t.verts[1].y = (s32) std::round(last_v.y + halfwidth*sin(angle));
 			
 			tris.push_back(t);
 			
-			t.verts[0].x = v.x + ((s32) std::round(halfwidth*cos(angle)));
-			t.verts[0].y = v.y + ((s32) std::round(halfwidth*sin(angle)));
+			t.verts[0].x = (s32) std::round(v.x + halfwidth*cos(angle));
+			t.verts[0].y = (s32) std::round(v.y + halfwidth*sin(angle));
 			
 			tris.push_back(t);
 			
 			last_v = v;
+		}
+		
+		if (path.verts.size() > 2 &&
+			path.verts.back().x == path.verts[0].x &&
+			path.verts.back().y == path.verts[0].y)
+		{
+			const Vertex& a = path.verts[path.verts.size() - 2];
+			const Vertex& b = path.verts[0];
+			const Vertex& c = path.verts[1];
+			
+			drawLineJoin(a, b, c, halfwidth, tris);
+		}
+		
+		else
+		{
+			drawLineCap(path.verts[0], path.verts[1], halfwidth, tris);
+			drawLineCap(path.verts.back(), path.verts[path.verts.size() - 2], halfwidth, tris);
 		}
 	}
 };
