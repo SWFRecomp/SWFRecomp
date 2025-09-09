@@ -113,6 +113,7 @@ namespace SWFRecomp
 		SWFHeader header;
 		char* swf_buffer;
 		char* cur_pos;
+		size_t num_finished_tags;
 		size_t next_frame_i;
 		bool another_frame;
 		size_t next_script_i;
@@ -123,11 +124,11 @@ namespace SWFRecomp
 		SWFTag RGB;
 		
 		SWF();
-		SWF(const char* swf_path);
+		SWF(Context& context);
 		
-		void parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
-		void interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder);
-		void interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header);
+		void parseAllTags(Context& context);
+		void interpretTag(Context& context, SWFTag& tag);
+		void interpretShape(Context& context, SWFTag& shape_tag);
 		bool isInShape(const Vertex& v, const Shape* shape);
 		void addCurvedEdge(Path* path, Vertex current, Vertex control, Vertex anchor, u32 passes);
 		void processShape(Shape& shape, u32* fill_styles);

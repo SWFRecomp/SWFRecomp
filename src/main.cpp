@@ -1,18 +1,28 @@
 #include <iostream>
 
+#include <common.h>
+#include <config.hpp>
 #include <recompilation.hpp>
-
-using SWFRecomp::recompile;
 
 int main(int argc, char** argv)
 {
 	if (argc < 2)
 	{
-		printf("Not enough arguments.\nusage: %s <name-of-swf>\n", argv[0]);
+		printf("Not enough arguments.\nusage: %s <config-file>\n", argv[0]);
 		return -1;
 	}
 	
-	recompile(argv[1], "RecompiledTags", "RecompiledScripts");
+	SWFRecomp::Config config;
+	config.parse_file(argv[1]);
+	
+	SWFRecomp::Context context;
+	context.swf_path = config.swf_path;
+	context.output_tags_folder = "RecompiledTags";
+	context.output_scripts_folder = "RecompiledScripts";
+	
+	SWFRecomp::recompile(context);
+	
+	fflush(stdout);
 	
 	return 0;
 }

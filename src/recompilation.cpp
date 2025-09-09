@@ -16,37 +16,42 @@ namespace fs = std::filesystem;
 
 namespace SWFRecomp
 {
-	void recompile(const char* swf_path, const char* output_tags_folder, const char* output_scripts_folder)
+	void recompile(Context& context)
 	{
-		SWF swf = SWF(swf_path);
-		
 		printf("\n");
 		
-		if (!fs::exists(output_tags_folder))
+		if (!fs::exists(context.output_tags_folder))
 		{
-			fs::create_directory(output_tags_folder);
+			fs::create_directory(context.output_tags_folder);
 		}
 		
-		if (!fs::exists(output_scripts_folder))
+		if (!fs::exists(context.output_scripts_folder))
 		{
-			fs::create_directory(output_scripts_folder);
+			fs::create_directory(context.output_scripts_folder);
 		}
 		
-		string output_tag_main = string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "tagMain.c";  // Gross.
-		ofstream tag_main(output_tag_main, ios_base::out);
+		context.output_tags_folder = string("") + context.output_tags_folder + ((char) fs::path::preferred_separator);
+		context.output_scripts_folder = string("") + context.output_scripts_folder + ((char) fs::path::preferred_separator);
 		
-		ofstream out_draws(string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "draws.c", ios_base::out);
-		out_draws << "#include \"recomp.h\"" << endl
-				  << "#include \"draws.h\"" << endl;
+		context.tag_main = ofstream(string("") + context.output_tags_folder + "tagMain.c", ios_base::out);
 		
-		ofstream out_draws_header(string("") + output_tags_folder + ((char) fs::path::preferred_separator) + "draws.h", ios_base::out);
-		out_draws_header << "#pragma once" << endl;
+		context.constants_header = ofstream(string("") + context.output_tags_folder + "constants.h", ios_base::out);
+		context.constants_header << "#pragma once" << endl << endl;
 		
-		string output_scripts_folder_slashed = string("") + output_scripts_folder + ((char) fs::path::preferred_separator);
-		swf.parseAllTags(tag_main, out_draws, out_draws_header, output_scripts_folder_slashed);
+		context.out_draws = ofstream(string("") + context.output_tags_folder + "draws.c", ios_base::out);
+		context.out_draws << "#include \"recomp.h\"" << endl
+						  << "#include \"draws.h\"" << endl;
 		
-		tag_main.close();
-		out_draws.close();
-		out_draws_header.close();
+		context.out_draws_header = ofstream(string("") + context.output_tags_folder + "draws.h", ios_base::out);
+		context.out_draws_header << "#pragma once" << endl;
+		
+		SWF swf = SWF(context);
+		
+		swf.parseAllTags(context);
+		
+		context.tag_main.close();
+		context.constants_header.close();
+		context.out_draws.close();
+		context.out_draws_header.close();
 	}
 };

@@ -14,6 +14,7 @@ add_executable(${PROJECT_NAME})
 
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/config.cpp
     ${CMAKE_SOURCE_DIR}/src/recompilation.cpp
     ${CMAKE_SOURCE_DIR}/src/swf.cpp
     ${CMAKE_SOURCE_DIR}/src/tag.cpp
@@ -47,4 +48,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     zlib
     lzma/liblzma/api
     ${CMAKE_SOURCE_DIR}/lib/earcut/include/mapbox
+    ${CMAKE_SOURCE_DIR}/lib/tomlplusplus/include
 )

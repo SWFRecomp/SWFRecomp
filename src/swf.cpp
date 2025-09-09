@@ -105,7 +105,7 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(const char* swf_path) : next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0)
+	SWF::SWF(Context& context) : num_finished_tags(0), next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -116,12 +116,12 @@ namespace SWFRecomp
 		RGB.configureNextField(SWF_FIELD_UI8);  // Green
 		RGB.configureNextField(SWF_FIELD_UI8);  // Blue
 		
-		printf("Reading %s...\n", swf_path);
+		printf("Reading %s...\n", context.swf_path.c_str());
 		
-		ifstream swf_file(swf_path, ios_base::in | ios_base::binary);
+		ifstream swf_file(context.swf_path, ios_base::in | ios_base::binary);
 		if (!swf_file.good())
 		{
-			EXC_ARG("SWF file `%s' not found\n", swf_path);
+			EXC_ARG("SWF file `%s' not found\n", context.swf_path.c_str());
 		}
 		
 		swf_file.seekg(0, ios_base::end);
@@ -217,62 +217,75 @@ namespace SWFRecomp
 		cur_pos = swf_buffer + 8;
 		
 		header.loadOtherData(cur_pos);
+		
+		std::string width = to_string(FRAME_WIDTH/20);
+		std::string height = to_string(FRAME_HEIGHT/20);
+		std::string width_twips = to_string(FRAME_WIDTH);
+		std::string height_twips = to_string(FRAME_HEIGHT);
+		
+		context.constants_header << "#define FRAME_WIDTH " << width << endl
+								 << "#define FRAME_HEIGHT " << height << endl
+								 << "#define FRAME_WIDTH_TWIPS " << width_twips << endl
+								 << "#define FRAME_HEIGHT_TWIPS " << height_twips << endl;
 	}
 	
-	void SWF::parseAllTags(ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder)
+	void SWF::parseAllTags(Context& context)
 	{
 		SWFTag tag;
-		tag.code = SWF_TAG_SHOW_FRAME;
 		
-		tag_main << "#include <recomp.h>" << endl << endl
+		context.tag_main << "#include <recomp.h>" << endl << endl
 				 << "#include <out.h>" << endl
 				 << "#include \"draws.h\"" << endl << endl
 				 << "void frame_" << to_string(next_frame_i) << "()" << endl
 				 << "{" << endl;
 		next_frame_i += 1;
 		
-		ofstream out_script_header(output_scripts_folder + "out.h", ios_base::out);
-		out_script_header << "#pragma once" << endl;
-		out_script_header.close();
+		context.out_script_header = ofstream(context.output_scripts_folder + "out.h", ios_base::out);
+		context.out_script_header << "#pragma once" << endl;
 		
-		ofstream out_script_defs(output_scripts_folder + "script_defs.c", ios_base::out);
-		out_script_defs << "#include \"script_decls.h\"" << endl;
-		out_script_defs.close();
+		context.out_script_defs = ofstream(context.output_scripts_folder + "script_defs.c", ios_base::out);
+		context.out_script_defs << "#include \"script_decls.h\"" << endl;
 		
-		ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::out);
-		out_script_decls << "#pragma once" << endl << endl
-						 << "#include <stackvalue.h>" << endl;
-		out_script_decls.close();
+		context.out_script_decls = ofstream(context.output_scripts_folder + "script_decls.h", ios_base::out);
+		context.out_script_decls << "#pragma once" << endl << endl
+								 << "#include <stackvalue.h>" << endl;
+		
+		// prime the loop
+		tag.code = (TagType) 1;
 		
 		while (tag.code != 0)
 		{
 			tag.parseHeader(cur_pos);
-			interpretTag(tag, tag_main, out_draws, out_draws_header, output_scripts_folder);
+			interpretTag(context, tag);
 			tag.clearFields();
 		}
 		
-		tag_main << endl << endl
-				 << "typedef void (*frame_func)();" << endl << endl
-				 << "frame_func frame_funcs[] =" << endl
-				 << "{" << endl;
+		context.tag_main << endl << endl
+						 << "typedef void (*frame_func)();" << endl << endl
+						 << "frame_func frame_funcs[] =" << endl
+						 << "{" << endl;
 		
 		for (size_t i = 0; i < next_frame_i; ++i)
 		{
-			tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
+			context.tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
 		}
 		
-		tag_main << "};";
+		context.tag_main << "};";
+		
+		context.out_script_header.close();
+		context.out_script_defs.close();
+		context.out_script_decls.close();
 	}
 	
-	void SWF::interpretTag(SWFTag& tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header, const string& output_scripts_folder)
+	void SWF::interpretTag(Context& context, SWFTag& tag)
 	{
 		printf("tag code: %d, tag length: %d\n", tag.code, tag.length);
 		
 		if (another_frame && tag.code != SWF_TAG_END_TAG)
 		{
-			tag_main << "}" << endl << endl
-					 << "void frame_" << to_string(next_frame_i) << "()" << endl
-					 << "{" << endl;
+			context.tag_main << "}" << endl << endl
+							 << "void frame_" << to_string(next_frame_i) << "()" << endl
+							 << "{" << endl;
 			next_frame_i += 1;
 			
 			another_frame = false;
@@ -284,19 +297,19 @@ namespace SWFRecomp
 			{
 				if (next_frame_i == 1)
 				{
-					tag_main << "\t" << "quit_swf = 1;" << endl;
+					context.tag_main << "\t" << "quit_swf = 1;" << endl;
 				}
 				
 				else
 				{
-					tag_main << "\t" << "if (!manual_next_frame)" << endl
-							 << "\t" << "{" << endl
-							 << "\t\t" << "next_frame = 0;" << endl
-							 << "\t\t" << "manual_next_frame = 1;" << endl
-							 << "\t" << "}" << endl;
+					context.tag_main << "\t" << "if (!manual_next_frame)" << endl
+									 << "\t" << "{" << endl
+									 << "\t\t" << "next_frame = 0;" << endl
+									 << "\t\t" << "manual_next_frame = 1;" << endl
+									 << "\t" << "}" << endl;
 				}
 				
-				tag_main << "}";
+				context.tag_main << "}";
 				
 				break;
 			}
@@ -305,11 +318,11 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, &sp);" << endl;
+					context.tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, &sp);" << endl;
 					last_queued_script += 1;
 				}
 				
-				tag_main << "\t" << "tagShowFrame();" << endl;
+				context.tag_main << "\t" << "tagShowFrame();" << endl;
 				
 				another_frame = true;
 				
@@ -319,7 +332,7 @@ namespace SWFRecomp
 			case SWF_TAG_DEFINE_SHAPE:
 			case SWF_TAG_DEFINE_SHAPE_2:
 			{
-				interpretShape(tag, tag_main, out_draws, out_draws_header);
+				interpretShape(context, tag);
 				
 				break;
 			}
@@ -328,31 +341,27 @@ namespace SWFRecomp
 			{
 				RGB.parseFields(cur_pos);
 				
-				tag_main << "\t" << "tagSetBackgroundColor("
-						 << to_string((u8) RGB.fields[0].value) << ", "
-						 << to_string((u8) RGB.fields[1].value) << ", "
-						 << to_string((u8) RGB.fields[2].value) << ");" << endl;
+				context.tag_main << "\t" << "tagSetBackgroundColor("
+								 << to_string((u8) RGB.fields[0].value) << ", "
+								 << to_string((u8) RGB.fields[1].value) << ", "
+								 << to_string((u8) RGB.fields[2].value) << ");" << endl;
 				
 				break;
 			}
 			
 			case SWF_TAG_DO_ACTION:
 			{
-				ofstream out_script_header(output_scripts_folder + "out.h", ios_base::app);
-				ofstream out_script_defs(output_scripts_folder + "script_defs.c", ios_base::app);
-				ofstream out_script_decls(output_scripts_folder + "script_decls.h", ios_base::app);
+				context.out_script_header << endl << "void script_" << to_string(next_script_i) << "(char* stack, u32* sp);";
 				
-				out_script_header << endl << "void script_" << to_string(next_script_i) << "(char* stack, u32* sp);";
-				
-				ofstream out_script(output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
-				
+				ofstream out_script(context.output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
 						   << "void script_" << next_script_i << "(char* stack, u32* sp)" << endl
 						   << "{" << endl;
+				
 				next_script_i += 1;
 				
-				action.parseActions(cur_pos, out_script, out_script_defs, out_script_decls);
+				action.parseActions(context, cur_pos, out_script);
 				
 				out_script << "}";
 				
@@ -368,33 +377,95 @@ namespace SWFRecomp
 				
 				tag.parseFields(cur_pos);
 				
+				u8 flags = (u8) tag.fields[0].value;
 				u16 depth = (u16) tag.fields[1].value;
 				
-				// TODO: check flags to dynamically configure next fields
+				// TODO: SWF 5 and up uses PlaceFlagHasClipActions
 				
-				tag.clearFields();
-				tag.setFieldCount(1);
+				bool has_clip_actions = (flags & 0b10000000) != 0;
+				bool has_clip_depth = (flags & 0b01000000) != 0;
+				bool has_name = (flags & 0b00100000) != 0;
+				bool has_ratio = (flags & 0b00010000) != 0;
+				bool has_color = (flags & 0b00001000) != 0;
+				bool has_matrix = (flags & 0b00000100) != 0;
+				bool has_character = (flags & 0b00000010) != 0;
+				bool move = (flags & 0b00000001) != 0;
 				
-				tag.configureNextField(SWF_FIELD_UI16);
+				u16 char_id = 0;
 				
-				tag.parseFields(cur_pos);
-				
-				u16 char_id = (u16) tag.fields[0].value;
-				
-				u32 cur_byte_bits_left = 8;
-				
-				// configure MATRIX record
-				tag.clearFields();
-				tag.setFieldCount(1);
-				
-				tag.configureNextField(SWF_FIELD_UB, 1);
-				
-				tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-				
-				bool has_scale = tag.fields[0].value & 1;
-				
-				if (has_scale)
+				if (has_character)
 				{
+					tag.clearFields();
+					tag.setFieldCount(1);
+					
+					tag.configureNextField(SWF_FIELD_UI16);
+					
+					tag.parseFields(cur_pos);
+					
+					char_id = (u16) tag.fields[0].value;
+				}
+				
+				std::string transform_name = "transform_" + to_string(num_finished_tags);
+				
+				if (has_matrix)
+				{
+					u32 cur_byte_bits_left = 8;
+					
+					// configure MATRIX record
+					tag.clearFields();
+					tag.setFieldCount(1);
+					
+					tag.configureNextField(SWF_FIELD_UB, 1);
+					
+					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+					
+					bool has_scale = tag.fields[0].value & 1;
+					
+					float scale_x = 1;
+					float scale_y = 1;
+					
+					if (has_scale)
+					{
+						tag.clearFields();
+						tag.setFieldCount(3);
+						
+						tag.configureNextField(SWF_FIELD_UB, 5, true);
+						tag.configureNextField(SWF_FIELD_FB, 0);
+						tag.configureNextField(SWF_FIELD_FB, 0);
+						
+						tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+						
+						scale_x = VAL(float, &tag.fields[1].value);
+						scale_y = VAL(float, &tag.fields[2].value);
+					}
+					
+					tag.clearFields();
+					tag.setFieldCount(1);
+					
+					tag.configureNextField(SWF_FIELD_UB, 1);
+					
+					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+					
+					bool has_rotate = tag.fields[0].value & 1;
+					
+					float rotateskew_0 = 0;
+					float rotateskew_1 = 0;
+					
+					if (has_rotate)
+					{
+						tag.clearFields();
+						tag.setFieldCount(3);
+						
+						tag.configureNextField(SWF_FIELD_UB, 5, true);
+						tag.configureNextField(SWF_FIELD_FB, 0);
+						tag.configureNextField(SWF_FIELD_FB, 0);
+						
+						tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+						
+						rotateskew_0 = VAL(float, &tag.fields[1].value);
+						rotateskew_1 = VAL(float, &tag.fields[2].value);
+					}
+					
 					tag.clearFields();
 					tag.setFieldCount(3);
 					
@@ -404,55 +475,69 @@ namespace SWFRecomp
 					
 					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
 					
-					u32 nscale_bits = (u32) tag.fields[0].value;
-					float scale_x = VAL(float, &tag.fields[1].value);
-					float scale_y = VAL(float, &tag.fields[2].value);
+					float translate_x = (float) (s32) tag.fields[1].value;
+					float translate_y = (float) (s32) tag.fields[2].value;
+					
+					context.out_draws << "float " << transform_name << "[16] =" << endl
+									  << "{" << endl
+									  << "\t" << to_string(scale_x) << "f," << endl
+									  << "\t" << to_string(rotateskew_1) << "f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  
+									  << "\t" << to_string(rotateskew_0) << "f," << endl
+									  << "\t" << to_string(scale_y) << "f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "1.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  
+									  << "\t" << to_string(translate_x) << "f," << endl
+									  << "\t" << to_string(translate_y) << "f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "1.0f," << endl
+									  
+									  << "};" << endl;
+					
+					context.out_draws_header << "float " << transform_name << "[16];" << endl;
+					
+					if (cur_byte_bits_left != 8)
+					{
+						cur_pos += 1;
+					}
 				}
 				
-				tag.clearFields();
-				tag.setFieldCount(1);
-				
-				tag.configureNextField(SWF_FIELD_UB, 1);
-				
-				tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-				
-				bool has_rotate = tag.fields[0].value & 1;
-				
-				if (has_rotate)
+				else
 				{
-					tag.clearFields();
-					tag.setFieldCount(3);
-					
-					tag.configureNextField(SWF_FIELD_UB, 5, true);
-					tag.configureNextField(SWF_FIELD_FB, 0);
-					tag.configureNextField(SWF_FIELD_FB, 0);
-					
-					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-					
-					u32 nrotate_bits = (u32) tag.fields[0].value;
-					float rotateskew_0 = VAL(float, &tag.fields[1].value);
-					float rotateskew_1 = VAL(float, &tag.fields[2].value);
+					context.out_draws << "float " << transform_name << "[16] =" << endl
+									  << "{" << endl
+									  << "\t" << "1.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "1.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "1.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "0.0f," << endl
+									  << "\t" << "1.0f," << endl
+									  
+									  << "};" << endl;
 				}
 				
-				tag.clearFields();
-				tag.setFieldCount(3);
-				
-				tag.configureNextField(SWF_FIELD_UB, 5, true);
-				tag.configureNextField(SWF_FIELD_FB, 0);
-				tag.configureNextField(SWF_FIELD_FB, 0);
-				
-				tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-				
-				u32 ntranslate_bits = (u32) tag.fields[0].value;
-				s32 translate_x = (u32) tag.fields[1].value;
-				s32 translate_y = (u32) tag.fields[2].value;
-				
-				if (cur_byte_bits_left != 8)
-				{
-					cur_pos += 1;
-				}
-				
-				tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ");" << endl;
+				context.tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ", " << transform_name << ");" << endl;
 				
 				break;
 			}
@@ -479,9 +564,9 @@ namespace SWFRecomp
 				
 				tag.parseFields(cur_pos);
 				
-				tag_main << "\t" << "tagScriptLimits("
-						 << to_string((u16) tag.fields[0].value) << ", "
-						 << to_string((u16) tag.fields[1].value) << ");" << endl;
+				context.tag_main << "\t" << "tagScriptLimits("
+								 << to_string((u16) tag.fields[0].value) << ", "
+								 << to_string((u16) tag.fields[1].value) << ");" << endl;
 				
 				break;
 			}
@@ -533,9 +618,11 @@ namespace SWFRecomp
 				EXC_ARG("Tag type %d not implemented.\n", tag.code);
 			}
 		}
+		
+		num_finished_tags += 1;
 	}
 	
-	void SWF::interpretShape(SWFTag& shape_tag, ofstream& tag_main, ofstream& out_draws, ofstream& out_draws_header)
+	void SWF::interpretShape(Context& context, SWFTag& shape_tag)
 	{
 		switch (shape_tag.code)
 		{
@@ -1008,7 +1095,7 @@ namespace SWFRecomp
 					
 					if (state_new_styles || state_move_to || fill_style_0_change || fill_style_1_change || line_style_change)
 					{
-						if (paths.back().verts.size() == 1)
+						if (paths.size() > 0 && paths.back().verts.size() == 1)
 						{
 							paths.pop_back();
 						}
@@ -1301,19 +1388,18 @@ namespace SWFRecomp
 				
 				std::string shape_name = "shape_" + to_string(shape_id) + "_tris";
 				
-				out_draws << endl;
+				context.out_draws << endl;
 				
-				out_draws << "float " << shape_name << "[" << to_string(3*tris_size) << "][7] =" << endl
-						  << "{" << endl;
+				context.out_draws << "float " << shape_name << "[" << to_string(3*tris_size) << "][7] =" << endl
+								  << "{" << endl;
 				
-				out_draws << tris_str;
+				context.out_draws << tris_str;
 				
-				out_draws << "};" << endl;
+				context.out_draws << "};" << endl << endl;
 				
-				out_draws_header << endl << "extern float " << shape_name << "[" << to_string(3*tris_size) << "][7];" << endl;
+				context.out_draws_header << endl << "extern float " << shape_name << "[" << to_string(3*tris_size) << "][7];" << endl;
 				
-				tag_main << "\t" << "dictionary[" << to_string(shape_id) << "] = (char*) " << shape_name << ";" << endl;
-				tag_main << "\t" << "dictionary_sizes[" << to_string(shape_id) << "] = sizeof(" << shape_name << ");" << endl;
+				context.tag_main << "\t" << "tagDefineShape(" << to_string(shape_id) << ", (char*) " << shape_name << ", sizeof(" << shape_name << "));" << endl;
 				
 				break;
 			}
@@ -1690,37 +1776,15 @@ namespace SWFRecomp
 		
 		s32 cross = CROSS(vec_a_b, vec_b_c);
 		
-		double angle_a_b = atan2(vec_a_b.y, vec_a_b.x);
-		double angle_b_c = atan2(vec_b_c.y, vec_b_c.x);
+		double offset = (cross < 0) ? M_PI/2 : -M_PI/2;
 		
-		if (cross < 0)
-		{
-			angle_a_b += M_PI/2;
-			angle_b_c += M_PI/2;
-		}
-		
-		else if (cross > 0)
-		{
-			angle_a_b -= M_PI/2;
-			angle_b_c -= M_PI/2;
-		}
+		double angle_a_b = atan2(vec_a_b.y, vec_a_b.x) + offset;
+		double angle_b_c = atan2(vec_b_c.y, vec_b_c.x) + offset;
 		
 		int num_midpoints = 5;
 		
-		double start_angle;
-		double end_angle;
-		
-		if (angle_a_b < angle_b_c)
-		{
-			start_angle = angle_a_b;
-			end_angle = angle_b_c;
-		}
-		
-		else
-		{
-			start_angle = angle_b_c;
-			end_angle = angle_a_b;
-		}
+		double start_angle = (angle_a_b < angle_b_c) ? angle_a_b : angle_b_c;
+		double end_angle = (angle_a_b < angle_b_c) ? angle_b_c : angle_a_b;
 		
 		double angle_delta = (end_angle - start_angle)/num_midpoints;
 		

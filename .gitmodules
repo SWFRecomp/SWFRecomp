@@ -7,3 +7,6 @@
 [submodule "lib/earcut"]
 	path = lib/earcut
 	url = https://github.com/mapbox/earcut.hpp.git
+[submodule "lib/tomlplusplus"]
+	path = lib/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git

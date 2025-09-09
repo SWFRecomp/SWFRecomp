@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <exception>
 
+#include <context.hpp>
+
 #define EXC(str) fprintf(stderr, str); throw std::exception();
 #define EXC_ARG(str, arg) fprintf(stderr, str, arg); throw std::exception();
 

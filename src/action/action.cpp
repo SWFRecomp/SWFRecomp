@@ -19,7 +19,7 @@ namespace SWFRecomp
 		
 	}
 	
-	void SWFAction::parseActions(char*& action_buffer, ofstream& out_script, ofstream& out_script_defs, ofstream& out_script_decls)
+	void SWFAction::parseActions(Context& context, char*& action_buffer, ofstream& out_script)
 	{
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
@@ -167,8 +167,8 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_STRING_EQUALS:
 				{
-					declareEmptyString(17, out_script_defs, out_script_decls);
-					declareEmptyString(17, out_script_defs, out_script_decls);
+					declareEmptyString(context, 17);
+					declareEmptyString(context, 17);
 					
 					out_script << "\t" << "// StringEquals" << endl
 							   << "\t" << "actionStringEquals(stack, sp, "
@@ -180,7 +180,7 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_STRING_LENGTH:
 				{
-					declareEmptyString(17, out_script_defs, out_script_decls);
+					declareEmptyString(context, 17);
 					
 					out_script << "\t" << "// StringLength" << endl
 							   << "\t" << "actionStringLength(stack, sp, str_"
@@ -191,8 +191,8 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_STRING_ADD:
 				{
-					declareEmptyString(17, out_script_defs, out_script_decls);
-					declareEmptyString(17, out_script_defs, out_script_decls);
+					declareEmptyString(context, 17);
+					declareEmptyString(context, 17);
 					
 					out_script << "\t" << "// StringAdd" << endl
 							   << "\t" << "actionStringAdd(stack, sp, "
@@ -272,7 +272,7 @@ namespace SWFRecomp
 								out_script << "(String)" << endl;
 								
 								push_value = (u64) &action_buffer[push_length];
-								declareString((char*) push_value, out_script_defs, out_script_decls);
+								declareString(context, (char*) push_value);
 								size_t push_str_len = strlen((char*) push_value);
 								push_length += push_str_len + 1;
 								
@@ -345,27 +345,27 @@ namespace SWFRecomp
 		}
 	}
 	
-	void SWFAction::declareVariable(char* var_name, ostream& out_script_defs, ostream& out_script_decls)
+	void SWFAction::declareVariable(Context& context, char* var_name)
 	{
-		out_script_defs << endl << "#ifndef DEF_VAR_" << var_name << endl
-						<< "#define DEF_VAR_" << var_name << endl
-						<< "var " << var_name << ";" << endl
-						<< "#endif";
+		context.out_script_defs << endl << "#ifndef DEF_VAR_" << var_name << endl
+								<< "#define DEF_VAR_" << var_name << endl
+								<< "var " << var_name << ";" << endl
+								<< "#endif";
 		
-		out_script_decls << endl << "extern var " << var_name << ";";
+		context.out_script_decls << endl << "extern var " << var_name << ";";
 	}
 	
-	void SWFAction::declareString(char* str, ostream& out_script_defs, ostream& out_script_decls)
+	void SWFAction::declareString(Context& context, char* str)
 	{
-		out_script_defs << endl << "char* str_" << next_str_i << " = \"" << str << "\";";
-		out_script_decls << endl << "extern char* str_" << next_str_i << ";";
+		context.out_script_defs << endl << "char* str_" << next_str_i << " = \"" << str << "\";";
+		context.out_script_decls << endl << "extern char* str_" << next_str_i << ";";
 		next_str_i += 1;
 	}
 	
-	void SWFAction::declareEmptyString(size_t size, ostream& out_script_defs, ostream& out_script_decls)
+	void SWFAction::declareEmptyString(Context& context, size_t size)
 	{
-		out_script_defs << endl << "char str_" << next_str_i << "[" << to_string(size) << "];";
-		out_script_decls << endl << "extern char str_" << next_str_i << "[];";
+		context.out_script_defs << endl << "char str_" << next_str_i << "[" << to_string(size) << "];";
+		context.out_script_decls << endl << "extern char str_" << next_str_i << "[];";
 		next_str_i += 1;
 	}
 	

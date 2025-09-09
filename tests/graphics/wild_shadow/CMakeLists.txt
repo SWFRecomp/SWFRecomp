@@ -65,5 +65,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/RecompiledTags
+    ${CMAKE_SOURCE_DIR}/RecompiledScripts
     ${RUNTIME_INCLUDES}
 )
