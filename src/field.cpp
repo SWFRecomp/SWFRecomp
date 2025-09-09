@@ -138,8 +138,9 @@ namespace SWFRecomp
 						}
 						
 						f += bit_float;
-						bit_float *= 2.0f;
 					}
+					
+					bit_float *= 2.0f;
 				}
 				
 				value = VAL(u32, &f);
