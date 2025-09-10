@@ -14,6 +14,7 @@ namespace SWFRecomp
 		string output_scripts_folder;
 		
 		ofstream tag_main;
+		ofstream constants;
 		ofstream constants_header;
 		ofstream out_script_header;
 		ofstream out_script_defs;
