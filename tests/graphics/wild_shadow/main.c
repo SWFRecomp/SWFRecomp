@@ -3,5 +3,5 @@
 
 int main()
 {
-	swfStart(frame_funcs, FRAME_WIDTH, FRAME_HEIGHT);
+	swfStart(frame_funcs, FRAME_WIDTH, FRAME_HEIGHT, stageToNDC);
 }

@@ -226,7 +226,29 @@ namespace SWFRecomp
 		context.constants_header << "#define FRAME_WIDTH " << width << endl
 								 << "#define FRAME_HEIGHT " << height << endl
 								 << "#define FRAME_WIDTH_TWIPS " << width_twips << endl
-								 << "#define FRAME_HEIGHT_TWIPS " << height_twips << endl;
+								 << "#define FRAME_HEIGHT_TWIPS " << height_twips << endl << endl
+								 << "extern const float stageToNDC[16];";
+		
+		context.constants << "#include \"constants.h\"" << endl << endl
+						  << "const float stageToNDC[16] =" << endl
+						  << "{" << endl
+						  << "\t" << "1.0f/(FRAME_WIDTH_TWIPS/2.0f)," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "-1.0f/(FRAME_HEIGHT_TWIPS/2.0f)," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "1.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "-1.0f," << endl
+						  << "\t" << "1.0f," << endl
+						  << "\t" << "0.0f," << endl
+						  << "\t" << "1.0f," << endl
+						  << "};";
 	}
 	
 	void SWF::parseAllTags(Context& context)
@@ -481,11 +503,11 @@ namespace SWFRecomp
 					context.out_draws << "float " << transform_name << "[16] =" << endl
 									  << "{" << endl
 									  << "\t" << to_string(scale_x) << "f," << endl
-									  << "\t" << to_string(rotateskew_1) << "f," << endl
+									  << "\t" << to_string(rotateskew_0) << "f," << endl
 									  << "\t" << "0.0f," << endl
 									  << "\t" << "0.0f," << endl
 									  
-									  << "\t" << to_string(rotateskew_0) << "f," << endl
+									  << "\t" << to_string(rotateskew_1) << "f," << endl
 									  << "\t" << to_string(scale_y) << "f," << endl
 									  << "\t" << "0.0f," << endl
 									  << "\t" << "0.0f," << endl
@@ -1343,8 +1365,8 @@ namespace SWFRecomp
 							for (int j = 0; j < 3; ++j)
 							{
 								tris_str += std::string("\t") + "{ "
-										  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
-										  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
+										  + to_string(t.verts[j].x) + ".0f, "
+										  + to_string(FRAME_HEIGHT - t.verts[j].y) + ".0f, "
 										  + "0.0f, "
 										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].r) + ".0f/255.0f, "
 										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].g) + ".0f/255.0f, "
@@ -1374,8 +1396,8 @@ namespace SWFRecomp
 							for (int j = 0; j < 3; ++j)
 							{
 								tris_str += std::string("\t") + "{ "
-										  + to_string(t.verts[j].x) + "/" + to_string(FRAME_WIDTH/2) + ".0f - 1.0f, "
-										  + to_string(t.verts[j].y) + "/" + to_string(FRAME_HEIGHT/2) + ".0f - 1.0f, "
+										  + to_string(t.verts[j].x) + ".0f, "
+										  + to_string(FRAME_HEIGHT - t.verts[j].y) + ".0f, "
 										  + "0.0f, "
 										  + to_string(line_style.r) + ".0f/255.0f, "
 										  + to_string(line_style.g) + ".0f/255.0f, "

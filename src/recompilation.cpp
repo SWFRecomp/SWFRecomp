@@ -35,6 +35,8 @@ namespace SWFRecomp
 		
 		context.tag_main = ofstream(string("") + context.output_tags_folder + "tagMain.c", ios_base::out);
 		
+		context.constants = ofstream(string("") + context.output_tags_folder + "constants.c", ios_base::out);
+		
 		context.constants_header = ofstream(string("") + context.output_tags_folder + "constants.h", ios_base::out);
 		context.constants_header << "#pragma once" << endl << endl;
 		
@@ -50,6 +52,7 @@ namespace SWFRecomp
 		swf.parseAllTags(context);
 		
 		context.tag_main.close();
+		context.constants.close();
 		context.constants_header.close();
 		context.out_draws.close();
 		context.out_draws_header.close();
