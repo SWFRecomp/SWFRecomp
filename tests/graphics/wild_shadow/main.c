@@ -1,7 +1,19 @@
 #include <recomp.h>
 #include <constants.h>
+#include <draws.h>
 
 int main()
 {
-	swfStart(frame_funcs, FRAME_WIDTH, FRAME_HEIGHT, stageToNDC);
+	SWFAppContext app_context;
+	app_context.frame_funcs = frame_funcs;
+	app_context.width = FRAME_WIDTH;
+	app_context.height = FRAME_HEIGHT;
+	app_context.stage_to_ndc = stage_to_ndc;
+	
+	app_context.shape_data = (char*) shape_data;
+	app_context.shape_data_size = sizeof(shape_data);
+	app_context.transform_data = (char*) transform_data;
+	app_context.transform_data_size = sizeof(transform_data);
+	
+	swfStart(&app_context);
 }

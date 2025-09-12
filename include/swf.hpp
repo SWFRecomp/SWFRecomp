@@ -1,15 +1,13 @@
 #pragma once
 
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
 #include <common.h>
 #include <tag.hpp>
 #include <action.hpp>
-
-using std::ofstream;
-using std::string;
 
 namespace SWFRecomp
 {
@@ -118,6 +116,10 @@ namespace SWFRecomp
 		bool another_frame;
 		size_t next_script_i;
 		size_t last_queued_script;
+		std::stringstream shape_data;
+		size_t current_tri;
+		std::stringstream transform_data;
+		size_t current_transform;
 		
 		SWFAction action;
 		

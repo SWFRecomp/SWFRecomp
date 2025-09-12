@@ -105,7 +105,7 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(Context& context) : num_finished_tags(0), next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0)
+	SWF::SWF(Context& context) : num_finished_tags(0), next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0), current_tri(0), current_transform(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -227,10 +227,10 @@ namespace SWFRecomp
 								 << "#define FRAME_HEIGHT " << height << endl
 								 << "#define FRAME_WIDTH_TWIPS " << width_twips << endl
 								 << "#define FRAME_HEIGHT_TWIPS " << height_twips << endl << endl
-								 << "extern const float stageToNDC[16];";
+								 << "extern const float stage_to_ndc[16];";
 		
 		context.constants << "#include \"constants.h\"" << endl << endl
-						  << "const float stageToNDC[16] =" << endl
+						  << "const float stage_to_ndc[16] =" << endl
 						  << "{" << endl
 						  << "\t" << "1.0f/(FRAME_WIDTH_TWIPS/2.0f)," << endl
 						  << "\t" << "0.0f," << endl
@@ -293,6 +293,22 @@ namespace SWFRecomp
 		}
 		
 		context.tag_main << "};";
+		
+		context.out_draws << endl;
+		
+		context.out_draws << "float shape_data[" << to_string(3*current_tri) << "][7] =" << endl
+						  << "{" << endl
+						  << shape_data.str() << endl
+						  << "};" << endl
+						  << endl
+						  << "float transform_data[" << to_string(current_transform) << "][16] =" << endl
+						  << "{" << endl
+						  << transform_data.str() << endl
+						  << "};" << endl;
+		
+		context.out_draws_header << endl << "extern float shape_data[" << to_string(3*current_tri) << "][7];" << endl
+								 << endl
+								 << "extern float transform_data[" << to_string(current_transform) << "][16];" << endl;
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -500,31 +516,25 @@ namespace SWFRecomp
 					float translate_x = (float) (s32) tag.fields[1].value;
 					float translate_y = (float) (s32) tag.fields[2].value;
 					
-					context.out_draws << "float " << transform_name << "[16] =" << endl
-									  << "{" << endl
-									  << "\t" << to_string(scale_x) << "f," << endl
-									  << "\t" << to_string(rotateskew_0) << "f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  
-									  << "\t" << to_string(rotateskew_1) << "f," << endl
-									  << "\t" << to_string(scale_y) << "f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "1.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  
-									  << "\t" << to_string(translate_x) << "f," << endl
-									  << "\t" << to_string(translate_y) << "f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "1.0f," << endl
-									  
-									  << "};" << endl;
-					
-					context.out_draws_header << "float " << transform_name << "[16];" << endl;
+					transform_data << "\t" << to_string(scale_x) << "f," << endl
+								   << "\t" << to_string(rotateskew_0) << "f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								
+								   << "\t" << to_string(rotateskew_1) << "f," << endl
+								   << "\t" << to_string(scale_y) << "f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl
+								   << "\t" << "0.0f," << endl
+								
+								   << "\t" << to_string(translate_x) << "f," << endl
+								   << "\t" << to_string(translate_y) << "f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl;
 					
 					if (cur_byte_bits_left != 8)
 					{
@@ -534,32 +544,30 @@ namespace SWFRecomp
 				
 				else
 				{
-					context.out_draws << "float " << transform_name << "[16] =" << endl
-									  << "{" << endl
-									  << "\t" << "1.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "1.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "1.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "0.0f," << endl
-									  << "\t" << "1.0f," << endl
-									  
-									  << "};" << endl;
+					transform_data << "\t" << "1.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl;
 				}
 				
-				context.tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ", " << transform_name << ");" << endl;
+				context.tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(current_transform) << ");" << endl;
+				
+				current_transform += 1;
 				
 				break;
 			}
@@ -1262,10 +1270,6 @@ namespace SWFRecomp
 					}
 				}
 				
-				std::string tris_str = "";
-				
-				size_t tris_size = 0;
-				
 				auto compareArea = [](const Shape& a, const Shape& b)
 				{
 					u64 width = a.max.x - a.min.x;
@@ -1350,6 +1354,8 @@ namespace SWFRecomp
 					}
 				}
 				
+				size_t tris_size = 0;
+				
 				for (size_t i = 0; i < shapes.size(); ++i)
 				{
 					if (!shapes[i].invalid && shapes[i].closed && shapes[i].inner_fill != 0 && !shapes[i].hole)
@@ -1364,14 +1370,14 @@ namespace SWFRecomp
 						{
 							for (int j = 0; j < 3; ++j)
 							{
-								tris_str += std::string("\t") + "{ "
-										  + to_string(t.verts[j].x) + ".0f, "
-										  + to_string(FRAME_HEIGHT - t.verts[j].y) + ".0f, "
-										  + "0.0f, "
-										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].r) + ".0f/255.0f, "
-										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].g) + ".0f/255.0f, "
-										  + to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].b) + ".0f/255.0f, "
-										  + "1.0f },\n";
+								shape_data << "\t" << "{ "
+										   << to_string(t.verts[j].x) << ".0f, "
+										   << to_string(FRAME_HEIGHT - t.verts[j].y) << ".0f, "
+										   << "0.0f, "
+										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].r) << ".0f/255.0f, "
+										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].g) << ".0f/255.0f, "
+										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].b) << ".0f/255.0f, "
+										   << "1.0f },\n";
 							}
 						}
 					}
@@ -1395,33 +1401,22 @@ namespace SWFRecomp
 						{
 							for (int j = 0; j < 3; ++j)
 							{
-								tris_str += std::string("\t") + "{ "
-										  + to_string(t.verts[j].x) + ".0f, "
-										  + to_string(FRAME_HEIGHT - t.verts[j].y) + ".0f, "
-										  + "0.0f, "
-										  + to_string(line_style.r) + ".0f/255.0f, "
-										  + to_string(line_style.g) + ".0f/255.0f, "
-										  + to_string(line_style.b) + ".0f/255.0f, "
-										  + "1.0f },\n";
+								shape_data << "\t" << "{ "
+										   << to_string(t.verts[j].x) << ".0f, "
+										   << to_string(FRAME_HEIGHT - t.verts[j].y) << ".0f, "
+										   << "0.0f, "
+										   << to_string(line_style.r) << ".0f/255.0f, "
+										   << to_string(line_style.g) << ".0f/255.0f, "
+										   << to_string(line_style.b) << ".0f/255.0f, "
+										   << "1.0f },\n";
 							}
 						}
 					}
 				}
 				
-				std::string shape_name = "shape_" + to_string(shape_id) + "_tris";
+				context.tag_main << "\t" << "tagDefineShape(" << to_string(shape_id) << ", " << to_string(3*current_tri) << ", " << to_string(3*tris_size) << ");" << endl;
 				
-				context.out_draws << endl;
-				
-				context.out_draws << "float " << shape_name << "[" << to_string(3*tris_size) << "][7] =" << endl
-								  << "{" << endl;
-				
-				context.out_draws << tris_str;
-				
-				context.out_draws << "};" << endl << endl;
-				
-				context.out_draws_header << endl << "extern float " << shape_name << "[" << to_string(3*tris_size) << "][7];" << endl;
-				
-				context.tag_main << "\t" << "tagDefineShape(" << to_string(shape_id) << ", (char*) " << shape_name << ", sizeof(" << shape_name << "));" << endl;
+				current_tri += tris_size;
 				
 				break;
 			}
