@@ -14,6 +14,8 @@ int main()
 	app_context.shape_data_size = sizeof(shape_data);
 	app_context.transform_data = (char*) transform_data;
 	app_context.transform_data_size = sizeof(transform_data);
+	app_context.color_data = (char*) color_data;
+	app_context.color_data_size = sizeof(color_data);
 	
 	swfStart(&app_context);
 }

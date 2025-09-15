@@ -105,7 +105,7 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(Context& context) : num_finished_tags(0), next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0), current_tri(0), current_transform(0)
+	SWF::SWF(Context& context) : num_finished_tags(0), next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0), current_tri(0), current_transform(0), current_color(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -251,6 +251,84 @@ namespace SWFRecomp
 						  << "};";
 	}
 	
+	void SWF::parseMatrix(MATRIX& matrix_out)
+	{
+		u32 cur_byte_bits_left = 8;
+		
+		SWFTag matrix_tag;
+		
+		matrix_tag.clearFields();
+		matrix_tag.setFieldCount(1);
+		
+		matrix_tag.configureNextField(SWF_FIELD_UB, 1);
+		
+		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+		
+		bool has_scale = matrix_tag.fields[0].value & 1;
+		
+		matrix_out.scale_x = 1;
+		matrix_out.scale_y = 1;
+		
+		if (has_scale)
+		{
+			matrix_tag.clearFields();
+			matrix_tag.setFieldCount(3);
+			
+			matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			
+			matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+			
+			matrix_out.scale_x = VAL(float, &matrix_tag.fields[1].value);
+			matrix_out.scale_y = VAL(float, &matrix_tag.fields[2].value);
+		}
+		
+		matrix_tag.clearFields();
+		matrix_tag.setFieldCount(1);
+		
+		matrix_tag.configureNextField(SWF_FIELD_UB, 1);
+		
+		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+		
+		bool has_rotate = matrix_tag.fields[0].value & 1;
+		
+		matrix_out.rotateskew_0 = 0;
+		matrix_out.rotateskew_1 = 0;
+		
+		if (has_rotate)
+		{
+			matrix_tag.clearFields();
+			matrix_tag.setFieldCount(3);
+			
+			matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			
+			matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+			
+			matrix_out.rotateskew_0 = VAL(float, &matrix_tag.fields[1].value);
+			matrix_out.rotateskew_1 = VAL(float, &matrix_tag.fields[2].value);
+		}
+		
+		matrix_tag.clearFields();
+		matrix_tag.setFieldCount(3);
+		
+		matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
+		matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+		matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+		
+		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+		
+		matrix_out.translate_x = (s32) matrix_tag.fields[1].value;
+		matrix_out.translate_y = (s32) matrix_tag.fields[2].value;
+		
+		if (cur_byte_bits_left != 8)
+		{
+			cur_pos += 1;
+		}
+	}
+	
 	void SWF::parseAllTags(Context& context)
 	{
 		SWFTag tag;
@@ -271,6 +349,29 @@ namespace SWFRecomp
 		context.out_script_decls = ofstream(context.output_scripts_folder + "script_decls.h", ios_base::out);
 		context.out_script_decls << "#pragma once" << endl << endl
 								 << "#include <stackvalue.h>" << endl;
+		
+		// output identity matrix at transform id 0
+		transform_data << "\t" << "1.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "1.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "1.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "1.0f," << endl;
+		
+		current_transform += 1;
 		
 		// prime the loop
 		tag.code = (TagType) 1;
@@ -296,19 +397,26 @@ namespace SWFRecomp
 		
 		context.out_draws << endl;
 		
-		context.out_draws << "float shape_data[" << to_string(3*current_tri) << "][7] =" << endl
+		context.out_draws << "u32 shape_data[" << to_string(3*current_tri) << "][4] =" << endl
 						  << "{" << endl
-						  << shape_data.str() << endl
+						  << shape_data.str()
 						  << "};" << endl
 						  << endl
 						  << "float transform_data[" << to_string(current_transform) << "][16] =" << endl
 						  << "{" << endl
-						  << transform_data.str() << endl
-						  << "};" << endl;
+						  << transform_data.str()
+						  << "};" << endl
+						  << endl
+						  << "float color_data[" << to_string(current_color) << "][4] =" << endl
+						  << "{" << endl
+						  << color_data.str()
+						  << "};";
 		
-		context.out_draws_header << endl << "extern float shape_data[" << to_string(3*current_tri) << "][7];" << endl
+		context.out_draws_header << endl << "extern u32 shape_data[" << to_string(3*current_tri) << "][4];" << endl
 								 << endl
-								 << "extern float transform_data[" << to_string(current_transform) << "][16];" << endl;
+								 << "extern float transform_data[" << to_string(current_transform) << "][16];" << endl
+								 << endl
+								 << "extern float color_data[" << to_string(current_color) << "][4];";
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -445,84 +553,20 @@ namespace SWFRecomp
 				
 				std::string transform_name = "transform_" + to_string(num_finished_tags);
 				
+				size_t transform_id = current_transform;
+				
 				if (has_matrix)
 				{
-					u32 cur_byte_bits_left = 8;
+					MATRIX matrix;
+					parseMatrix(matrix);
 					
-					// configure MATRIX record
-					tag.clearFields();
-					tag.setFieldCount(1);
-					
-					tag.configureNextField(SWF_FIELD_UB, 1);
-					
-					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-					
-					bool has_scale = tag.fields[0].value & 1;
-					
-					float scale_x = 1;
-					float scale_y = 1;
-					
-					if (has_scale)
-					{
-						tag.clearFields();
-						tag.setFieldCount(3);
-						
-						tag.configureNextField(SWF_FIELD_UB, 5, true);
-						tag.configureNextField(SWF_FIELD_FB, 0);
-						tag.configureNextField(SWF_FIELD_FB, 0);
-						
-						tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-						
-						scale_x = VAL(float, &tag.fields[1].value);
-						scale_y = VAL(float, &tag.fields[2].value);
-					}
-					
-					tag.clearFields();
-					tag.setFieldCount(1);
-					
-					tag.configureNextField(SWF_FIELD_UB, 1);
-					
-					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-					
-					bool has_rotate = tag.fields[0].value & 1;
-					
-					float rotateskew_0 = 0;
-					float rotateskew_1 = 0;
-					
-					if (has_rotate)
-					{
-						tag.clearFields();
-						tag.setFieldCount(3);
-						
-						tag.configureNextField(SWF_FIELD_UB, 5, true);
-						tag.configureNextField(SWF_FIELD_FB, 0);
-						tag.configureNextField(SWF_FIELD_FB, 0);
-						
-						tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-						
-						rotateskew_0 = VAL(float, &tag.fields[1].value);
-						rotateskew_1 = VAL(float, &tag.fields[2].value);
-					}
-					
-					tag.clearFields();
-					tag.setFieldCount(3);
-					
-					tag.configureNextField(SWF_FIELD_UB, 5, true);
-					tag.configureNextField(SWF_FIELD_FB, 0);
-					tag.configureNextField(SWF_FIELD_FB, 0);
-					
-					tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-					
-					float translate_x = (float) (s32) tag.fields[1].value;
-					float translate_y = (float) (s32) tag.fields[2].value;
-					
-					transform_data << "\t" << to_string(scale_x) << "f," << endl
-								   << "\t" << to_string(rotateskew_0) << "f," << endl
+					transform_data << "\t" << to_string(matrix.scale_x) << "f," << endl
+								   << "\t" << to_string(matrix.rotateskew_0) << "f," << endl
 								   << "\t" << "0.0f," << endl
 								   << "\t" << "0.0f," << endl
 								
-								   << "\t" << to_string(rotateskew_1) << "f," << endl
-								   << "\t" << to_string(scale_y) << "f," << endl
+								   << "\t" << to_string(matrix.rotateskew_1) << "f," << endl
+								   << "\t" << to_string(matrix.scale_y) << "f," << endl
 								   << "\t" << "0.0f," << endl
 								   << "\t" << "0.0f," << endl
 								
@@ -531,41 +575,18 @@ namespace SWFRecomp
 								   << "\t" << "1.0f," << endl
 								   << "\t" << "0.0f," << endl
 								
-								   << "\t" << to_string(translate_x) << "f," << endl
-								   << "\t" << to_string(translate_y) << "f," << endl
+								   << "\t" << to_string((float) matrix.translate_x) << "f," << endl
+								   << "\t" << to_string((float) matrix.translate_y) << "f," << endl
 								   << "\t" << "0.0f," << endl
 								   << "\t" << "1.0f," << endl;
-					
-					if (cur_byte_bits_left != 8)
-					{
-						cur_pos += 1;
-					}
 				}
 				
 				else
 				{
-					transform_data << "\t" << "1.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl;
+					transform_id = 0;
 				}
 				
-				context.tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(current_transform) << ");" << endl;
+				context.tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(transform_id) << ");" << endl;
 				
 				current_transform += 1;
 				
@@ -652,8 +673,140 @@ namespace SWFRecomp
 		num_finished_tags += 1;
 	}
 	
+	FillStyle* SWF::parseFillStyles(u16 fill_style_count)
+	{
+		SWFTag fill_data;
+		
+		FillStyle* fill_styles = new FillStyle[fill_style_count];
+		
+		for (u16 i = 0; i < fill_style_count; ++i)
+		{
+			fill_data.clearFields();
+			fill_data.setFieldCount(1);
+			
+			fill_data.configureNextField(SWF_FIELD_UI8, 8);
+			
+			fill_data.parseFields(cur_pos);
+			
+			fill_styles[i].type = (u8) fill_data.fields[0].value;
+			
+			switch (fill_styles[i].type)
+			{
+				case FILL_SOLID:
+				{
+					fill_data.clearFields();
+					fill_data.setFieldCount(3);
+					
+					fill_data.configureNextField(SWF_FIELD_UI8, 8);
+					fill_data.configureNextField(SWF_FIELD_UI8, 8);
+					fill_data.configureNextField(SWF_FIELD_UI8, 8);
+					
+					fill_data.parseFields(cur_pos);
+					
+					fill_styles[i].r = (u8) fill_data.fields[0].value;
+					fill_styles[i].g = (u8) fill_data.fields[1].value;
+					fill_styles[i].b = (u8) fill_data.fields[2].value;
+					
+					fill_styles[i].index = current_color;
+					
+					color_data << "\t" << "{ "
+							   << to_string(fill_styles[i].r) << "/255.0f, "
+							   << to_string(fill_styles[i].g) << "/255.0f, "
+							   << to_string(fill_styles[i].b) << "/255.0f, "
+							   << "255/255.0f }," << endl;
+					
+					current_color += 1;
+					
+					break;
+				}
+				
+				case FILL_GRAD_LINEAR:
+				{
+					MATRIX matrix;
+					parseMatrix(matrix);
+					
+					fill_data.clearFields();
+					fill_data.setFieldCount(3);
+					
+					fill_data.configureNextField(SWF_FIELD_UB, 2);
+					fill_data.configureNextField(SWF_FIELD_UB, 2);
+					fill_data.configureNextField(SWF_FIELD_UB, 4);
+					
+					fill_data.parseFields(cur_pos);
+					
+					fill_styles[i].gradient.spread_mode = (u8) fill_data.fields[0].value;
+					fill_styles[i].gradient.interpolation_mode = (u8) fill_data.fields[1].value;
+					fill_styles[i].gradient.num_grads = (u8) fill_data.fields[2].value;
+					
+					for (int j = 0; j < fill_styles[j].gradient.num_grads; ++j)
+					{
+						fill_data.clearFields();
+						fill_data.setFieldCount(1);
+						
+						fill_data.configureNextField(SWF_FIELD_UI8);
+						
+						fill_data.parseFields(cur_pos);
+						
+						fill_styles[i].gradient.records[j].ratio = (u8) fill_data.fields[0].value;
+						
+						RGB.parseFields(cur_pos);
+						
+						fill_styles[i].gradient.records[j].r = (u8) RGB.fields[0].value;
+						fill_styles[i].gradient.records[j].g = (u8) RGB.fields[1].value;
+						fill_styles[i].gradient.records[j].b = (u8) RGB.fields[2].value;
+					}
+					
+					break;
+				}
+			}
+		}
+		
+		return fill_styles;
+	}
+	
+	LineStyle* SWF::parseLineStyles(u16 line_style_count)
+	{
+		SWFTag line_data;
+		
+		LineStyle* line_styles = new LineStyle[line_style_count];
+		
+		for (u16 i = 0; i < line_style_count; ++i)
+		{
+			line_data.clearFields();
+			line_data.setFieldCount(4);
+			
+			line_data.configureNextField(SWF_FIELD_UI16, 16);
+			line_data.configureNextField(SWF_FIELD_UI8, 8);
+			line_data.configureNextField(SWF_FIELD_UI8, 8);
+			line_data.configureNextField(SWF_FIELD_UI8, 8);
+			
+			line_data.parseFields(cur_pos);
+			
+			line_styles[i].width = (u16) line_data.fields[0].value;
+			
+			line_styles[i].r = (u8) line_data.fields[1].value;
+			line_styles[i].g = (u8) line_data.fields[2].value;
+			line_styles[i].b = (u8) line_data.fields[3].value;
+			
+			line_styles[i].index = current_color;
+			
+			color_data << "\t" << "{ "
+					   << to_string(line_styles[i].r) << "/255.0f, "
+					   << to_string(line_styles[i].g) << "/255.0f, "
+					   << to_string(line_styles[i].b) << "/255.0f, "
+					   << "255/255.0f }," << endl;
+			
+			current_color += 1;
+		}
+		
+		return line_styles;
+	}
+	
 	void SWF::interpretShape(Context& context, SWFTag& shape_tag)
 	{
+		// TODO: DefineShape3
+		// TODO: DefineShape4
+		
 		switch (shape_tag.code)
 		{
 			case SWF_TAG_DEFINE_SHAPE:
@@ -695,28 +848,7 @@ namespace SWFRecomp
 				
 				std::vector<FillStyle*> all_fill_styles;
 				
-				FillStyle* fill_styles = new FillStyle[fill_style_count];
-				
-				all_fill_styles.push_back(fill_styles);
-				
-				for (u16 i = 0; i < fill_style_count; ++i)
-				{
-					shape_tag.clearFields();
-					shape_tag.setFieldCount(4);
-					
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					
-					shape_tag.parseFields(cur_pos);
-					
-					fill_styles[i].type = (u8) shape_tag.fields[0].value;
-					
-					fill_styles[i].r = (u8) shape_tag.fields[1].value;
-					fill_styles[i].g = (u8) shape_tag.fields[2].value;
-					fill_styles[i].b = (u8) shape_tag.fields[3].value;
-				}
+				all_fill_styles.push_back(parseFillStyles(fill_style_count));
 				
 				// LINESTYLEARRAY
 				shape_tag.clearFields();
@@ -741,28 +873,7 @@ namespace SWFRecomp
 				
 				std::vector<LineStyle*> all_line_styles;
 				
-				LineStyle* line_styles = new LineStyle[line_style_count];
-				
-				all_line_styles.push_back(line_styles);
-				
-				for (u16 i = 0; i < line_style_count; ++i)
-				{
-					shape_tag.clearFields();
-					shape_tag.setFieldCount(4);
-					
-					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-					
-					shape_tag.parseFields(cur_pos);
-					
-					line_styles[i].width = (u16) shape_tag.fields[0].value;
-					
-					line_styles[i].r = (u8) shape_tag.fields[1].value;
-					line_styles[i].g = (u8) shape_tag.fields[2].value;
-					line_styles[i].b = (u8) shape_tag.fields[3].value;
-				}
+				all_line_styles.push_back(parseLineStyles(line_style_count));
 				
 				shape_tag.clearFields();
 				shape_tag.setFieldCount(2);
@@ -1040,30 +1151,9 @@ namespace SWFRecomp
 							fill_style_count = (u16) shape_tag.fields[0].value;
 						}
 						
-						FillStyle* fill_styles = new FillStyle[fill_style_count];
-						
-						all_fill_styles.push_back(fill_styles);
+						all_fill_styles.push_back(parseFillStyles(fill_style_count));
 						
 						current_fill_style_list += 1;
-						
-						for (u16 i = 0; i < fill_style_count; ++i)
-						{
-							shape_tag.clearFields();
-							shape_tag.setFieldCount(4);
-							
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							
-							shape_tag.parseFields(cur_pos);
-							
-							fill_styles[i].type = (u8) shape_tag.fields[0].value;
-							
-							fill_styles[i].r = (u8) shape_tag.fields[1].value;
-							fill_styles[i].g = (u8) shape_tag.fields[2].value;
-							fill_styles[i].b = (u8) shape_tag.fields[3].value;
-						}
 						
 						// LINESTYLEARRAY
 						shape_tag.clearFields();
@@ -1086,30 +1176,9 @@ namespace SWFRecomp
 							line_style_count = (u16) shape_tag.fields[0].value;
 						}
 						
-						LineStyle* line_styles = new LineStyle[line_style_count];
-						
-						all_line_styles.push_back(line_styles);
+						all_line_styles.push_back(parseLineStyles(line_style_count));
 						
 						current_line_style_list += 1;
-						
-						for (u16 i = 0; i < line_style_count; ++i)
-						{
-							shape_tag.clearFields();
-							shape_tag.setFieldCount(4);
-							
-							shape_tag.configureNextField(SWF_FIELD_UI16, 16);
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-							
-							shape_tag.parseFields(cur_pos);
-							
-							line_styles[i].width = (u16) shape_tag.fields[0].value;
-							
-							line_styles[i].r = (u8) shape_tag.fields[1].value;
-							line_styles[i].g = (u8) shape_tag.fields[2].value;
-							line_styles[i].b = (u8) shape_tag.fields[3].value;
-						}
 						
 						shape_tag.clearFields();
 						shape_tag.setFieldCount(2);
@@ -1366,18 +1435,23 @@ namespace SWFRecomp
 						
 						tris_size += tris.size();
 						
+						// output vertices with the parsed gradient data
+						
 						for (Tri t : tris)
 						{
 							for (int j = 0; j < 3; ++j)
 							{
+								float x_f = (float) t.verts[j].x;
+								float y_f = (float) (FRAME_HEIGHT - t.verts[j].y);
+								
 								shape_data << "\t" << "{ "
-										   << to_string(t.verts[j].x) << ".0f, "
-										   << to_string(FRAME_HEIGHT - t.verts[j].y) << ".0f, "
-										   << "0.0f, "
-										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].r) << ".0f/255.0f, "
-										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].g) << ".0f/255.0f, "
-										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].b) << ".0f/255.0f, "
-										   << "1.0f },\n";
+										   << std::hex << std::uppercase
+										   << "0x" << VAL(u32, &x_f) << ", "
+										   << "0x" << VAL(u32, &y_f) << ", "
+										   << std::dec
+										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].type) << ", "
+										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].index)
+										   << " }," << endl;
 							}
 						}
 					}
@@ -1401,14 +1475,17 @@ namespace SWFRecomp
 						{
 							for (int j = 0; j < 3; ++j)
 							{
+								float x_f = (float) t.verts[j].x;
+								float y_f = (float) (FRAME_HEIGHT - t.verts[j].y);
+								
 								shape_data << "\t" << "{ "
-										   << to_string(t.verts[j].x) << ".0f, "
-										   << to_string(FRAME_HEIGHT - t.verts[j].y) << ".0f, "
-										   << "0.0f, "
-										   << to_string(line_style.r) << ".0f/255.0f, "
-										   << to_string(line_style.g) << ".0f/255.0f, "
-										   << to_string(line_style.b) << ".0f/255.0f, "
-										   << "1.0f },\n";
+										   << std::hex << std::uppercase
+										   << "0x" << VAL(u32, &x_f) << ", "
+										   << "0x" << VAL(u32, &y_f) << ", "
+										   << std::dec
+										   << "0, "
+										   << to_string(line_style.index)
+										   << " }," << endl;
 							}
 						}
 					}

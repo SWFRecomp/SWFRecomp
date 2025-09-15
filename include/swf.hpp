@@ -20,6 +20,16 @@ namespace SWFRecomp
 		s32 ymax;
 	};
 	
+	struct MATRIX
+	{
+		float scale_x;
+		float scale_y;
+		float rotateskew_0;
+		float rotateskew_1;
+		s32 translate_x;
+		s32 translate_y;
+	};
+	
 	struct Vertex
 	{
 		s32 x;
@@ -70,17 +80,48 @@ namespace SWFRecomp
 		bool invalid;
 	};
 	
-	struct FillStyle
+	struct GradientRecord
 	{
-		u8 type;
+		u8 ratio;
 		u8 r;
 		u8 g;
 		u8 b;
 	};
 	
+	struct Gradient
+	{
+		u8 spread_mode;
+		u8 interpolation_mode;
+		u8 num_grads;
+		GradientRecord records[15];
+	};
+	
+	enum FillType
+	{
+		FILL_SOLID = 0x00,
+		FILL_GRAD_LINEAR = 0x10,
+		FILL_GRAD_RADIAL = 0x12,
+		FILL_GRAD_FOCAL = 0x13,
+		FILL_BITMAP_REPEAT = 0x40,
+		FILL_BITMAP_CLIPPED = 0x41,
+		FILL_BITMAP_REPEAT_NONSMOOTH = 0x42,
+		FILL_BITMAP_CLIPPED_NONSMOOTH = 0x43,
+	};
+	
+	struct FillStyle
+	{
+		u8 type;
+		size_t index;
+		u8 r;
+		u8 g;
+		u8 b;
+		Gradient gradient;
+	};
+	
 	struct LineStyle
 	{
 		u16 width;
+		size_t index;
 		u8 r;
 		u8 g;
 		u8 b;
@@ -116,10 +157,13 @@ namespace SWFRecomp
 		bool another_frame;
 		size_t next_script_i;
 		size_t last_queued_script;
+		
 		std::stringstream shape_data;
 		size_t current_tri;
 		std::stringstream transform_data;
 		size_t current_transform;
+		std::stringstream color_data;
+		size_t current_color;
 		
 		SWFAction action;
 		
@@ -128,8 +172,11 @@ namespace SWFRecomp
 		SWF();
 		SWF(Context& context);
 		
+		void parseMatrix(MATRIX& matrix_out);
 		void parseAllTags(Context& context);
 		void interpretTag(Context& context, SWFTag& tag);
+		FillStyle* parseFillStyles(u16 fill_style_count);
+		LineStyle* parseLineStyles(u16 line_style_count);
 		void interpretShape(Context& context, SWFTag& shape_tag);
 		bool isInShape(const Vertex& v, const Shape* shape);
 		void addCurvedEdge(Path* path, Vertex current, Vertex control, Vertex anchor, u32 passes);
