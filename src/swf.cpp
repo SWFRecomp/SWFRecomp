@@ -105,7 +105,15 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(Context& context) : num_finished_tags(0), next_frame_i(0), another_frame(false), next_script_i(0), last_queued_script(0), current_tri(0), current_transform(0), current_color(0)
+	SWF::SWF(Context& context) : num_finished_tags(0),
+								 next_frame_i(0),
+								 another_frame(false),
+								 next_script_i(0),
+								 last_queued_script(0),
+								 current_tri(0),
+								 current_transform(0),
+								 current_color(0),
+								 current_gradmat(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -397,26 +405,31 @@ namespace SWFRecomp
 		
 		context.out_draws << endl;
 		
-		context.out_draws << "u32 shape_data[" << to_string(3*current_tri) << "][4] =" << endl
+		context.out_draws << "u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4] =" << endl
 						  << "{" << endl
 						  << shape_data.str()
 						  << "};" << endl
 						  << endl
-						  << "float transform_data[" << to_string(current_transform) << "][16] =" << endl
+						  << "float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16] =" << endl
 						  << "{" << endl
 						  << transform_data.str()
 						  << "};" << endl
 						  << endl
-						  << "float color_data[" << to_string(current_color) << "][4] =" << endl
+						  << "float color_data[" << to_string(current_color ? current_color : 1) << "][4] =" << endl
 						  << "{" << endl
 						  << color_data.str()
+						  << "};" << endl
+						  << endl
+						  << "float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16] =" << endl
+						  << "{" << endl
+						  << gradmat_data.str()
 						  << "};";
 		
-		context.out_draws_header << endl << "extern u32 shape_data[" << to_string(3*current_tri) << "][4];" << endl
-								 << endl
-								 << "extern float transform_data[" << to_string(current_transform) << "][16];" << endl
-								 << endl
-								 << "extern float color_data[" << to_string(current_color) << "][4];";
+		context.out_draws_header << endl
+								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
+								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
+								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
+								 << "extern float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16];";
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -725,6 +738,28 @@ namespace SWFRecomp
 					MATRIX matrix;
 					parseMatrix(matrix);
 					
+					gradmat_data << "\t" << to_string(matrix.scale_x) << "f," << endl
+								 << "\t" << to_string(matrix.rotateskew_0) << "f," << endl
+								 << "\t" << "0.0f," << endl
+								 << "\t" << "0.0f," << endl
+								
+								 << "\t" << to_string(matrix.rotateskew_1) << "f," << endl
+								 << "\t" << to_string(matrix.scale_y) << "f," << endl
+								 << "\t" << "0.0f," << endl
+								 << "\t" << "0.0f," << endl
+								
+								 << "\t" << "0.0f," << endl
+								 << "\t" << "0.0f," << endl
+								 << "\t" << "1.0f," << endl
+								 << "\t" << "0.0f," << endl
+								
+								 << "\t" << to_string((float) matrix.translate_x) << "f," << endl
+								 << "\t" << to_string((float) matrix.translate_y) << "f," << endl
+								 << "\t" << "0.0f," << endl
+								 << "\t" << "1.0f," << endl;
+					
+					current_gradmat += 1;
+					
 					fill_data.clearFields();
 					fill_data.setFieldCount(3);
 					
@@ -733,6 +768,8 @@ namespace SWFRecomp
 					fill_data.configureNextField(SWF_FIELD_UB, 4);
 					
 					fill_data.parseFields(cur_pos);
+					
+					// TODO: implement other spread and interpolation modes
 					
 					fill_styles[i].gradient.spread_mode = (u8) fill_data.fields[0].value;
 					fill_styles[i].gradient.interpolation_mode = (u8) fill_data.fields[1].value;

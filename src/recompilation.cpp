@@ -42,7 +42,7 @@ namespace SWFRecomp
 		
 		context.out_draws = ofstream(string("") + context.output_tags_folder + "draws.c", ios_base::out);
 		context.out_draws << "#include \"recomp.h\"" << endl
-						  << "#include \"draws.h\"" << endl;
+						  << "#include \"draws.h\"";
 		
 		context.out_draws_header = ofstream(string("") + context.output_tags_folder + "draws.h", ios_base::out);
 		context.out_draws_header << "#pragma once" << endl;
