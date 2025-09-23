@@ -14,20 +14,20 @@ namespace SWFRecomp
 		
 	}
 	
-	void Config::parse_file(string path)
+	void Config::parseFile(string path)
 	{
 		tbl = toml::parse_file(path);
 		
-		string_view swf_path_view = parse_string_view("path_to_swf");
-		string_view output_tags_folder_view = parse_string_view("output_tags_folder");
-		string_view output_scripts_folder_view = parse_string_view("output_scripts_folder");
+		string_view swf_path_view = parseStringView("path_to_swf");
+		string_view output_tags_folder_view = parseStringView("output_tags_folder");
+		string_view output_scripts_folder_view = parseStringView("output_scripts_folder");
 		
 		swf_path = string(swf_path_view);
 		output_tags_folder = string(output_tags_folder_view);
 		output_scripts_folder = string(output_scripts_folder_view);
 	}
 	
-	string_view Config::parse_string_view(string key)
+	string_view Config::parseStringView(string key)
 	{
 		string_view view = tbl["input"][key].value_or(""sv);
 		

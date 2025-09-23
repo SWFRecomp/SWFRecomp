@@ -15,7 +15,7 @@ namespace SWFRecomp
 		std::string output_scripts_folder;
 		
 		Config();
-		void parse_file(std::string path);
-		std::string_view parse_string_view(std::string key);
+		void parseFile(std::string path);
+		std::string_view parseStringView(std::string key);
 	};
 };

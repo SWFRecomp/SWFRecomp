@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 	}
 	
 	SWFRecomp::Config config;
-	config.parse_file(argv[1]);
+	config.parseFile(argv[1]);
 	
 	SWFRecomp::Context context;
 	context.swf_path = config.swf_path;
