@@ -113,7 +113,8 @@ namespace SWFRecomp
 								 current_tri(0),
 								 current_transform(0),
 								 current_color(0),
-								 current_gradmat(0)
+								 current_gradmat(0),
+								 current_gradient(0)
 	{
 		// Configure reusable struct records
 		// 
@@ -407,29 +408,35 @@ namespace SWFRecomp
 		
 		context.out_draws << "u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4] =" << endl
 						  << "{" << endl
-						  << shape_data.str()
+						  << (current_tri ? shape_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
 						  << "float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16] =" << endl
 						  << "{" << endl
-						  << transform_data.str()
+						  << (current_transform ? transform_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
 						  << "float color_data[" << to_string(current_color ? current_color : 1) << "][4] =" << endl
 						  << "{" << endl
-						  << color_data.str()
+						  << (current_color ? color_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
 						  << "float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16] =" << endl
 						  << "{" << endl
-						  << gradmat_data.str()
+						  << (current_gradmat ? gradmat_data.str() : "\t0\n")
+						  << "};" << endl
+						  << endl
+						  << "float gradient_data[" << to_string(current_gradient ? current_gradient : 1) << "][4] =" << endl
+						  << "{" << endl
+						  << (current_gradient ? gradient_data.str() : "\t0\n")
 						  << "};";
 		
 		context.out_draws_header << endl
 								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
-								 << "extern float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16];";
+								 << "extern float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16];" << endl
+								 << "extern float gradient_data[" << to_string(current_gradient ? current_gradient : 1) << "][4];";
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -791,6 +798,13 @@ namespace SWFRecomp
 						fill_styles[i].gradient.records[j].r = (u8) RGB.fields[0].value;
 						fill_styles[i].gradient.records[j].g = (u8) RGB.fields[1].value;
 						fill_styles[i].gradient.records[j].b = (u8) RGB.fields[2].value;
+						
+						gradient_data << "\t" << "{ "
+									  << to_string(fill_styles[i].gradient.records[j].ratio) << ".0f, "
+									  << to_string(fill_styles[i].gradient.records[j].r) << "/255.0f, "
+									  << to_string(fill_styles[i].gradient.records[j].g) << "/255.0f, "
+									  << to_string(fill_styles[i].gradient.records[j].b) << "/255.0f },"
+									  << endl;
 					}
 					
 					break;

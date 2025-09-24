@@ -166,6 +166,8 @@ namespace SWFRecomp
 		size_t current_color;
 		std::stringstream gradmat_data;
 		size_t current_gradmat;
+		std::stringstream gradient_data;
+		size_t current_gradient;
 		
 		SWFAction action;
 		
