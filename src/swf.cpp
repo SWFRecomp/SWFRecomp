@@ -324,8 +324,8 @@ namespace SWFRecomp
 		matrix_tag.setFieldCount(3);
 		
 		matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
-		matrix_tag.configureNextField(SWF_FIELD_FB, 0);
-		matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+		matrix_tag.configureNextField(SWF_FIELD_SB, 0);
+		matrix_tag.configureNextField(SWF_FIELD_SB, 0);
 		
 		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
 		
@@ -404,7 +404,7 @@ namespace SWFRecomp
 		
 		context.tag_main << "};";
 		
-		context.out_draws << endl;
+		context.out_draws << endl << endl;
 		
 		context.out_draws << "u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4] =" << endl
 						  << "{" << endl
@@ -426,7 +426,7 @@ namespace SWFRecomp
 						  << (current_gradmat ? gradmat_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
-						  << "float gradient_data[" << to_string(current_gradient ? current_gradient : 1) << "][4] =" << endl
+						  << "float gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4] =" << endl
 						  << "{" << endl
 						  << (current_gradient ? gradient_data.str() : "\t0\n")
 						  << "};";
@@ -436,7 +436,7 @@ namespace SWFRecomp
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
 								 << "extern float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16];" << endl
-								 << "extern float gradient_data[" << to_string(current_gradient ? current_gradient : 1) << "][4];";
+								 << "extern float gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];";
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -693,6 +693,12 @@ namespace SWFRecomp
 		num_finished_tags += 1;
 	}
 	
+	u8 rgbLerp(u8 start, u8 end, float t)
+	{
+		int diff = end - start;
+		return (u8) (start + t*diff);
+	}
+	
 	FillStyle* SWF::parseFillStyles(u16 fill_style_count)
 	{
 		SWFTag fill_data;
@@ -768,21 +774,19 @@ namespace SWFRecomp
 					current_gradmat += 1;
 					
 					fill_data.clearFields();
-					fill_data.setFieldCount(3);
+					fill_data.setFieldCount(1);
 					
-					fill_data.configureNextField(SWF_FIELD_UB, 2);
-					fill_data.configureNextField(SWF_FIELD_UB, 2);
-					fill_data.configureNextField(SWF_FIELD_UB, 4);
+					fill_data.configureNextField(SWF_FIELD_UI8);
 					
 					fill_data.parseFields(cur_pos);
 					
 					// TODO: implement other spread and interpolation modes
 					
-					fill_styles[i].gradient.spread_mode = (u8) fill_data.fields[0].value;
-					fill_styles[i].gradient.interpolation_mode = (u8) fill_data.fields[1].value;
-					fill_styles[i].gradient.num_grads = (u8) fill_data.fields[2].value;
+					fill_styles[i].gradient.spread_mode = (u8) ((fill_data.fields[0].value & 0b11000000) >> 6);
+					fill_styles[i].gradient.interpolation_mode = (u8) ((fill_data.fields[0].value & 0b00110000) >> 4);
+					fill_styles[i].gradient.num_grads = (u8) (fill_data.fields[0].value & 0b00001111);
 					
-					for (int j = 0; j < fill_styles[j].gradient.num_grads; ++j)
+					for (int j = 0; j < fill_styles[i].gradient.num_grads; ++j)
 					{
 						fill_data.clearFields();
 						fill_data.setFieldCount(1);
@@ -799,13 +803,52 @@ namespace SWFRecomp
 						fill_styles[i].gradient.records[j].g = (u8) RGB.fields[1].value;
 						fill_styles[i].gradient.records[j].b = (u8) RGB.fields[2].value;
 						
-						gradient_data << "\t" << "{ "
-									  << to_string(fill_styles[i].gradient.records[j].ratio) << ".0f, "
-									  << to_string(fill_styles[i].gradient.records[j].r) << "/255.0f, "
-									  << to_string(fill_styles[i].gradient.records[j].g) << "/255.0f, "
-									  << to_string(fill_styles[i].gradient.records[j].b) << "/255.0f },"
-									  << endl;
+						if (j == 0)
+						{
+							continue;
+						}
+						
+						GradientRecord& last_grad = fill_styles[i].gradient.records[j - 1];
+						GradientRecord& grad = fill_styles[i].gradient.records[j];
+						
+						for (u8 ratio = last_grad.ratio; ratio < grad.ratio; ++ratio)
+						{
+							float ratio_diff = (float) (grad.ratio - last_grad.ratio);
+							float t = (ratio - last_grad.ratio)/ratio_diff;
+							
+							u8 r = rgbLerp(last_grad.r, grad.r, t);
+							u8 g = rgbLerp(last_grad.g, grad.g, t);
+							u8 b = rgbLerp(last_grad.b, grad.b, t);
+							
+							gradient_data << "\t" << "{ "
+										  << to_string(r) << "/255.0f, "
+										  << to_string(g) << "/255.0f, "
+										  << to_string(b) << "/255.0f, "
+										  << "255/255.0f },"
+										  << endl;
+						}
+						
+						if (grad.ratio == 255)
+						{
+							float ratio_diff = (float) (grad.ratio - last_grad.ratio);
+							float t = (255 - last_grad.ratio)/ratio_diff;
+							
+							u8 r = rgbLerp(last_grad.r, grad.r, t);
+							u8 g = rgbLerp(last_grad.g, grad.g, t);
+							u8 b = rgbLerp(last_grad.b, grad.b, t);
+							
+							gradient_data << "\t" << "{ "
+										  << to_string(r) << "/255.0f, "
+										  << to_string(g) << "/255.0f, "
+										  << to_string(b) << "/255.0f, "
+										  << "255/255.0f },"
+										  << endl;
+						}
 					}
+					
+					fill_styles[i].index = current_gradient;
+					
+					current_gradient += 1;
 					
 					break;
 				}
@@ -1341,7 +1384,8 @@ namespace SWFRecomp
 						
 						for (size_t k = start; k < cycle[j].verts.size(); k += offset)
 						{
-							if (shapes.back().verts.back().x == cycle[j].verts[k].x &&
+							if (shapes.back().verts.size() > 0 &&
+								shapes.back().verts.back().x == cycle[j].verts[k].x &&
 								shapes.back().verts.back().y == cycle[j].verts[k].y)
 							{
 								continue;

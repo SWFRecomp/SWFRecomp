@@ -127,20 +127,27 @@ namespace SWFRecomp
 				float f = 0.0f;
 				float bit_float = 0.0000152587890625f;
 				
+				bool negative = false;
+				
+				if (((u32) value) & (1 << (length - 1)))
+				{
+					value = (~value) + 1;
+					negative = true;
+				}
+				
 				for (u32 i = 0; i < length; ++i)
 				{
 					if (((u32) value) & (1 << i))
 					{
-						if (i == 31)
-						{
-							f *= -1;
-							break;
-						}
-						
 						f += bit_float;
 					}
 					
 					bit_float *= 2.0f;
+				}
+				
+				if (negative)
+				{
+					f *= -1;
 				}
 				
 				value = VAL(u32, &f);
