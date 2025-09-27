@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <iomanip>
 
 #include <zlib.h>
 #include <lzma.h>
@@ -426,7 +427,7 @@ namespace SWFRecomp
 						  << (current_gradmat ? gradmat_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
-						  << "float gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4] =" << endl
+						  << "u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4] =" << endl
 						  << "{" << endl
 						  << (current_gradient ? gradient_data.str() : "\t0\n")
 						  << "};";
@@ -436,7 +437,7 @@ namespace SWFRecomp
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
 								 << "extern float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16];" << endl
-								 << "extern float gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];";
+								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];";
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -580,13 +581,14 @@ namespace SWFRecomp
 					MATRIX matrix;
 					parseMatrix(matrix);
 					
-					transform_data << "\t" << to_string(matrix.scale_x) << "f," << endl
-								   << "\t" << to_string(matrix.rotateskew_0) << "f," << endl
+					transform_data << std::fixed << std::setprecision(15)
+								   << "\t" << matrix.scale_x << "f," << endl
+								   << "\t" << matrix.rotateskew_0 << "f," << endl
 								   << "\t" << "0.0f," << endl
 								   << "\t" << "0.0f," << endl
 								
-								   << "\t" << to_string(matrix.rotateskew_1) << "f," << endl
-								   << "\t" << to_string(matrix.scale_y) << "f," << endl
+								   << "\t" << matrix.rotateskew_1 << "f," << endl
+								   << "\t" << matrix.scale_y << "f," << endl
 								   << "\t" << "0.0f," << endl
 								   << "\t" << "0.0f," << endl
 								
@@ -595,8 +597,8 @@ namespace SWFRecomp
 								   << "\t" << "1.0f," << endl
 								   << "\t" << "0.0f," << endl
 								
-								   << "\t" << to_string((float) matrix.translate_x) << "f," << endl
-								   << "\t" << to_string((float) matrix.translate_y) << "f," << endl
+								   << "\t" << (float) matrix.translate_x << "f," << endl
+								   << "\t" << (float) matrix.translate_y << "f," << endl
 								   << "\t" << "0.0f," << endl
 								   << "\t" << "1.0f," << endl;
 				}
@@ -751,13 +753,14 @@ namespace SWFRecomp
 					MATRIX matrix;
 					parseMatrix(matrix);
 					
-					gradmat_data << "\t" << to_string(matrix.scale_x) << "f," << endl
-								 << "\t" << to_string(matrix.rotateskew_0) << "f," << endl
+					gradmat_data << std::fixed << std::setprecision(15)
+								 << "\t" << matrix.scale_x << "f," << endl
+								 << "\t" << matrix.rotateskew_0 << "f," << endl
 								 << "\t" << "0.0f," << endl
 								 << "\t" << "0.0f," << endl
 								
-								 << "\t" << to_string(matrix.rotateskew_1) << "f," << endl
-								 << "\t" << to_string(matrix.scale_y) << "f," << endl
+								 << "\t" << matrix.rotateskew_1 << "f," << endl
+								 << "\t" << matrix.scale_y << "f," << endl
 								 << "\t" << "0.0f," << endl
 								 << "\t" << "0.0f," << endl
 								
@@ -766,8 +769,8 @@ namespace SWFRecomp
 								 << "\t" << "1.0f," << endl
 								 << "\t" << "0.0f," << endl
 								
-								 << "\t" << to_string((float) matrix.translate_x) << "f," << endl
-								 << "\t" << to_string((float) matrix.translate_y) << "f," << endl
+								 << "\t" << (float) matrix.translate_x << "f," << endl
+								 << "\t" << (float) matrix.translate_y << "f," << endl
 								 << "\t" << "0.0f," << endl
 								 << "\t" << "1.0f," << endl;
 					
@@ -821,10 +824,10 @@ namespace SWFRecomp
 							u8 b = rgbLerp(last_grad.b, grad.b, t);
 							
 							gradient_data << "\t" << "{ "
-										  << to_string(r) << "/255.0f, "
-										  << to_string(g) << "/255.0f, "
-										  << to_string(b) << "/255.0f, "
-										  << "255/255.0f },"
+										  << to_string(r) << ", "
+										  << to_string(g) << ", "
+										  << to_string(b) << ", "
+										  << "255 },"
 										  << endl;
 						}
 						
@@ -838,10 +841,10 @@ namespace SWFRecomp
 							u8 b = rgbLerp(last_grad.b, grad.b, t);
 							
 							gradient_data << "\t" << "{ "
-										  << to_string(r) << "/255.0f, "
-										  << to_string(g) << "/255.0f, "
-										  << to_string(b) << "/255.0f, "
-										  << "255/255.0f },"
+										  << to_string(r) << ", "
+										  << to_string(g) << ", "
+										  << to_string(b) << ", "
+										  << "255 },"
 										  << endl;
 						}
 					}
