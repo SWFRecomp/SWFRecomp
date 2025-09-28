@@ -49,4 +49,5 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     lzma/liblzma/api
     ${CMAKE_SOURCE_DIR}/lib/earcut/include/mapbox
     ${CMAKE_SOURCE_DIR}/lib/tomlplusplus/include
+    ${CMAKE_SOURCE_DIR}/lib/stb
 )

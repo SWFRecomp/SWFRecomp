@@ -8,6 +8,9 @@
 #include <lzma.h>
 #include <earcut.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <swf.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
@@ -115,7 +118,8 @@ namespace SWFRecomp
 								 current_transform(0),
 								 current_color(0),
 								 current_gradmat(0),
-								 current_gradient(0)
+								 current_gradient(0),
+								 jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
 		// 
@@ -496,6 +500,96 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_TAG_DEFINE_BITS:
+			{
+				if (jpeg_tables == nullptr)
+				{
+					EXC("JPEG bitmap tag encountered before JPEGTables!\n");
+				}
+				
+				size_t new_length = tag.length;
+				
+				if (((u8) cur_pos[0] == 0xFF &&
+					 (u8) cur_pos[1] == 0xD9 &&
+					 (u8) cur_pos[2] == 0xFF &&
+					 (u8) cur_pos[3] == 0xD8) ||
+					((u8) cur_pos[2] == 0xFF &&
+					 (u8) cur_pos[3] == 0xD8))
+				{
+					cur_pos += 4;
+					new_length -= 4;
+				}
+				
+				if (((u8) cur_pos[0] == 0xFF &&
+					 (u8) cur_pos[1] == 0xD8) ||
+					((u8) cur_pos[2] == 0xFF &&
+					 (u8) cur_pos[3] == 0xD8))
+				{
+					cur_pos += 2;
+					new_length -= 2;
+				}
+				
+				size_t jpeg_data_size = new_length + jpeg_tables_size;
+				u8* jpeg_data = new u8[jpeg_data_size];
+				
+				for (size_t i = 0; i < jpeg_tables_size; ++i)
+				{
+					jpeg_data[i] = jpeg_tables[i];
+				}
+				
+				for (size_t i = jpeg_tables_size; i < jpeg_data_size; ++i)
+				{
+					jpeg_data[i] = cur_pos[i - jpeg_tables_size];
+				}
+				
+				int x;
+				int y;
+				int comp;
+				u8* decompressed = stbi_load_from_memory(jpeg_data, (int) jpeg_data_size, &x, &y, &comp, 3);
+				
+				if (decompressed == nullptr)
+				{
+					EXC("JPEG data returned NULL.\n");
+				}
+				
+				// TODO: recompile RGBA here
+				
+				cur_pos += new_length;
+				
+				break;
+			}
+			
+			case SWF_TAG_JPEG_TABLES:
+			{
+				if (jpeg_tables != nullptr)
+				{
+					EXC("More than one JPEGTables tag detected.\n");
+				}
+				
+				size_t new_length = tag.length;
+				
+				if ((u8) cur_pos[0] == 0xFF &&
+					(u8) cur_pos[1] == 0xD9 &&
+					(u8) cur_pos[2] == 0xFF &&
+					(u8) cur_pos[3] == 0xD8)
+				{
+					cur_pos += 2;
+					new_length -= 2;
+				}
+				
+				jpeg_tables = new u8[new_length - 2];
+				jpeg_tables_size = new_length - 2;
+				
+				for (size_t i = 0; i < new_length - 2; ++i)
+				{
+					jpeg_tables[i] = cur_pos[i];
+				}
+				
+				cur_pos += new_length;
+				
+				break;
+			}
+			
 			case SWF_TAG_DEFINE_SHAPE:
 			case SWF_TAG_DEFINE_SHAPE_2:
 			{
@@ -853,6 +947,13 @@ namespace SWFRecomp
 					fill_styles[i].index = current_gradient;
 					
 					current_gradient += 1;
+					
+					break;
+				}
+				
+				case FILL_BITMAP_CLIPPED:
+				{
+					// TODO: handle clipped bitmap fills
 					
 					break;
 				}

@@ -169,6 +169,9 @@ namespace SWFRecomp
 		std::stringstream gradient_data;
 		size_t current_gradient;
 		
+		u8* jpeg_tables;
+		size_t jpeg_tables_size;
+		
 		SWFAction action;
 		
 		SWFTag RGB;
