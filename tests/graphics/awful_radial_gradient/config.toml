@@ -1,0 +1,4 @@
+[input]
+path_to_swf = "test.swf"
+output_tags_folder = "RecompiledTags"
+output_scripts_folder = "RecompiledScripts"
