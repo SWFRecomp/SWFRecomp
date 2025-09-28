@@ -422,7 +422,7 @@ namespace SWFRecomp
 						  << (current_color ? color_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
-						  << "float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16] =" << endl
+						  << "float gradmat_data[" << to_string(current_gradmat ? 16*current_gradmat : 1) << "] =" << endl
 						  << "{" << endl
 						  << (current_gradmat ? gradmat_data.str() : "\t0\n")
 						  << "};" << endl
@@ -436,7 +436,7 @@ namespace SWFRecomp
 								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
-								 << "extern float gradmat_data[" << to_string(current_gradmat ? current_gradmat : 1) << "][16];" << endl
+								 << "extern float gradmat_data[" << to_string(current_gradmat ? 16*current_gradmat : 1) << "];" << endl
 								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];";
 		
 		context.out_script_header.close();

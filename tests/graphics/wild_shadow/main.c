@@ -18,6 +18,8 @@ int main()
 	app_context.color_data_size = sizeof(color_data);
 	app_context.gradmat_data = (char*) gradmat_data;
 	app_context.gradmat_data_size = sizeof(gradmat_data);
+	app_context.gradient_data = (char*) gradient_data;
+	app_context.gradient_data_size = sizeof(gradient_data);
 	
 	swfStart(&app_context);
 }
