@@ -953,7 +953,17 @@ namespace SWFRecomp
 				
 				case FILL_BITMAP_CLIPPED:
 				{
-					// TODO: handle clipped bitmap fills
+					fill_data.clearFields();
+					fill_data.setFieldCount(1);
+					
+					fill_data.configureNextField(SWF_FIELD_UI16);
+					
+					fill_data.parseFields(cur_pos);
+					
+					u16 char_id = (u16) fill_data.fields[0].value;
+					
+					MATRIX matrix;
+					parseMatrix(matrix);
 					
 					break;
 				}
