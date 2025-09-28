@@ -749,6 +749,7 @@ namespace SWFRecomp
 				}
 				
 				case FILL_GRAD_LINEAR:
+				case FILL_GRAD_RADIAL:
 				{
 					MATRIX matrix;
 					parseMatrix(matrix);
