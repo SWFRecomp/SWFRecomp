@@ -117,7 +117,7 @@ namespace SWFRecomp
 								 current_tri(0),
 								 current_transform(0),
 								 current_color(0),
-								 current_gradmat(0),
+								 current_uninv(0),
 								 current_gradient(0),
 								 jpeg_tables(nullptr)
 	{
@@ -426,9 +426,9 @@ namespace SWFRecomp
 						  << (current_color ? color_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
-						  << "float gradmat_data[" << to_string(current_gradmat ? 16*current_gradmat : 1) << "] =" << endl
+						  << "float uninv_mat_data[" << to_string(current_uninv ? 16*current_uninv : 1) << "] =" << endl
 						  << "{" << endl
-						  << (current_gradmat ? gradmat_data.str() : "\t0\n")
+						  << (current_uninv ? uninv_mat_data.str() : "\t0\n")
 						  << "};" << endl
 						  << endl
 						  << "u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4] =" << endl
@@ -440,7 +440,7 @@ namespace SWFRecomp
 								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
-								 << "extern float gradmat_data[" << to_string(current_gradmat ? 16*current_gradmat : 1) << "];" << endl
+								 << "extern float uninv_mat_data[" << to_string(current_uninv ? 16*current_uninv : 1) << "];" << endl
 								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];";
 		
 		context.out_script_header.close();
@@ -848,28 +848,28 @@ namespace SWFRecomp
 					MATRIX matrix;
 					parseMatrix(matrix);
 					
-					gradmat_data << std::fixed << std::setprecision(15)
-								 << "\t" << matrix.scale_x << "f," << endl
-								 << "\t" << matrix.rotateskew_0 << "f," << endl
-								 << "\t" << "0.0f," << endl
-								 << "\t" << "0.0f," << endl
+					uninv_mat_data << std::fixed << std::setprecision(15)
+								   << "\t" << matrix.scale_x << "f," << endl
+								   << "\t" << matrix.rotateskew_0 << "f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
 								
-								 << "\t" << matrix.rotateskew_1 << "f," << endl
-								 << "\t" << matrix.scale_y << "f," << endl
-								 << "\t" << "0.0f," << endl
-								 << "\t" << "0.0f," << endl
+								   << "\t" << matrix.rotateskew_1 << "f," << endl
+								   << "\t" << matrix.scale_y << "f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
 								
-								 << "\t" << "0.0f," << endl
-								 << "\t" << "0.0f," << endl
-								 << "\t" << "1.0f," << endl
-								 << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl
+								   << "\t" << "0.0f," << endl
 								
-								 << "\t" << (float) matrix.translate_x << "f," << endl
-								 << "\t" << (float) matrix.translate_y << "f," << endl
-								 << "\t" << "0.0f," << endl
-								 << "\t" << "1.0f," << endl;
+								   << "\t" << (float) matrix.translate_x << "f," << endl
+								   << "\t" << (float) matrix.translate_y << "f," << endl
+								   << "\t" << "0.0f," << endl
+								   << "\t" << "1.0f," << endl;
 					
-					current_gradmat += 1;
+					current_uninv += 1;
 					
 					fill_data.clearFields();
 					fill_data.setFieldCount(1);

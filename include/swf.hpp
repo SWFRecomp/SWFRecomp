@@ -164,8 +164,8 @@ namespace SWFRecomp
 		size_t current_transform;
 		std::stringstream color_data;
 		size_t current_color;
-		std::stringstream gradmat_data;
-		size_t current_gradmat;
+		std::stringstream uninv_mat_data;
+		size_t current_uninv;
 		std::stringstream gradient_data;
 		size_t current_gradient;
 		
