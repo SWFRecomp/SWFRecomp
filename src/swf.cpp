@@ -119,6 +119,8 @@ namespace SWFRecomp
 								 current_color(0),
 								 current_uninv(0),
 								 current_gradient(0),
+								 current_bitmap_pixel(0),
+								 current_bitmap(0),
 								 jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
@@ -407,7 +409,17 @@ namespace SWFRecomp
 			context.tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
 		}
 		
-		context.tag_main << "};";
+		if (current_bitmap_pixel)
+		{
+			tag_init << endl << "\tfinalizeBitmaps();";
+		}
+		
+		context.tag_main << "};" << endl
+						 << endl
+						 << "void tagInit()" << endl
+						 << "{"
+						 << tag_init.str() << endl
+						 << "}";
 		
 		context.out_draws << endl << endl;
 		
@@ -434,6 +446,11 @@ namespace SWFRecomp
 						  << "u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4] =" << endl
 						  << "{" << endl
 						  << (current_gradient ? gradient_data.str() : "\t0\n")
+						  << "};" << endl
+						  << endl
+						  << "u8 bitmap_data[" << to_string(current_bitmap_pixel ? 4*current_bitmap_pixel : 1) << "] =" << endl
+						  << "{" << endl
+						  << (current_bitmap_pixel ? bitmap_data.str() : "\t0\n")
 						  << "};";
 		
 		context.out_draws_header << endl
@@ -441,7 +458,29 @@ namespace SWFRecomp
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
 								 << "extern float uninv_mat_data[" << to_string(current_uninv ? 16*current_uninv : 1) << "];" << endl
-								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];";
+								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];" << endl
+								 << "extern u8 bitmap_data[" << to_string(current_bitmap_pixel ? 4*current_bitmap_pixel : 1) << "];";
+		
+		size_t highest_w = 0;
+		size_t highest_h = 0;
+		
+		for (const Vertex& v : bitmap_sizes)
+		{
+			if (v.x > highest_w)
+			{
+				highest_w = v.x;
+			}
+			
+			if (v.y > highest_h)
+			{
+				highest_h = v.y;
+			}
+		}
+		
+		context.constants_header << endl << endl
+								 << "#define BITMAP_COUNT " << to_string(current_bitmap) << endl
+								 << "#define BITMAP_HIGHEST_W " << to_string(highest_w) << endl
+								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h);
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -509,21 +548,28 @@ namespace SWFRecomp
 				
 				size_t new_length = tag.length;
 				
-				if (((u8) cur_pos[0] == 0xFF &&
-					 (u8) cur_pos[1] == 0xD9 &&
-					 (u8) cur_pos[2] == 0xFF &&
-					 (u8) cur_pos[3] == 0xD8) ||
-					((u8) cur_pos[2] == 0xFF &&
-					 (u8) cur_pos[3] == 0xD8))
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 char_id = (u16) tag.fields[0].value;
+				new_length -= 2;
+				
+				// stupid swf edge cases are stupid
+				if ((u8) cur_pos[0] == 0xFF &&
+					(u8) cur_pos[1] == 0xD9 &&
+					(u8) cur_pos[2] == 0xFF &&
+					(u8) cur_pos[3] == 0xD8)
 				{
 					cur_pos += 4;
 					new_length -= 4;
 				}
 				
-				if (((u8) cur_pos[0] == 0xFF &&
-					 (u8) cur_pos[1] == 0xD8) ||
-					((u8) cur_pos[2] == 0xFF &&
-					 (u8) cur_pos[3] == 0xD8))
+				if ((u8) cur_pos[0] == 0xFF &&
+					(u8) cur_pos[1] == 0xD8)
 				{
 					cur_pos += 2;
 					new_length -= 2;
@@ -542,17 +588,46 @@ namespace SWFRecomp
 					jpeg_data[i] = cur_pos[i - jpeg_tables_size];
 				}
 				
-				int x;
-				int y;
+				int w;
+				int h;
 				int comp;
-				u8* decompressed = stbi_load_from_memory(jpeg_data, (int) jpeg_data_size, &x, &y, &comp, 3);
+				u8* decompressed = stbi_load_from_memory(jpeg_data, (int) jpeg_data_size, &w, &h, &comp, 3);
 				
 				if (decompressed == nullptr)
 				{
 					EXC("JPEG data returned NULL.\n");
 				}
 				
-				// TODO: recompile RGBA here
+				Vertex v;
+				v.x = w;
+				v.y = h;
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < 3*w*h; i += 3)
+				{
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) decompressed[i] << "," << endl
+								<< "\t0x" << (u32) decompressed[i + 1] << "," << endl
+								<< "\t0x" << (u32) decompressed[i + 2] << "," << endl
+								<< "\t0xFF," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				tag_init << endl
+						 << "\tdefineBitmap("
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(w) << ", "
+						 << to_string(h)
+						 << ");";
+				
+				current_bitmap += 1;
 				
 				cur_pos += new_length;
 				
@@ -675,26 +750,8 @@ namespace SWFRecomp
 					MATRIX matrix;
 					parseMatrix(matrix);
 					
-					transform_data << std::fixed << std::setprecision(15)
-								   << "\t" << matrix.scale_x << "f," << endl
-								   << "\t" << matrix.rotateskew_0 << "f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								
-								   << "\t" << matrix.rotateskew_1 << "f," << endl
-								   << "\t" << matrix.scale_y << "f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl
-								   << "\t" << "0.0f," << endl
-								
-								   << "\t" << (float) matrix.translate_x << "f," << endl
-								   << "\t" << (float) matrix.translate_y << "f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl;
+					recompileMatrix(matrix, transform_data);
+					current_transform += 1;
 				}
 				
 				else
@@ -795,6 +852,30 @@ namespace SWFRecomp
 		return (u8) (start + t*diff);
 	}
 	
+	void SWF::recompileMatrix(MATRIX matrix, std::stringstream& out)
+	{
+		out << std::fixed << std::setprecision(15)
+			<< "\t" << matrix.scale_x << "f," << endl
+			<< "\t" << matrix.rotateskew_0 << "f," << endl
+			<< "\t" << "0.0f," << endl
+			<< "\t" << "0.0f," << endl
+			
+			<< "\t" << matrix.rotateskew_1 << "f," << endl
+			<< "\t" << matrix.scale_y << "f," << endl
+			<< "\t" << "0.0f," << endl
+			<< "\t" << "0.0f," << endl
+			
+			<< "\t" << "0.0f," << endl
+			<< "\t" << "0.0f," << endl
+			<< "\t" << "1.0f," << endl
+			<< "\t" << "0.0f," << endl
+			
+			<< "\t" << (float) matrix.translate_x << "f," << endl
+			<< "\t" << (float) matrix.translate_y << "f," << endl
+			<< "\t" << "0.0f," << endl
+			<< "\t" << "1.0f," << endl;
+	}
+	
 	FillStyle* SWF::parseFillStyles(u16 fill_style_count)
 	{
 		SWFTag fill_data;
@@ -848,27 +929,7 @@ namespace SWFRecomp
 					MATRIX matrix;
 					parseMatrix(matrix);
 					
-					uninv_mat_data << std::fixed << std::setprecision(15)
-								   << "\t" << matrix.scale_x << "f," << endl
-								   << "\t" << matrix.rotateskew_0 << "f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								
-								   << "\t" << matrix.rotateskew_1 << "f," << endl
-								   << "\t" << matrix.scale_y << "f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl
-								   << "\t" << "0.0f," << endl
-								
-								   << "\t" << (float) matrix.translate_x << "f," << endl
-								   << "\t" << (float) matrix.translate_y << "f," << endl
-								   << "\t" << "0.0f," << endl
-								   << "\t" << "1.0f," << endl;
-					
+					recompileMatrix(matrix, uninv_mat_data);
 					current_uninv += 1;
 					
 					fill_data.clearFields();
@@ -962,8 +1023,13 @@ namespace SWFRecomp
 					
 					u16 char_id = (u16) fill_data.fields[0].value;
 					
+					fill_styles[i].index = ((current_uninv & 0xFFFF) << 16) | char_id_to_bitmap_id[char_id];
+					
 					MATRIX matrix;
 					parseMatrix(matrix);
+					
+					recompileMatrix(matrix, uninv_mat_data);
+					current_uninv += 1;
 					
 					break;
 				}
@@ -1645,8 +1711,6 @@ namespace SWFRecomp
 						
 						tris_size += tris.size();
 						
-						// output vertices with the parsed gradient data
-						
 						for (Tri t : tris)
 						{
 							for (int j = 0; j < 3; ++j)
@@ -1658,9 +1722,8 @@ namespace SWFRecomp
 										   << std::hex << std::uppercase
 										   << "0x" << VAL(u32, &x_f) << ", "
 										   << "0x" << VAL(u32, &y_f) << ", "
-										   << std::dec
-										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].type) << ", "
-										   << to_string(all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].index)
+										   << "0x" << (u32) all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].type << ", "
+										   << "0x" << (u32) all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].index
 										   << " }," << endl;
 							}
 						}
@@ -1692,9 +1755,8 @@ namespace SWFRecomp
 										   << std::hex << std::uppercase
 										   << "0x" << VAL(u32, &x_f) << ", "
 										   << "0x" << VAL(u32, &y_f) << ", "
-										   << std::dec
-										   << "0, "
-										   << to_string(line_style.index)
+										   << "0x00, "
+										   << "0x" << (u32) line_style.index
 										   << " }," << endl;
 							}
 						}

@@ -159,6 +159,8 @@ namespace SWFRecomp
 		size_t next_script_i;
 		size_t last_queued_script;
 		
+		std::stringstream tag_init;
+		
 		std::stringstream shape_data;
 		size_t current_tri;
 		std::stringstream transform_data;
@@ -169,9 +171,15 @@ namespace SWFRecomp
 		size_t current_uninv;
 		std::stringstream gradient_data;
 		size_t current_gradient;
+		std::stringstream bitmap_data;
+		size_t current_bitmap_pixel;
+		size_t current_bitmap;
 		
 		u8* jpeg_tables;
 		size_t jpeg_tables_size;
+		
+		std::unordered_map<u16, size_t> char_id_to_bitmap_id;
+		std::vector<Vertex> bitmap_sizes;
 		
 		SWFAction action;
 		
@@ -183,6 +191,7 @@ namespace SWFRecomp
 		void parseMatrix(MATRIX& matrix_out);
 		void parseAllTags(Context& context);
 		void interpretTag(Context& context, SWFTag& tag);
+		void recompileMatrix(MATRIX matrix, std::stringstream& out);
 		FillStyle* parseFillStyles(u16 fill_style_count);
 		LineStyle* parseLineStyles(u16 line_style_count);
 		void interpretShape(Context& context, SWFTag& shape_tag);
