@@ -568,8 +568,8 @@ namespace SWFRecomp
 					new_length -= 4;
 				}
 				
-				if ((u8) cur_pos[0] == 0xFF &&
-					(u8) cur_pos[1] == 0xD8)
+				else if ((u8) cur_pos[0] == 0xFF &&
+						 (u8) cur_pos[1] == 0xD8)
 				{
 					cur_pos += 2;
 					new_length -= 2;
