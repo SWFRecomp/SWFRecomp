@@ -685,6 +685,55 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_TAG_DEFINE_FONT:
+			{
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 font_id = (u16) tag.fields[0].value;
+				
+				char* offset_table = cur_pos;
+				
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				std::vector<u16> entry_offsets;
+				entry_offsets.push_back((u16) tag.fields[0].value);
+				
+				u16 num_entries = entry_offsets.back()/2;
+				
+				tag.clearFields();
+				tag.setFieldCount(num_entries - 1);
+				
+				for (u16 i = 0; i < num_entries - 1; ++i)
+				{
+					tag.configureNextField(SWF_FIELD_UI16);
+				}
+				
+				tag.parseFields(cur_pos);
+				
+				for (u16 i = 0; i < num_entries - 1; ++i)
+				{
+					entry_offsets.push_back((u16) tag.fields[i].value);
+				}
+				
+				for (u16 i = 0; i < num_entries; ++i)
+				{
+					cur_pos = offset_table + entry_offsets[i];
+					interpretShape(context, tag);
+				}
+				
+				break;
+			}
+			
 			case SWF_TAG_DO_ACTION:
 			{
 				context.out_script_header << endl << "void script_" << to_string(next_script_i) << "(char* stack, u32* sp);";
@@ -700,6 +749,13 @@ namespace SWFRecomp
 				action.parseActions(context, cur_pos, out_script);
 				
 				out_script << "}";
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_FONT_INFO:
+			{
+				cur_pos += tag.length;
 				
 				break;
 			}
@@ -1082,73 +1138,107 @@ namespace SWFRecomp
 		// TODO: DefineShape3
 		// TODO: DefineShape4
 		
+		bool is_font = shape_tag.code == SWF_TAG_DEFINE_FONT;
+		
 		switch (shape_tag.code)
 		{
 			case SWF_TAG_DEFINE_SHAPE:
 			case SWF_TAG_DEFINE_SHAPE_2:
+			case SWF_TAG_DEFINE_FONT:
 			{
-				shape_tag.setFieldCount(6);
-				
-				shape_tag.configureNextField(SWF_FIELD_UI16, 16);
-				shape_tag.configureNextField(SWF_FIELD_UB, 5, true);
-				shape_tag.configureNextField(SWF_FIELD_SB, 0);
-				shape_tag.configureNextField(SWF_FIELD_SB, 0);
-				shape_tag.configureNextField(SWF_FIELD_SB, 0);
-				shape_tag.configureNextField(SWF_FIELD_SB, 0);
-				
-				shape_tag.parseFields(cur_pos);
-				
-				u16 shape_id = (u16) shape_tag.fields[0].value;
-				
-				// FILLSTYLEARRAY
-				shape_tag.clearFields();
-				shape_tag.setFieldCount(1);
-				
-				shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-				
-				shape_tag.parseFields(cur_pos);
-				
-				u16 fill_style_count = (u8) shape_tag.fields[0].value;
-				
-				if (fill_style_count == 0xFF)
-				{
-					shape_tag.clearFields();
-					
-					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
-					
-					shape_tag.parseFields(cur_pos);
-					
-					fill_style_count = (u16) shape_tag.fields[0].value;
-				}
-				
+				u16 shape_id;
+				u16 fill_style_count;
 				std::vector<FillStyle*> all_fill_styles;
-				
-				all_fill_styles.push_back(parseFillStyles(fill_style_count));
-				
-				// LINESTYLEARRAY
-				shape_tag.clearFields();
-				shape_tag.setFieldCount(1);
-				
-				shape_tag.configureNextField(SWF_FIELD_UI8, 8);
-				
-				shape_tag.parseFields(cur_pos);
-				
-				u16 line_style_count = (u8) shape_tag.fields[0].value;
-				
-				if (line_style_count == 0xFF)
-				{
-					shape_tag.clearFields();
-					
-					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
-					
-					shape_tag.parseFields(cur_pos);
-					
-					line_style_count = (u16) shape_tag.fields[0].value;
-				}
-				
+				u16 line_style_count;
 				std::vector<LineStyle*> all_line_styles;
 				
-				all_line_styles.push_back(parseLineStyles(line_style_count));
+				if (!is_font)
+				{
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(6);
+					
+					shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+					shape_tag.configureNextField(SWF_FIELD_UB, 5, true);
+					shape_tag.configureNextField(SWF_FIELD_SB, 0);
+					shape_tag.configureNextField(SWF_FIELD_SB, 0);
+					shape_tag.configureNextField(SWF_FIELD_SB, 0);
+					shape_tag.configureNextField(SWF_FIELD_SB, 0);
+					
+					shape_tag.parseFields(cur_pos);
+					
+					shape_id = (u16) shape_tag.fields[0].value;
+					
+					// FILLSTYLEARRAY
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(1);
+					
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					
+					shape_tag.parseFields(cur_pos);
+					
+					fill_style_count = (u8) shape_tag.fields[0].value;
+					
+					if (fill_style_count == 0xFF)
+					{
+						shape_tag.clearFields();
+						
+						shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+						
+						shape_tag.parseFields(cur_pos);
+						
+						fill_style_count = (u16) shape_tag.fields[0].value;
+					}
+					
+					all_fill_styles.push_back(parseFillStyles(fill_style_count));
+					
+					// LINESTYLEARRAY
+					shape_tag.clearFields();
+					shape_tag.setFieldCount(1);
+					
+					shape_tag.configureNextField(SWF_FIELD_UI8, 8);
+					
+					shape_tag.parseFields(cur_pos);
+					
+					line_style_count = (u8) shape_tag.fields[0].value;
+					
+					if (line_style_count == 0xFF)
+					{
+						shape_tag.clearFields();
+						
+						shape_tag.configureNextField(SWF_FIELD_UI16, 16);
+						
+						shape_tag.parseFields(cur_pos);
+						
+						line_style_count = (u16) shape_tag.fields[0].value;
+					}
+					
+					all_line_styles.push_back(parseLineStyles(line_style_count));
+				}
+				
+				else
+				{
+					fill_style_count = 1;
+					line_style_count = 0;
+					
+					FillStyle* fill_style = new FillStyle[fill_style_count];
+					
+					all_fill_styles.push_back(fill_style);
+					
+					fill_style->r = 0xFF;
+					fill_style->g = 0xFF;
+					fill_style->b = 0xFF;
+					
+					fill_style->type = 0x00;
+					fill_style->index = current_color;
+					
+					color_data << "\t" << "{ "
+							   << to_string(fill_style->r) << "/255.0f, "
+							   << to_string(fill_style->g) << "/255.0f, "
+							   << to_string(fill_style->b) << "/255.0f, "
+							   << "255/255.0f }," << endl;
+					
+					current_color += 1;
+				}
 				
 				shape_tag.clearFields();
 				shape_tag.setFieldCount(2);
@@ -1318,7 +1408,7 @@ namespace SWFRecomp
 					
 					// StateNewStyles is only used by DefineShape2 and DefineShape3
 					bool state_new_styles = (state_flags & 0b10000) != 0;
-					bool state_line_style = (state_flags & 0b01000) != 0;
+					bool state_line_style = !is_font && (state_flags & 0b01000) != 0;
 					bool state_fill_style_1 = (state_flags & 0b00100) != 0;
 					bool state_fill_style_0 = (state_flags & 0b00010) != 0;
 					bool state_move_to = (state_flags & 0b00001) != 0;
@@ -1485,6 +1575,11 @@ namespace SWFRecomp
 						current_path->line_style = line_style;
 						current_path->self_closed = false;
 						
+						if (shape_tag.code == SWF_TAG_DEFINE_FONT)
+						{
+							current_path->line_style = 0;
+						}
+						
 						Vertex v;
 						v.x = last_x;
 						v.y = last_y;
@@ -1501,6 +1596,11 @@ namespace SWFRecomp
 				if (cur_byte_bits_left != 8)
 				{
 					cur_pos += 1;
+				}
+				
+				if (current_path == nullptr)
+				{
+					return;
 				}
 				
 				std::vector<Shape> shapes;
