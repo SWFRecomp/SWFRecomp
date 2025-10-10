@@ -1575,11 +1575,6 @@ namespace SWFRecomp
 						current_path->line_style = line_style;
 						current_path->self_closed = false;
 						
-						if (shape_tag.code == SWF_TAG_DEFINE_FONT)
-						{
-							current_path->line_style = 0;
-						}
-						
 						Vertex v;
 						v.x = last_x;
 						v.y = last_y;
