@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#4CAF50" stroke-width="4"/>
+
+  <!-- Letter W -->
+  <text x="50" y="70" font-size="56" font-weight="bold" font-family="Arial, sans-serif" fill="#4CAF50" text-anchor="middle">W</text>
+</svg>

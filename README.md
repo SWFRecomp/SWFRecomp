@@ -1,64 +1,192 @@
 # SWFRecomp
 
-This is a stupid idea.
+Static recompiler for Adobe Flash SWF files - translates Flash bytecode into portable C code that can be compiled to native executables or WebAssembly.
 
-# Let's do it anyway.
+**Live Demos:** https://peerinfinity.github.io/SWFRecomp/
 
-SWFRecomp is largely inspired by Wiseguy's [N64Recomp](https://github.com/N64Recomp/N64Recomp), a static recompiler (not emulator) for N64 games that translates N64 MIPS instructions into C code that can be compiled into a native port. You should probably check that out, because it's epic. So is he. :D
+## What is This?
 
-This project aims to do the same thing, except with SWF files, i.e. Adobe Flash applications.
+SWFRecomp is a **static recompiler** (not an emulator) that converts Flash SWF files into C code. Inspired by [N64Recomp](https://github.com/N64Recomp/N64Recomp) by Wiseguy, this project applies the same approach to preserve Flash content.
 
-Fortunately, Adobe released most of their control over Flash as part of the [Open Screen Project](https://web.archive.org/web/20080506095459/http://www.adobe.com/aboutadobe/pressroom/pressreleases/200804/050108AdobeOSP.html), Adobe removed many restrictions from their SWF format, including restrictions on creating software that _plays and renders SWF files_:
+This fork adds:
+- **Improved build system** - Automated native and WASM builds with no manual file copying
+- **Better project structure** - Clean separation of source, generated, and build files
+- **Enhanced documentation** - Complete guides for the entire recompilation process
+- **WebAssembly examples** - Working demos that run in your browser
 
-> To support this mission, and as part of Adobe’s ongoing commitment to enable Web innovation, Adobe will continue to open access to Adobe Flash technology, accelerating the deployment of content and rich Internet applications (RIAs). This work will include:
-> 
-> - Removing restrictions on use of the SWF and FLV/F4V specifications
-> - Publishing the device porting layer APIs for Adobe Flash Player
-> - Publishing the Adobe Flash® Cast™ protocol and the AMF protocol for robust data services
-> - Removing licensing fees - making next major releases of Adobe Flash Player and Adobe AIR for devices free
+## Documentation
 
-They even went as far as to [donate the Flex 3 SDK to Apache](https://www.pcworld.com/article/478324/adobe_donates_flex_to_apache-2.html) back in 2011, in favor of the wild uprising of HTML5. Apache Flex is now licensed under the Apache License (a permissive open-source license).
+### This Repository
 
-## So what can this do right now?
+- **[TRACE_SWF_4_WASM_GENERATION_GUIDE.md](TRACE_SWF_4_WASM_GENERATION_GUIDE.md)** - Complete guide to the entire SWF → WASM pipeline
+- **[WASM_PROJECT_PLAN.md](WASM_PROJECT_PLAN.md)** - Detailed WASM development plan and roadmap
+- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current project status and progress
+- **Build System:** Each test directory has a `Makefile` and `build_wasm.sh` for automated builds
+- **Runtime:** Runtime files are in `tests/*/runtime/` directories
 
-Currently it successfully decompresses all forms of SWF compression, reads the data from the header, and recompiles most graphics data defined in `DefineShape` tags. It also handles many ActionScript actions from SWF 4, and recompiles them into the equivalent C code.
+### Upstream
 
-# Special Thanks
+- **[Upstream README](https://github.com/SWFRecomp/SWFRecomp/blob/master/README.md)** - Original SWFRecomp documentation
 
-All the people that wildly inspire me. 😋
+## Quick Start
 
-My very dear friend Stave.
+### Prerequisites
 
-From RecompRando:
-- ThatHypedPerson
-- PixelShake92
-- Muervo_
+**For native builds:**
+```bash
+# Standard C++ compiler
+sudo apt install build-essential cmake
+```
 
-From N64Recomp:
+**For WASM builds:**
+```bash
+# Install Emscripten
+git clone https://github.com/emscripten-core/emsdk.git ~/tools/emsdk
+cd ~/tools/emsdk
+./emsdk install latest
+./emsdk activate latest
+source ./emsdk_env.sh
+```
 
-- Wiseguy
-- Darío
-- dcvz
-- Reonu
-- thecozies
-- danielryb
-- kentonm
+### Build SWFRecomp
 
-From Archipelago:
+```bash
+git clone https://github.com/PeerInfinity/SWFRecomp.git
+cd SWFRecomp
 
-- seto10987
-- Rogue
-- ArsonAssassin
-- CelestialKitsune
-- Vincent'sSin
-- LegendaryLinux
-- zakwiz
-- jjjj12212
+# Build the recompiler
+mkdir -p build && cd build
+cmake ..
+make
+cd ..
+```
 
-From RotMG:
+### Run an Example
 
-- HuskyJew
-- Nequ
-- snowden
-- MoonMan
-- Auru
+```bash
+cd tests/trace_swf_4
+
+# Step 1: Recompile SWF to C
+../../build/SWFRecomp config.toml
+
+# Step 2: Build natively (for testing)
+make
+./build/native/TestSWFRecompiled
+# Output: sup from SWF 4
+
+# Step 3: Build for WASM (for web)
+source ~/tools/emsdk/emsdk_env.sh
+./build_wasm.sh
+
+# Test in browser
+cd build/wasm
+python3 -m http.server 8000
+# Open http://localhost:8000/index.html
+```
+
+## Project Structure
+
+```
+SWFRecomp/
+├── src/                    # Recompiler source code
+│   ├── swf.cpp            # SWF parsing
+│   ├── tag.cpp            # Tag processing
+│   ├── action/            # ActionScript translation
+│   └── recompilation.cpp  # C code generation
+├── tests/                  # Test cases with complete build setup
+│   ├── trace_swf_4/       # Console output test (working!)
+│   │   ├── test.swf       # Source SWF file
+│   │   ├── config.toml    # Recompiler config
+│   │   ├── runtime/       # Runtime implementations
+│   │   │   ├── native/    # For native builds
+│   │   │   └── wasm/      # For WASM builds
+│   │   ├── Makefile       # Automated native build
+│   │   └── build_wasm.sh  # Automated WASM build
+│   └── graphics/          # Graphics tests
+├── docs/                   # GitHub Pages with live demos
+└── wasm-hello-world/      # Basic WASM example
+```
+
+## How It Works
+
+```
+┌─────────────┐
+│  test.swf   │  Original Flash SWF file
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│  SWFRecomp  │  Static recompiler (this project)
+└──────┬──────┘
+       │
+       │  Generates C files:
+       │  ├── script_0.c      (ActionScript → C)
+       │  ├── tagMain.c       (Frame logic)
+       │  └── constants.c     (String literals)
+       │
+       ▼
+┌─────────────┐
+│   C Code    │  Portable C17 code
+└──────┬──────┘
+       │
+       ├──────────────┬─────────────┐
+       ▼              ▼             ▼
+   ┌──────┐      ┌────────┐   ┌────────┐
+   │ gcc  │      │ clang  │   │ emcc   │
+   └──┬───┘      └───┬────┘   └───┬────┘
+      │              │            │
+      ▼              ▼            ▼
+  ┌────────┐    ┌────────┐   ┌────────┐
+  │ Native │    │ Native │   │  WASM  │
+  │  x86   │    │  ARM   │   │Browser │
+  └────────┘    └────────┘   └────────┘
+```
+
+## Current Features
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **SWF Parsing** | ✅ Working | All compression formats |
+| **ActionScript 1.0** | ✅ Partial | SWF v4 actions working |
+| **Shape Rendering** | ✅ Partial | DefineShape support |
+| **Native Builds** | ✅ Working | gcc/clang compilation |
+| **WASM Builds** | ✅ Working | Emscripten compilation |
+| **Automated Build** | ✅ Working | No manual file copying |
+
+## What Can This Do Right Now?
+
+Currently, SWFRecomp successfully:
+- Decompresses all forms of SWF compression (none, zlib, LZMA)
+- Reads SWF file headers and metadata
+- Recompiles ActionScript actions from SWF 4 into equivalent C code
+- Handles many graphics operations defined in `DefineShape` tags
+- Generates portable C code that compiles to both native and WASM
+
+Check out the [live demo](https://peerinfinity.github.io/SWFRecomp/examples/trace-swf-test/) of the `trace_swf_4` test!
+
+## Related Projects
+
+- **[SWFModernRuntime](https://github.com/PeerInfinity/SWFModernRuntime)** - Runtime library for executing recompiled Flash with graphics
+- **[N64Recomp](https://github.com/N64Recomp/N64Recomp)** - The inspiration for this project
+
+## Legal Note
+
+Adobe released most control over Flash as part of the [Open Screen Project](https://web.archive.org/web/20080506095459/http://www.adobe.com/aboutadobe/pressroom/pressreleases/200804/050108AdobeOSP.html), removing many restrictions from the SWF format:
+
+> Removing restrictions on use of the SWF and FLV/F4V specifications
+
+Adobe also [donated the Flex 3 SDK to Apache](https://www.pcworld.com/article/478324/adobe_donates_flex_to_apache-2.html) in 2011, licensed under the Apache License (a permissive open-source license).
+
+## License
+
+Same as upstream SWFRecomp (check LICENSE file).
+
+## Credits
+
+- **Upstream:** [SWFRecomp](https://github.com/SWFRecomp/SWFRecomp) by LittleCube
+- **Inspiration:** [N64Recomp](https://github.com/N64Recomp/N64Recomp) by Wiseguy
+- **Related:** [SWFModernRuntime](https://github.com/PeerInfinity/SWFModernRuntime) - Runtime for recompiled SWFs
+
+---
+
+**Note:** This is a community fork. The upstream project (by LittleCube) provides the core recompilation engine. This fork adds improved build tooling, WASM support, and documentation.

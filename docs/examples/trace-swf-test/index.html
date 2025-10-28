@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWF → WASM Test: trace_swf_4</title>
+    <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        #output {
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.loading {
+            background: #ff9800;
+            color: #000;
+        }
+        .status.ready {
+            background: #4CAF50;
+            color: #fff;
+        }
+        .status.error {
+            background: #f44336;
+            color: #fff;
+        }
+        .highlight {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <p style="margin-bottom: 20px;">
+        <a href="../../index.html" style="color: #4CAF50; text-decoration: none; font-weight: 600;">← Back to SWFRecomp</a>
+    </p>
+
+    <h1>Flash SWF → WebAssembly</h1>
+    <h2>Test: trace_swf_4</h2>
+
+    <div class="info-box">
+        <h3>What's Happening Here?</h3>
+        <p>This is a <strong>real Flash SWF file</strong> that has been:</p>
+        <ol>
+            <li><strong>Recompiled</strong> by SWFRecomp into C code</li>
+            <li><strong>Compiled</strong> to WebAssembly with Emscripten</li>
+            <li><strong>Running</strong> natively in your browser!</li>
+        </ol>
+        <p>No Flash Player. No emulation. Just pure WebAssembly.</p>
+    </div>
+
+    <div id="status" class="status loading">Loading WASM module...</div>
+
+    <div class="controls">
+        <h3>Controls:</h3>
+        <button onclick="runSwf()" id="btn-run" disabled>▶️ Run SWF</button>
+        <button onclick="clearOutput()" style="background: #666;">🗑️ Clear Output</button>
+    </div>
+
+    <h3>SWF Output:</h3>
+    <div id="output"></div>
+
+    <script>
+        var Module = {
+            preRun: [],
+            postRun: [],
+            print: function(text) {
+                console.log(text);
+                addOutput(text, 'log');
+            },
+            printErr: function(text) {
+                console.error(text);
+                addOutput(text, 'error');
+            },
+            onRuntimeInitialized: function() {
+                updateStatus('ready', '✅ WASM module loaded and ready!');
+                document.getElementById('btn-run').disabled = false;
+                addOutput('='.repeat(70), 'separator');
+                addOutput('WASM runtime ready! Click "Run SWF" to execute.', 'info');
+                addOutput('Expected output: "sup from SWF 4"', 'info');
+                addOutput('='.repeat(70), 'separator');
+            }
+        };
+
+        function addOutput(text, type = 'log') {
+            const output = document.getElementById('output');
+            const line = document.createElement('div');
+
+            if (type === 'error') {
+                line.style.color = '#ff5555';
+            } else if (type === 'info') {
+                line.style.color = '#88ccff';
+            } else if (type === 'separator') {
+                line.style.color = '#666';
+            } else if (text.includes('sup from SWF 4')) {
+                // Highlight the actual SWF output!
+                line.style.color = '#4CAF50';
+                line.style.fontWeight = 'bold';
+                line.style.fontSize = '18px';
+            }
+
+            line.textContent = text;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = 'status ' + type;
+            status.textContent = message;
+        }
+
+        function runSwf() {
+            addOutput('\n' + '='.repeat(70), 'separator');
+            addOutput('Running SWF execution...', 'info');
+            addOutput('='.repeat(70) + '\n', 'separator');
+
+            try {
+                Module.ccall('runSWF', null, [], []);
+                addOutput('\n' + '='.repeat(70), 'separator');
+                addOutput('✅ SWF execution completed successfully!', 'info');
+                addOutput('='.repeat(70), 'separator');
+            } catch (e) {
+                addOutput('Error: ' + e.message, 'error');
+                updateStatus('error', '❌ Error during SWF execution');
+            }
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        window.onerror = function(msg, url, line) {
+            updateStatus('error', '❌ Error loading WASM module');
+            addOutput('Error: ' + msg, 'error');
+        };
+    </script>
+
+    <!-- Load the compiled WASM module -->
+    <script src="trace_swf.js"></script>
+</body>
+</html>
