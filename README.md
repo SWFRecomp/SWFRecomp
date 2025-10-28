@@ -21,8 +21,13 @@ This fork adds:
 - **[TRACE_SWF_4_WASM_GENERATION_GUIDE.md](TRACE_SWF_4_WASM_GENERATION_GUIDE.md)** - Complete guide to the entire SWF → WASM pipeline
 - **[WASM_PROJECT_PLAN.md](WASM_PROJECT_PLAN.md)** - Detailed WASM development plan and roadmap
 - **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current project status and progress
+- **[AS3_IMPLEMENTATION_PLAN.md](AS3_IMPLEMENTATION_PLAN.md)** - Implementation plan for adding AS3 support
 - **Build System:** Each test directory has a `Makefile` and `build_wasm.sh` for automated builds
 - **Runtime:** Runtime files are in `tests/*/runtime/` directories
+
+### SWFModernRuntime
+
+- **[README.md](https://github.com/PeerInfinity/SWFModernRuntime/tree/wasm-support/README.md)** - Main README file
 
 ### Upstream
 
