@@ -23,23 +23,20 @@ This fork adds:
 - **[WASM_PROJECT_PLAN.md](WASM_PROJECT_PLAN.md)** - Detailed WASM development plan and roadmap
 - **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current project status and progress
 
-**Architecture & Design:**
-- **[C_VS_CPP_ARCHITECTURE.md](C_VS_CPP_ARCHITECTURE.md)** - Why SWFRecomp uses C++ for build tools and C for runtime
-- **[AS3_C_IMPLEMENTATION_PLAN.md](AS3_C_IMPLEMENTATION_PLAN.md)** - Pure C implementation plan for AS3 (18-28 months, per LittleCube's guidance)
+**ActionScript 3 Support (Pure C):**
+- **[AS3_IMPLEMENTATION_GUIDE.md](AS3_IMPLEMENTATION_GUIDE.md)** - Complete AS3 implementation guide in pure C
+- **[SEEDLING_IMPLEMENTATION_GUIDE.md](SEEDLING_IMPLEMENTATION_GUIDE.md)** - Targeted AS3 implementation guide for Seedling game
 
-**ActionScript 3 Support (Pure C - RECOMMENDED):**
-- **[AS3_C_IMPLEMENTATION_PLAN.md](AS3_C_IMPLEMENTATION_PLAN.md)** - Full AS3 implementation plan in pure C (18-28 months)
-- **[SEEDLING_C_IMPLEMENTATION_PLAN.md](SEEDLING_C_IMPLEMENTATION_PLAN.md)** - Targeted AS3 for Seedling in pure C (6-10 months, minimal subset)
-- **[SEEDLING_MANUAL_C_CONVERSION.md](SEEDLING_MANUAL_C_CONVERSION.md)** - Manual AS3→C conversion for Seedling (3-5 months, ~500 KB WASM)
-- **[SYNERGY_ANALYSIS_C.md](SYNERGY_ANALYSIS_C.md)** - How manual C conversion and SWFRecomp can work together (20-40% effort savings)
-
-**ActionScript 3 Support (C++ - Historical Reference):**
-- **[AS3_IMPLEMENTATION_PLAN.md](AS3_IMPLEMENTATION_PLAN.md)** - Full AS3 with C++ (10-16 months)
-- **[SEEDLING_IMPLEMENTATION_PLAN.md](SEEDLING_IMPLEMENTATION_PLAN.md)** - Seedling with C++ (4-7 months)
-- **[SEEDLING_MANUAL_CPP_CONVERSION.md](SEEDLING_MANUAL_CPP_CONVERSION.md)** - Manual AS3→C++ conversion (2-4 months, ~800 KB WASM)
-- **[SYNERGY_ANALYSIS.md](SYNERGY_ANALYSIS.md)** - Synergy analysis with C++
-
-*Note: C++ approaches are kept for reference. Per LittleCube's guidance, pure C is preferred for runtime code to minimize binary size and overhead. See [C_VS_CPP_ARCHITECTURE.md](C_VS_CPP_ARCHITECTURE.md) for details.*
+**Deprecated Documentation (Moved to deprecated/):**
+- **[deprecated/AS3_C_IMPLEMENTATION_PLAN.md](deprecated/AS3_C_IMPLEMENTATION_PLAN.md)** - Original AS3 plan with time estimates
+- **[deprecated/SEEDLING_C_IMPLEMENTATION_PLAN.md](deprecated/SEEDLING_C_IMPLEMENTATION_PLAN.md)** - Original Seedling plan with time estimates
+- **[deprecated/C_VS_CPP_ARCHITECTURE.md](deprecated/C_VS_CPP_ARCHITECTURE.md)** - Why SWFRecomp uses C++ for build tools and C for runtime
+- **[deprecated/AS3_IMPLEMENTATION_PLAN.md](deprecated/AS3_IMPLEMENTATION_PLAN.md)** - Full AS3 with C++
+- **[deprecated/SEEDLING_IMPLEMENTATION_PLAN.md](deprecated/SEEDLING_IMPLEMENTATION_PLAN.md)** - Seedling with C++
+- **[deprecated/SEEDLING_MANUAL_C_CONVERSION.md](deprecated/SEEDLING_MANUAL_C_CONVERSION.md)** - Manual AS3→C conversion for Seedling
+- **[deprecated/SEEDLING_MANUAL_CPP_CONVERSION.md](deprecated/SEEDLING_MANUAL_CPP_CONVERSION.md)** - Manual AS3→C++ conversion
+- **[deprecated/SYNERGY_ANALYSIS_C.md](deprecated/SYNERGY_ANALYSIS_C.md)** - How manual C conversion and SWFRecomp can work together
+- **[deprecated/SYNERGY_ANALYSIS.md](deprecated/SYNERGY_ANALYSIS.md)** - Synergy analysis with C++
 
 **Build System:**
 - Each test directory has a `Makefile` and `build_wasm.sh` for automated builds
