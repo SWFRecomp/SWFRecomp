@@ -29,6 +29,7 @@ This fork adds:
 - **[ABC_PARSER_GUIDE.md](ABC_PARSER_GUIDE.md)** - Detailed guide for Phase 1: ABC Parser implementation
 - **[ABC_PARSER_RESEARCH.md](ABC_PARSER_RESEARCH.md)** - ABC format specification verification and license analysis
 - **[ABC_IMPLEMENTATION_INFO.md](ABC_IMPLEMENTATION_INFO.md)** - Complete reference for implementing ABC parser (codebase integration, opcodes, roadmap)
+- **[AS3_TEST_SWF_GENERATION_GUIDE.md](AS3_TEST_SWF_GENERATION_GUIDE.md)** - Guide for creating AS3 test SWF files using Flex SDK and AIR SDK
 
 **Deprecated Documentation (Moved to deprecated/):**
 - **[deprecated/AS3_C_IMPLEMENTATION_PLAN.md](deprecated/AS3_C_IMPLEMENTATION_PLAN.md)** - Original AS3 plan with time estimates
