@@ -27,6 +27,8 @@ This fork adds:
 - **[AS3_IMPLEMENTATION_GUIDE.md](AS3_IMPLEMENTATION_GUIDE.md)** - Complete AS3 implementation guide in pure C
 - **[SEEDLING_IMPLEMENTATION_GUIDE.md](SEEDLING_IMPLEMENTATION_GUIDE.md)** - Targeted AS3 implementation guide for Seedling game
 - **[ABC_PARSER_GUIDE.md](ABC_PARSER_GUIDE.md)** - Detailed guide for Phase 1: ABC Parser implementation
+- **[ABC_PARSER_RESEARCH.md](ABC_PARSER_RESEARCH.md)** - ABC format specification verification and license analysis
+- **[ABC_IMPLEMENTATION_INFO.md](ABC_IMPLEMENTATION_INFO.md)** - Complete reference for implementing ABC parser (codebase integration, opcodes, roadmap)
 
 **Deprecated Documentation (Moved to deprecated/):**
 - **[deprecated/AS3_C_IMPLEMENTATION_PLAN.md](deprecated/AS3_C_IMPLEMENTATION_PLAN.md)** - Original AS3 plan with time estimates
