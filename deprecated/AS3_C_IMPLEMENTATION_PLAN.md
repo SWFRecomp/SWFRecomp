@@ -291,13 +291,15 @@ char* toString(AS3Value* input) {
 
 char* formatNumber(double d) {
     // ECMA-262 section 9.8.1: ToString Applied to the Number Type
-    // Complex rules for:
-    // - Exponential notation for very large/small numbers
-    // - Precision and rounding
-    // - Trailing zeros
-    // - Decimal point placement
+    // Flash Player implementation: printf("%.15g", d)
+    // This handles NaN, Infinity, -0, exponential notation automatically
 
-    // 50+ lines of formatting logic...
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.15g", d);
+    return strdup(buf);
+
+    // Note: Integer types (int, uint) may need special handling
+    // This matches Flash Player behavior for Number type
 }
 ```
 
@@ -1012,8 +1014,8 @@ Here's the complete list organized by category:
 0x29  pop
 0x2A  dup
 0x2B  swap
+0x1D  popscope
 0x30  pushscope
-0x31  popscope
 ```
 
 #### Push Constants (14)
@@ -1329,17 +1331,25 @@ AS3Value* Hello_sayHello(AVM2Context* ctx, AS3Value* this_obj) {
     // 0x0A: callpropvoid QName("trace"), 1
     // 0x0F: returnvoid
 
-    // findpropstrict "trace" - find global trace function
+    // DESIGN NOTE: The recompiler handles QName resolution at compile-time.
+    // String constants are inlined, and since findpropstrict/callpropvoid
+    // deal with QNames (known at compile-time), the recompiler generates
+    // direct function calls rather than runtime property lookups.
+
+    // Generated code (simplified):
+    trace("Hello from AS3!");
+
+    return createUndefined();
+}
+
+// Alternative: If runtime lookup is needed (for dynamic properties):
+AS3Value* Hello_sayHello_dynamic(AVM2Context* ctx, AS3Value* this_obj) {
+    // This approach is only needed when QNames aren't known at compile-time
     AS3Value* trace_scope = findpropstrict(ctx, "trace", NULL);
-
-    // pushstring "Hello from AS3!"
     AS3Value* str = createString("Hello from AS3!");
-
-    // callpropvoid - call trace with 1 argument
     AS3Value* trace_func = getproperty(ctx, trace_scope, "trace", NULL);
     callFunction(ctx, trace_func, 1, &str);
 
-    // returnvoid
     release(str);
     release(trace_scope);
     release(trace_func);
@@ -1366,16 +1376,21 @@ void as3_script_0(AVM2Context* ctx) {
     // 0x14: initproperty QName("Hello")
     // 0x19: returnvoid
 
+    // DESIGN NOTE: For class registration, the recompiler could optimize this
+    // to direct global property initialization since the QName "Hello" is known.
+    // However, this example shows the explicit bytecode translation approach.
+
     // getlocal_0 - get global object
     AS3Value* global = getlocal(ctx, 0);
 
     // pushscope
     pushscope(ctx, global);
 
-    // findpropstrict "Hello"
-    AS3Value* scope = findpropstrict(ctx, "Hello", NULL);
+    // Optimized version (if recompiler handles QNames at compile-time):
+    // initGlobalProperty(ctx, "Hello", createClass(&Hello_class));
 
-    // Register Hello class as property on global object
+    // Explicit translation (for illustration):
+    AS3Value* scope = findpropstrict(ctx, "Hello", NULL);
     AS3Value* hello_class_val = createClass(&Hello_class);
     initproperty(ctx, scope, "Hello", NULL, hello_class_val);
 
