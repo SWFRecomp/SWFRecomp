@@ -18,12 +18,24 @@ This fork adds:
 
 ### This Repository
 
+**Core Documentation:**
 - **[TRACE_SWF_4_WASM_GENERATION_GUIDE.md](TRACE_SWF_4_WASM_GENERATION_GUIDE.md)** - Complete guide to the entire SWF → WASM pipeline
 - **[WASM_PROJECT_PLAN.md](WASM_PROJECT_PLAN.md)** - Detailed WASM development plan and roadmap
 - **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - Current project status and progress
-- **[AS3_IMPLEMENTATION_PLAN.md](AS3_IMPLEMENTATION_PLAN.md)** - Implementation plan for adding AS3 support
-- **Build System:** Each test directory has a `Makefile` and `build_wasm.sh` for automated builds
-- **Runtime:** Runtime files are in `tests/*/runtime/` directories
+
+**Architecture & Design:**
+- **[C_VS_CPP_ARCHITECTURE.md](C_VS_CPP_ARCHITECTURE.md)** - Why SWFRecomp uses C++ for build tools and C for runtime
+- **[AS3_C_IMPLEMENTATION_PLAN.md](AS3_C_IMPLEMENTATION_PLAN.md)** - Pure C implementation plan for AS3 (18-28 months, per LittleCube's guidance)
+
+**ActionScript 3 Support:**
+- **[AS3_IMPLEMENTATION_PLAN.md](AS3_IMPLEMENTATION_PLAN.md)** - Full AS3 implementation plan with C++ (10-16 months, 164 opcodes) - *See AS3_C_IMPLEMENTATION_PLAN.md for preferred pure C approach*
+- **[SEEDLING_IMPLEMENTATION_PLAN.md](SEEDLING_IMPLEMENTATION_PLAN.md)** - Targeted AS3 plan for Seedling game (4-7 months, minimal subset)
+- **[SEEDLING_MANUAL_CPP_CONVERSION.md](SEEDLING_MANUAL_CPP_CONVERSION.md)** - Alternative: Manual AS3→C++ conversion (2-4 months)
+- **[SYNERGY_ANALYSIS.md](SYNERGY_ANALYSIS.md)** - How manual conversion and SWFRecomp can work together
+
+**Build System:**
+- Each test directory has a `Makefile` and `build_wasm.sh` for automated builds
+- Runtime files are in `tests/*/runtime/` directories
 
 ### SWFModernRuntime
 
