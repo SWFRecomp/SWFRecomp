@@ -906,21 +906,21 @@ struct Multiname {
 ## Appendix: Key File Locations
 
 ### Documentation
-- `/home/robert/projects/SWFRecomp/docs/specs/swf-spec-19.pdf`
-- `/home/robert/projects/SWFRecomp/docs/specs/abc-format-46-16.txt`
-- `/home/robert/projects/SWFRecomp/docs/specs/avm2_opcodes_raw.txt`
-- `/home/robert/projects/SWFRecomp/ABC_PARSER_GUIDE.md`
-- `/home/robert/projects/SWFRecomp/ABC_PARSER_RESEARCH.md`
+- `docs/specs/swf-spec-19.pdf`
+- `docs/specs/abc-format-46-16.txt`
+- `docs/specs/avm2_opcodes_raw.txt`
+- `ABC_PARSER_GUIDE.md`
+- `ABC_PARSER_RESEARCH.md`
 
 ### Source Code
-- `/home/robert/projects/SWFRecomp/src/swf.cpp` - Line 889 (DoABC handler)
-- `/home/robert/projects/SWFRecomp/include/tag.hpp` - Line 27 (SWF_TAG_DO_ABC)
-- `/home/robert/projects/SWFRecomp/src/field.cpp` - Binary reading patterns
-- `/home/robert/projects/SWFRecomp/CMakeLists.txt` - Build configuration
+- `src/swf.cpp` - Line 889 (DoABC handler)
+- `include/tag.hpp` - Line 27 (SWF_TAG_DO_ABC)
+- `src/field.cpp` - Binary reading patterns
+- `CMakeLists.txt` - Build configuration
 
 ### Test Resources
-- `/home/robert/projects/SWFRecomp/tests/*/test.swf` - 50+ test SWF files
-- `/home/robert/projects/Seedling/src/` - AS3 source (no compiled SWF yet)
+- `tests/*/test.swf` - 50+ test SWF files
+- `../Seedling/src/` - AS3 source (no compiled SWF yet)
 
 ### External References
 - https://github.com/ruffle-rs/ruffle/blob/master/swf/src/avm2/read.rs

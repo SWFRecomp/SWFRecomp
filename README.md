@@ -31,6 +31,10 @@ This fork adds:
 - **[ABC_IMPLEMENTATION_INFO.md](ABC_IMPLEMENTATION_INFO.md)** - Complete reference for implementing ABC parser (codebase integration, opcodes, roadmap)
 - **[AS3_TEST_SWF_GENERATION_GUIDE.md](AS3_TEST_SWF_GENERATION_GUIDE.md)** - Guide for creating AS3 test SWF files using Flex SDK and AIR SDK
 
+**Font and Text Support:**
+- **[FONT_IMPLEMENTATION_ANALYSIS.md](FONT_IMPLEMENTATION_ANALYSIS.md)** - Complete analysis of font implementation status and requirements
+- **[FONT_PHASE1_IMPLEMENTATION.md](FONT_PHASE1_IMPLEMENTATION.md)** - Step-by-step guide for implementing Phase 1: Basic font support with DefineFontInfo parsing
+
 **Deprecated Documentation (Moved to deprecated/):**
 - **[deprecated/AS3_C_IMPLEMENTATION_PLAN.md](deprecated/AS3_C_IMPLEMENTATION_PLAN.md)** - Original AS3 plan with time estimates
 - **[deprecated/SEEDLING_C_IMPLEMENTATION_PLAN.md](deprecated/SEEDLING_C_IMPLEMENTATION_PLAN.md)** - Original Seedling plan with time estimates
