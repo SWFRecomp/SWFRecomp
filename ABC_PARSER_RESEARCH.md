@@ -102,6 +102,8 @@ The ABC_PARSER_GUIDE.md was verified against the **official Adobe ABC file forma
 | NEED_ACTIVATION | 0x02 | ✅ |
 | NEED_REST | 0x04 | ✅ |
 | HAS_OPTIONAL | 0x08 | ✅ |
+| IGNORE_REST | 0x10 | ✅ |
+| EXPLICIT | 0x20 | ✅ |
 | SET_DXNS | 0x40 | ✅ |
 | HAS_PARAM_NAMES | 0x80 | ✅ |
 
@@ -276,9 +278,9 @@ MethodInfo:
 MethodBodyInfo:
 ├── method_index (U30) - which method this is for
 ├── max_stack (U30) - maximum stack depth
-├── local_count (U30) - number of local variables
-├── init_scope_depth (U30)
-├── max_scope_depth (U30)
+├── max_regs (U30) - number of local registers
+├── scope_depth (U30) - initial scope depth
+├── max_scope_depth (U30) - maximum scope depth
 ├── code_length (U30)
 ├── code (U8[code_length]) - bytecode instructions
 ├── exception_count (U30)

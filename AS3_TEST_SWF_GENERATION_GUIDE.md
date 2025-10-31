@@ -900,6 +900,12 @@ method
 end
 ```
 
+**Note on RABCDAsm naming:** RABCDAsm uses different field names than the official ABC specification:
+- RABCDAsm: `localcount` → ABC spec: `max_regs` (number of local registers)
+- RABCDAsm: `initscopedepth` → ABC spec: `scope_depth` (initial scope depth)
+
+When implementing the ABC parser for SWFRecomp, use the official spec names (`max_regs`, `scope_depth`). The naming difference is only in RABCDAsm's disassembly output format.
+
 ### Compare with SWFRecomp Output
 
 **Run SWFRecomp with debug output:**

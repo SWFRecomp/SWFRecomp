@@ -90,15 +90,25 @@ UI8[]   CodeTable        // Character codes for each glyph (if WideCodes=0)
 
 **Important:** The font name is NOT null-terminated and must be parsed byte-by-byte. The existing `SWF_FIELD_STRING` field type is defined but not implemented, so manual parsing is required.
 
-**Font Flags (Bitmask):**
-- Bit 0: Wide codes (1 = 16-bit codes, 0 = 8-bit codes)
-- Bit 1: ShiftJIS encoding (Japanese)
-- Bit 2: ANSI encoding
-- Bit 3: Italic
-- Bit 4: Bold
-- Bit 5: Small text (anti-aliasing hint)
-- Bit 6: Reserved
-- Bit 7: Reserved
+**Font Flags (Byte Layout):**
+
+The SWF spec defines FontFlags as a series of UB (unsigned bit) fields read MSB-first. The byte is structured as:
+- UB[2]: Reserved (bits 6-7, MSB)
+- UB[1]: SmallText - Anti-aliasing hint (bit 5)
+- UB[1]: ShiftJIS - Japanese encoding (bit 4)
+- UB[1]: ANSI - ANSI encoding (bit 3)
+- UB[1]: Italic (bit 2)
+- UB[1]: Bold (bit 1)
+- UB[1]: WideCodes - If 1, CodeTable is UI16[]; if 0, UI8[] (bit 0, LSB)
+
+When reading the flags byte directly (LSB to MSB, bit 0 to 7):
+- Bit 0 (0x01): WideCodes (1 = 16-bit codes, 0 = 8-bit codes)
+- Bit 1 (0x02): Bold
+- Bit 2 (0x04): Italic
+- Bit 3 (0x08): ANSI encoding
+- Bit 4 (0x10): ShiftJIS encoding (Japanese)
+- Bit 5 (0x20): SmallText (anti-aliasing hint, SWF 7+)
+- Bits 6-7 (0xC0): Reserved
 
 **Note:** The "Has layout info" flag only appears in DefineFont2, not DefineFontInfo.
 
@@ -152,7 +162,40 @@ Same structure as DefineFont2 but with:
 - Always uses wide (16-bit) character codes
 - Better support for Unicode and large character sets
 
-**Note:** DefineFont4 does not exist in the SWF specification. DefineFont3 (tag 75) is the most advanced font definition tag.
+#### DefineFont4 (Tag 91) - Embedded OpenType/CFF Fonts
+
+**Introduced in:** SWF 10 (Flash Player 10+)
+**Purpose:** Supports the Flash Text Engine with OpenType CFF font embedding
+
+```
+UI16    FontID              // ID for this font character
+UB[5]   FontFlagsReserved   // Reserved bits
+UB[1]   FontFlagsHasFontData // Font is embedded (includes SFNT data)
+UB[1]   FontFlagsItalic     // Italic font
+UB[1]   FontFlagsBold       // Bold font
+STRING  FontName            // Name of the font (null-terminated)
+FONTDATA FontData            // OpenType CFF font data (optional, based on HasFontData flag)
+```
+
+**FontData Structure:**
+When present, contains a complete OpenType CFF font as defined in the OpenType specification. Required tables:
+- **Required:** 'CFF ', 'cmap', 'head', 'maxp', 'OS/2', 'post'
+- **Required (either):** ('hhea' and 'hmtx') OR ('vhea', 'vmtx', and 'VORG')
+- **Optional:** 'GSUB', 'GPOS', 'GDEF', 'BASE'
+
+The 'cmap' table must include one of these Unicode subtables:
+- (platform 0, encoding 4)
+- (platform 0, encoding 3)
+- (platform 3, encoding 10)
+- (platform 3, encoding 1)
+- (platform 3, encoding 0)
+
+**Key Differences from DefineFont/DefineFont2/DefineFont3:**
+- Uses CFF (Compact Font Format) instead of SWF shape definitions
+- Embeds complete OpenType font files
+- Designed specifically for Flash Text Engine (not classic TextField)
+- More efficient for complex fonts with many glyphs
+- Supports advanced typography features (ligatures, kerning via GPOS, etc.)
 
 #### DefineFontInfo2 (Tag 62) - Extended Font Info
 
@@ -677,9 +720,14 @@ The `wide_codes` flag in FontFlags determines 8-bit vs 16-bit.
 
 **Tasks:**
 
-- DefineFont4 (embedded TrueType/OpenType)
+- **DefineFont4 (Tag 91)** - Embedded OpenType CFF fonts
+  - Requires CFF font parser
+  - Requires OpenType table parsing
+  - Only needed for Flash Text Engine (FTE) support
+  - Most Flash content uses DefineFont2/3, not DefineFont4
+  - **Recommendation:** Defer until DefineFont/DefineFont2/DefineFont3 are fully working
 - HTML text rendering
-- Advanced typography (ligatures, etc.)
+- Advanced typography (ligatures via OpenType GSUB, etc.)
 - Font subsetting/optimization
 - Font fallback chains
 - Emoji support
@@ -761,12 +809,13 @@ Complete list of font and text-related SWF tags with their tag numbers:
 | DefineFont2 | 48 | 3 | Complete font with metrics and layout |
 | DefineFontInfo2 | 62 | 6 | Font metadata with language code |
 | DefineFont3 | 75 | 8 | DefineFont2 with 32-bit offsets |
+| DefineFont4 | 91 | 10 | Embedded OpenType CFF fonts for Flash Text Engine |
 
 **Notes:**
 - DefineFont (10) requires DefineFontInfo (13) or DefineFontInfo2 (62) for character mapping
 - DefineFont2 (48) and DefineFont3 (75) include all metadata in one tag
 - DefineText2 (33) is identical to DefineText (11) except uses RGBA instead of RGB
-- DefineFont4 does **not exist** in the SWF specification
+- DefineFont4 (91) uses OpenType CFF format instead of SWF shapes, designed for Flash Text Engine
 - Tag numbers verified against official SWF specification v19
 
 ---

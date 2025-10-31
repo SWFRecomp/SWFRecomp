@@ -424,12 +424,12 @@ case SWF_TAG_DEFINE_FONT_INFO:
 
     u8 flags = (u8) tag.fields[0].value;
 
-    // Extract flag bits
+    // Extract flag bits (SWF spec lists UB fields from MSB to LSB)
     font->is_wide_codes  = (flags & 0b00000001) != 0;  // Bit 0
-    font->is_shift_jis   = (flags & 0b00000010) != 0;  // Bit 1
-    font->is_ansi        = (flags & 0b00000100) != 0;  // Bit 2
-    font->is_italic      = (flags & 0b00001000) != 0;  // Bit 3
-    font->is_bold        = (flags & 0b00010000) != 0;  // Bit 4
+    font->is_bold        = (flags & 0b00000010) != 0;  // Bit 1
+    font->is_italic      = (flags & 0b00000100) != 0;  // Bit 2
+    font->is_ansi        = (flags & 0b00001000) != 0;  // Bit 3
+    font->is_shift_jis   = (flags & 0b00010000) != 0;  // Bit 4
     font->is_small_text  = (flags & 0b00100000) != 0;  // Bit 5
     // Bits 6-7 reserved
 
@@ -523,10 +523,10 @@ case SWF_TAG_DEFINE_FONT_INFO:
 **Flag bit layout (DefineFontInfo):**
 ```
 Bit 0: WideCodes    (0 = 8-bit codes, 1 = 16-bit codes)
-Bit 1: ShiftJIS     (Japanese encoding)
-Bit 2: ANSI         (ANSI encoding)
-Bit 3: Italic
-Bit 4: Bold
+Bit 1: Bold
+Bit 2: Italic
+Bit 3: ANSI         (ANSI encoding)
+Bit 4: ShiftJIS     (Japanese encoding)
 Bit 5: SmallText    (anti-aliasing hint)
 Bit 6: Reserved
 Bit 7: Reserved
@@ -896,10 +896,10 @@ DefineFontInfo (Tag 13)
 
 FontFlags (UI8):
   Bit 0: WideCodes    (1 = UI16, 0 = UI8)
-  Bit 1: ShiftJIS     (Japanese encoding)
-  Bit 2: ANSI         (ANSI encoding)
-  Bit 3: Italic
-  Bit 4: Bold
+  Bit 1: Bold
+  Bit 2: Italic
+  Bit 3: ANSI         (ANSI encoding)
+  Bit 4: ShiftJIS     (Japanese encoding)
   Bit 5: SmallText    (anti-aliasing hint)
   Bit 6: Reserved
   Bit 7: Reserved
@@ -912,11 +912,12 @@ Note: NumGlyphs comes from corresponding DefineFont tag
 
 ## Document Information
 
-**Version:** 1.0
-**Date:** 2025-10-30
+**Version:** 1.1
+**Date:** 2025-10-31
 **Phase:** 1 of 4
 **Status:** Implementation Ready
 **Estimated Effort:** 2-3 days
+**Revision Notes:** Fixed FontFlags bit ordering (v1.1) - corrected bits 1-4 to match SWF spec
 
 **Files Modified:**
 - `include/swf.hpp` - Add Font structures

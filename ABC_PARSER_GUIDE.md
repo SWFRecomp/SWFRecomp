@@ -433,12 +433,14 @@ Method signatures:
 
 ```cpp
 enum MethodFlags {
-    NEED_ARGUMENTS = 0x01,
-    NEED_ACTIVATION = 0x02,
-    NEED_REST = 0x04,
-    HAS_OPTIONAL = 0x08,
-    SET_DXNS = 0x40,
-    HAS_PARAM_NAMES = 0x80,
+    NEED_ARGUMENTS = 0x01,      // need_arguments
+    NEED_ACTIVATION = 0x02,     // need_activation
+    NEED_REST = 0x04,           // need_rest
+    HAS_OPTIONAL = 0x08,        // has_optional
+    IGNORE_REST = 0x10,         // ignore_rest
+    EXPLICIT = 0x20,            // explicit
+    SET_DXNS = 0x40,            // setsdxns
+    HAS_PARAM_NAMES = 0x80,     // has_paramnames
 };
 
 struct OptionDetail {
@@ -726,9 +728,9 @@ struct ExceptionInfo {
 struct MethodBodyInfo {
     uint32_t method_index;
     uint32_t max_stack;
-    uint32_t local_count;
-    uint32_t init_scope_depth;
-    uint32_t max_scope_depth;
+    uint32_t max_regs;          // Number of local registers
+    uint32_t scope_depth;       // Initial scope depth
+    uint32_t max_scope_depth;   // Maximum scope depth
     std::vector<uint8_t> code;
     std::vector<ExceptionInfo> exceptions;
     std::vector<Trait> traits;
@@ -742,8 +744,8 @@ void parse_method_bodies(ABCReader& reader, ABCFile* abc) {
 
         body.method_index = reader.read_u30();
         body.max_stack = reader.read_u30();
-        body.local_count = reader.read_u30();
-        body.init_scope_depth = reader.read_u30();
+        body.max_regs = reader.read_u30();
+        body.scope_depth = reader.read_u30();
         body.max_scope_depth = reader.read_u30();
 
         // Read bytecode

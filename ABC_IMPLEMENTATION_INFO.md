@@ -55,10 +55,10 @@
 
 ### Downloaded Documentation (in `docs/specs/`)
 
-1. **`swf-spec-19.pdf`** (1.7 MB)
-   - Official Adobe SWF File Format Specification Version 19
-   - Contains DoABC/DoABC2 tag format (Chapter on ActionScript 3)
-   - Source: https://open-flash.github.io/mirrors/swf-spec-19.pdf
+1. **`swf-spec-19.txt`** (370 KB)
+   - Official Adobe SWF File Format Specification Version 19 (text version)
+   - Contains DoABC tag format (Chapter on ActionScript 3)
+   - Source: https://open-flash.github.io/mirrors/swf-spec-19.pdf (PDF version: 1.7 MB)
 
 2. **`abc-format-46-16.txt`** (8.2 KB)
    - Official Adobe ABC File Format Specification
@@ -322,23 +322,28 @@ out << code.str();
 0x2F  pushdouble      [U30 index]           - Push double from pool
 ```
 
-#### Local Variables (0x60-0x6F)
+#### Local Variables (0x60-0x6F, 0xD0-0xD7)
 ```
-0x60  getlocal        [U30 index]           - Get local variable
-0x61  setlocal        [U30 index]           - Set local variable
-0x62  getlocal_0      []                    - Get local 0 (optimized)
-0x63  getlocal_1      []                    - Get local 1
-0x64  getlocal_2      []                    - Get local 2
-0x65  getlocal_3      []                    - Get local 3
+0x60  getlex          [U30 index]           - Get lex (find and get property)
+0x62  getlocal        [U30 index]           - Get local variable
+0x63  setlocal        [U30 index]           - Set local variable
 0x6C  getslot         [U30 index]           - Get object slot
 0x6D  setslot         [U30 index]           - Set object slot
+0xD0  getlocal_0      []                    - Get local 0 (optimized)
+0xD1  getlocal_1      []                    - Get local 1
+0xD2  getlocal_2      []                    - Get local 2
+0xD3  getlocal_3      []                    - Get local 3
+0xD4  setlocal_0      []                    - Set local 0 (optimized)
+0xD5  setlocal_1      []                    - Set local 1
+0xD6  setlocal_2      []                    - Set local 2
+0xD7  setlocal_3      []                    - Set local 3
 ```
 
-#### Property Access (0x66-0x68)
+#### Property Access (0x61, 0x66, 0x68)
 ```
+0x61  setproperty     [U30 multiname]       - Set property
 0x66  getproperty     [U30 multiname]       - Get property
-0x68  setproperty     [U30 multiname]       - Set property
-0x61  initproperty    [U30 multiname]       - Initialize property
+0x68  initproperty    [U30 multiname]       - Initialize property
 ```
 
 #### Method Calls (0x40-0x4F)
@@ -867,15 +872,20 @@ Phase 2 (Code Generator) will:
 - **Generate** C code
 - **Implement** runtime for each opcode
 
-### Q: What about DoABC2 tag?
+### Q: What about DoABC vs DoAction tags?
 
-**A:** DoABC2 (tag 82) and DoABC (tag 72) have same format. The guide mentions DoABC, but modern SWFs use DoABC2. Handle both:
+**A:** Don't confuse DoABC (tag 82) with DoAction (tag 72):
+- **Tag 72 = DoAction** - ActionScript 1.0/2.0 bytecode (older Flash)
+- **Tag 82 = DoABC** - ActionScript 3.0 ABC bytecode (Flash Player 9+)
+
+Only implement DoABC (tag 82) for AS3 support:
 ```cpp
-case SWF_TAG_DO_ABC:      // 72 (older)
-case SWF_TAG_DO_ABC_2:    // 82 (newer)
+case SWF_TAG_DO_ABC:      // 82 (AS3)
 {
-    // Same parsing code
+    // Parse ABC data
 }
+
+// DoAction (tag 72) is already handled for AS1/AS2 in action/action.cpp
 ```
 
 ### Q: How do I handle multiname complexity?
@@ -906,7 +916,7 @@ struct Multiname {
 ## Appendix: Key File Locations
 
 ### Documentation
-- `docs/specs/swf-spec-19.pdf`
+- `docs/specs/swf-spec-19.txt` (370 KB text version)
 - `docs/specs/abc-format-46-16.txt`
 - `docs/specs/avm2_opcodes_raw.txt`
 - `ABC_PARSER_GUIDE.md`

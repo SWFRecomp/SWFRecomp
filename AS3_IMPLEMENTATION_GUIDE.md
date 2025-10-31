@@ -28,7 +28,7 @@ This guide outlines the implementation of ActionScript 3 (AS3) support for SWFRe
 - **Full class-based OOP** with inheritance, interfaces, and namespaces
 - **Type system** with static and dynamic typing
 - **Complex type coercion** following ECMA-262 specification
-- **164 bytecode opcodes** (vs ~100 for AS1/2)
+- **256 opcode slots** with ~150 implemented opcodes (vs ~100 for AS1/2)
 - **ABC file format** for code and metadata storage
 - **AVM2 virtual machine** with advanced features
 
@@ -62,7 +62,7 @@ This means we won't need to implement every complex language feature - just the 
 
 The hard parts of AS3 implementation are:
 - Understanding ECMA-262 type conversion algorithms
-- Implementing 164 opcodes with correct semantics
+- Implementing ~150 opcodes with correct semantics
 - Handling namespace resolution and multinames
 - Building the object model according to AVM2 spec
 
@@ -325,8 +325,8 @@ typedef struct FunctionBody {
     uint8_t* code;             // AVM2 bytecode
     uint32_t code_length;
     uint32_t max_stack;
-    uint32_t local_count;
-    uint32_t scope_depth;
+    uint32_t max_regs;         // Number of local registers
+    uint32_t scope_depth;      // Initial scope depth
     ExceptionHandler* exceptions;
     uint32_t exception_count;
 } FunctionBody;
@@ -733,9 +733,9 @@ typedef struct {
 typedef struct {
     uint32_t method;           // Method index
     uint32_t max_stack;
-    uint32_t local_count;
-    uint32_t init_scope_depth;
-    uint32_t max_scope_depth;
+    uint32_t max_regs;         // Number of local registers
+    uint32_t scope_depth;      // Initial scope depth
+    uint32_t max_scope_depth;  // Maximum scope depth
     uint32_t code_length;
     uint8_t* code;             // AVM2 bytecode
     uint32_t exception_count;
@@ -802,7 +802,7 @@ typedef struct {
 } TraitInfo;
 ```
 
-### Complete Opcode List (164 Total)
+### Complete Opcode List (~150 Implemented Opcodes)
 
 #### Stack Manipulation (5)
 ```
@@ -931,13 +931,13 @@ typedef struct {
 0x6F  setglobalslot
 ```
 
-#### Scope Access (4)
+#### Scope Access (5)
 ```
-0x64  getglobalscope
-0x65  getscopeobject
+0x1C  pushwith
 0x1D  popscope
 0x30  pushscope
-0x93  pushwith
+0x64  getglobalscope
+0x65  getscopeobject
 ```
 
 #### Object/Array Construction (5)

@@ -37,7 +37,7 @@ Implement the **minimum subset of AS3** required to run the game Seedling. This 
 ### Implementation Strategy
 
 Build only what Seedling needs:
-- **~80-100 opcodes** instead of all 164
+- **~80-100 opcodes** instead of all ~150 implemented opcodes
 - **~50 Flash API classes** instead of 200+
 - **FlashPunk engine** support (48 files)
 - **Sprite rendering** focus (no complex vector graphics)
@@ -178,7 +178,7 @@ Seedling/
 
 ## Implementation Scope
 
-### Opcodes Required (~80-100 of 164)
+### Opcodes Required (~80-100 of ~150 implemented)
 
 **Tier 1 - Critical (~40 opcodes):**
 - **Arithmetic (12):** add, add_i, subtract, subtract_i, multiply, multiply_i, divide, modulo, negate, increment, increment_i, decrement
@@ -205,11 +205,12 @@ Seedling/
 - **Increment/Decrement (4):** inclocal, inclocal_i, declocal, declocal_i
 - **Other (4):** instanceof, istype, istypelate, checkfilter
 
-**Can Skip (~64 opcodes):**
+**Can Skip (~50+ opcodes):**
 - ❌ E4X/XML operations
 - ❌ Alchemy memory operations
 - ❌ Advanced namespace operations
 - ❌ Debug operations
+- ❌ Unimplemented/reserved opcodes
 
 ### Flash APIs Required (~50 classes)
 
