@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fstream>
+#include <map>
 
 #include <common.h>
 #include <stackvalue.hpp>
@@ -42,13 +43,15 @@ namespace SWFRecomp
 	{
 	public:
 		size_t next_str_i;
-		
+		std::map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
+
 		SWFAction();
-		
+
 		void parseActions(Context& context, char*& action_buffer, ofstream& out_script);
 		void declareVariable(Context& context, char* var_name);
 		void declareString(Context& context, char* str);
 		void declareEmptyString(Context& context, size_t size);
+		size_t getStringId(const char* str);  // Get ID for a previously declared string
 		char actionCodeLookAhead(char* action_buffer, int lookAhead);
 		size_t actionCodeLookAheadIndex(char* action_buffer, int lookAhead);
 	};
