@@ -6,3 +6,9 @@ RecompiledScripts/
 sup*.swf
 NewDocs/
 docs/specs/
+
+# Temporary files
+COMMIT_MESSAGE.txt
+
+# Test executables
+test_vars
