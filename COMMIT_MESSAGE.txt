@@ -1,0 +1,50 @@
+Implement StringAdd variable storage with Copy-on-Store
+
+Adds support for storing StringAdd results in variables while preserving
+the existing stack-based optimization for direct consumption.
+
+Changes:
+
+Runtime (tests/trace_swf_4/runtime/native/):
+- Add VarValue structure with string ownership tracking
+- Implement variable storage system (linear array, 256 var limit)
+- Add setVariableString() - heap allocation for variable strings
+- Add getVariableToStack() - copy heap string to stack
+- Add freeAllVariables() - cleanup to prevent memory leaks
+- Implement actionSetVariable() and actionGetVariable()
+
+Code Generator (src/action/action.cpp):
+- Simplify SetVariable code generation to call actionSetVariable()
+- Simplify GetVariable code generation to call actionGetVariable()
+
+Documentation:
+- Add docs/STRING_VARIABLE_STORAGE_PLAN.md (design document)
+- Add docs/STRING_VARIABLE_STORAGE_IMPLEMENTATION.md (implementation details)
+- Add docs/STRING_VARIABLE_STORAGE_SUMMARY.md (quick reference)
+
+Testing:
+- Tested with tests/dyna_string_vars_swf_4
+- Output verified: "string_var value"
+- No memory leaks
+
+Performance:
+- Zero impact on existing StringAdd → Trace path (stack-only)
+- Heap allocation only when storing strings to variables
+- Linear search acceptable for typical variable counts (< 50)
+
+Implementation follows Copy-on-Store pattern:
+1. StringAdd concatenates on stack (preserves optimization)
+2. SetVariable copies stack string to heap (new allocation)
+3. GetVariable copies heap string to stack (for operations)
+4. Variable owns heap memory (freed on reassignment/exit)
+
+Future work:
+- Port to SWFModernRuntime using c-hashmap
+- Add type-aware stack for better type handling
+- Add variable scoping for local/temporary variables
+
+Fixes #N/A (feature request from LittleCube)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
