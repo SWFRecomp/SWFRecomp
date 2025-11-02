@@ -2,7 +2,7 @@
 
 Static recompiler for Adobe Flash SWF files - translates Flash bytecode into portable C code that can be compiled to native executables or WebAssembly.
 
-**Live Demos:** https://peerinfinity.github.io/SWFRecomp/
+**Live Demos:** https://swfrecomp.github.io/SWFRecompDocs/
 
 ## What is This?
 
@@ -192,7 +192,7 @@ Currently, SWFRecomp successfully:
 - Handles many graphics operations defined in `DefineShape` tags
 - Generates portable C code that compiles to both native and WASM
 
-Check out the [live demo](https://peerinfinity.github.io/SWFRecomp/examples/trace-swf-test/) of the `trace_swf_4` test!
+Check out the [live demo](https://swfrecomp.github.io/SWFRecompDocs/examples/trace-swf-test/) of the `trace_swf_4` test!
 
 ## Related Projects
 
