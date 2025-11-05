@@ -5,12 +5,13 @@
 set -e
 
 TEST_NAME=$1
-DOCS_DIR=${2:-../SWFRecompDocs/docs/examples}
+EXAMPLES_DIR=${2:-../SWFRecompDocs/docs/examples}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWFRECOMP_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_DIR="${SWFRECOMP_ROOT}/tests/${TEST_NAME}/build/wasm"
-DEPLOY_DIR="${DOCS_DIR}/${TEST_NAME}"
+DEPLOY_DIR="${EXAMPLES_DIR}/${TEST_NAME}"
+DOCS_DIR="$(dirname "${EXAMPLES_DIR}")"
 
 # Validate inputs
 if [ -z "$TEST_NAME" ]; then
@@ -38,3 +39,8 @@ echo "✅ Deployed ${TEST_NAME} to ${DEPLOY_DIR}"
 echo ""
 echo "Files deployed:"
 ls -lh "${DEPLOY_DIR}"
+
+# Regenerate the examples index
+echo ""
+echo "Regenerating examples index..."
+"${SCRIPT_DIR}/generate_examples_index.sh" "${DOCS_DIR}"

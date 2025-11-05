@@ -1,12 +1,11 @@
 #!/bin/bash
-# Build all tests and deploy to docs
-# Usage: ./scripts/build_all_examples.sh [docs_dir]
+# Build all tests as native executables
+# Usage: ./scripts/build_all_native.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWFRECOMP_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DOCS_DIR=${1:-../SWFRecompDocs/docs/examples}
 
 # Load exclude list from config file
 EXCLUDE_CONFIG="${SCRIPT_DIR}/excluded_tests.conf"
@@ -50,7 +49,7 @@ unset IFS
 
 echo "Auto-discovered ${#TESTS[@]} tests with config.toml"
 echo "Excluded ${#EXCLUDE_TESTS[@]} tests: ${EXCLUDE_TESTS[*]}"
-echo "Building all tests for WASM deployment..."
+echo "Building all tests for native execution..."
 echo ""
 
 SUCCESS_COUNT=0
@@ -68,16 +67,9 @@ for test_name in "${TESTS[@]}"; do
     echo "========================================="
 
     # Build with timeout (allow failures and continue)
-    if timeout "$BUILD_TIMEOUT" "${SCRIPT_DIR}/build_test.sh" "$test_name" wasm 2>&1 | grep -q "✅ WASM build complete"; then
-        # Deploy
-        if "${SCRIPT_DIR}/deploy_example.sh" "$test_name" "$DOCS_DIR" >/dev/null 2>&1; then
-            echo "✅ $test_name - built and deployed"
-            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-        else
-            echo "❌ $test_name - build succeeded but deploy failed"
-            FAIL_COUNT=$((FAIL_COUNT + 1))
-            FAILED_TESTS+=("$test_name")
-        fi
+    if timeout "$BUILD_TIMEOUT" "${SCRIPT_DIR}/build_test.sh" "$test_name" native 2>&1 | grep -q "✅ Native build complete"; then
+        echo "✅ $test_name - built successfully"
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     else
         # Check if it was a timeout (exit code 124)
         if [ $? -eq 124 ]; then
@@ -112,11 +104,11 @@ fi
 
 if [ $TIMEOUT_COUNT -gt 0 ]; then
     echo ""
-    echo "Timed out tests (may be too complex for quick WASM builds):"
+    echo "Timed out tests (may be too complex for quick builds):"
     for timeout_test in "${TIMEOUT_TESTS[@]}"; do
         echo "  - $timeout_test"
     done
 fi
 
 echo ""
-echo "Documentation examples location: $DOCS_DIR"
+echo "Native executables are in: tests/<test_name>/build/native/"

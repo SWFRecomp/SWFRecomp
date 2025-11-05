@@ -41,17 +41,17 @@ void runSWF() {
 #endif
 
 int main() {
-    printf("WASM SWF Runtime Loaded!\n");
-    printf("This is a recompiled Flash SWF running in WebAssembly.\n\n");
-
     // Initialize app context with frame functions
     app_context.frame_funcs = frame_funcs;
 
 #ifndef __EMSCRIPTEN__
     // Native mode - run immediately
+    printf("SWF Runtime Loaded (Native Build)\n\n");
     swfStart(&app_context);
 #else
     // WASM mode - initialize and wait for JavaScript to call runSWF()
+    printf("WASM SWF Runtime Loaded!\n");
+    printf("This is a recompiled Flash SWF running in WebAssembly.\n\n");
     initTime();  // Initialize SWFModernRuntime timer
     printf("Call runSWF() from JavaScript to execute the SWF.\n");
 #endif
