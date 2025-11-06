@@ -1,12 +1,16 @@
 # SWFRecomp
 
-Static recompiler for Adobe Flash SWF files - translates Flash bytecode into portable C code that can be compiled to native executables or WebAssembly.
+This is a stupid idea.
+
+# Let's do it anyway.
+
+## What is this?
+
+SWFRecomp is a **static recompiler** (not an emulator) that converts Flash SWF files into C code. Inspired by [N64Recomp](https://github.com/N64Recomp/N64Recomp) by Wiseguy, a static recompiler (not emulator) for N64 games that translates N64 MIPS instructions into C code that can be compiled into a native port. You should probably check that out, because it's epic. So is he. :D
+
+This project applies the same approach to preserve Flash content.
 
 **Live Demos:** https://swfrecomp.github.io/SWFRecompDocs/
-
-## What is This?
-
-SWFRecomp is a **static recompiler** (not an emulator) that converts Flash SWF files into C code. Inspired by [N64Recomp](https://github.com/N64Recomp/N64Recomp) by Wiseguy, this project applies the same approach to preserve Flash content.
 
 This fork adds:
 - **Improved build system** - Automated native and WASM builds with no manual file copying
@@ -201,22 +205,51 @@ Check out the [live demo](https://swfrecomp.github.io/SWFRecompDocs/examples/tra
 
 ## Legal Note
 
-Adobe released most control over Flash as part of the [Open Screen Project](https://web.archive.org/web/20080506095459/http://www.adobe.com/aboutadobe/pressroom/pressreleases/200804/050108AdobeOSP.html), removing many restrictions from the SWF format:
+Fortunately, Adobe released most of their control over Flash as part of the [Open Screen Project](https://web.archive.org/web/20080506095459/http://www.adobe.com/aboutadobe/pressroom/pressreleases/200804/050108AdobeOSP.html), Adobe removed many restrictions from their SWF format, including restrictions on creating software that _plays and renders SWF files_:
 
-> Removing restrictions on use of the SWF and FLV/F4V specifications
+> To support this mission, and as part of Adobe’s ongoing commitment to enable Web innovation, Adobe will continue to open access to Adobe Flash technology, accelerating the deployment of content and rich Internet applications (RIAs). This work will include:
+> 
+> - Removing restrictions on use of the SWF and FLV/F4V specifications
+> - Publishing the device porting layer APIs for Adobe Flash Player
+> - Publishing the Adobe Flash® Cast™ protocol and the AMF protocol for robust data services
+> - Removing licensing fees - making next major releases of Adobe Flash Player and Adobe AIR for devices free
 
-Adobe also [donated the Flex 3 SDK to Apache](https://www.pcworld.com/article/478324/adobe_donates_flex_to_apache-2.html) in 2011, licensed under the Apache License (a permissive open-source license).
+# Special Thanks
 
-## License
+All the people that wildly inspire me. 😋
 
-Same as upstream SWFRecomp (check LICENSE file).
+My very dear friend Stave.
 
-## Credits
+From RecompRando:
+- ThatHypedPerson
+- PixelShake92
+- Muervo_
 
-- **Upstream:** [SWFRecomp](https://github.com/SWFRecomp/SWFRecomp) by LittleCube
-- **Inspiration:** [N64Recomp](https://github.com/N64Recomp/N64Recomp) by Wiseguy
-- **Related:** [SWFModernRuntime](https://github.com/PeerInfinity/SWFModernRuntime) - Runtime for recompiled SWFs
+From N64Recomp:
 
----
+- Wiseguy
+- Darío
+- dcvz
+- Reonu
+- thecozies
+- danielryb
+- kentonm
 
-**Note:** This is a community fork. The upstream project (by LittleCube) provides the core recompilation engine. This fork adds improved build tooling, WASM support, and documentation.
+From Archipelago:
+
+- seto10987
+- Rogue
+- ArsonAssassin
+- CelestialKitsune
+- Vincent'sSin
+- LegendaryLinux
+- zakwiz
+- jjjj12212
+
+From RotMG:
+
+- HuskyJew
+- Nequ
+- snowden
+- MoonMan
+- Auru
