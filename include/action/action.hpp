@@ -44,9 +44,9 @@ namespace SWFRecomp
 	public:
 		size_t next_str_i;
 		std::map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
-
+		
 		SWFAction();
-
+		
 		void parseActions(Context& context, char*& action_buffer, ofstream& out_script);
 		void declareVariable(Context& context, char* var_name);
 		void declareString(Context& context, char* str);
