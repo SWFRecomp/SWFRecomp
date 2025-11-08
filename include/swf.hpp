@@ -174,6 +174,10 @@ namespace SWFRecomp
 		std::stringstream bitmap_data;
 		size_t current_bitmap_pixel;
 		size_t current_bitmap;
+		std::stringstream glyph_data;
+		size_t current_glyph;
+		std::stringstream text_data;
+		size_t current_text;
 		
 		u8* jpeg_tables;
 		size_t jpeg_tables_size;
