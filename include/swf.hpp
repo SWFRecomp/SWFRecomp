@@ -178,6 +178,8 @@ namespace SWFRecomp
 		size_t current_glyph;
 		std::stringstream text_data;
 		size_t current_text;
+		std::stringstream cxform_data;
+		size_t current_cxform;
 		
 		u8* jpeg_tables;
 		size_t jpeg_tables_size;

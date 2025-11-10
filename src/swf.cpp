@@ -123,6 +123,7 @@ namespace SWFRecomp
 								 current_bitmap(0),
 								 current_glyph(0),
 								 current_text(0),
+								 current_cxform(0),
 								 jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
@@ -391,6 +392,34 @@ namespace SWFRecomp
 		
 		current_transform += 1;
 		
+		// output identity cxform at id 0
+		cxform_data << "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl;
+		
+		current_cxform += 1;
+		
 		// prime the loop
 		tag.code = (TagType) 1;
 		
@@ -463,6 +492,11 @@ namespace SWFRecomp
 						  << "u32 text_data[" << to_string(current_text ? current_text : 1) << "] =" << endl
 						  << "{" << endl
 						  << (current_text ? text_data.str() : "\t0\n")
+						  << "};" << endl
+						  << endl
+						  << "float cxform_data[" << to_string(current_cxform ? 20*current_cxform : 1) << "] =" << endl
+						  << "{" << endl
+						  << (current_cxform ? cxform_data.str() : "\t0\n")
 						  << "};";
 		
 		context.out_draws_header << endl
@@ -473,7 +507,8 @@ namespace SWFRecomp
 								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];" << endl
 								 << "extern u8 bitmap_data[" << to_string(current_bitmap_pixel ? 4*current_bitmap_pixel : 1) << "];" << endl
 								 << "extern u32 glyph_data[" << to_string(current_glyph ? 2*current_glyph : 1) << "][1];" << endl
-								 << "extern u32 text_data[" << to_string(current_text ? current_text : 1) << "];";
+								 << "extern u32 text_data[" << to_string(current_text ? current_text : 1) << "];" << endl
+								 << "extern float cxform_data[" << to_string(current_cxform ? 20*current_cxform : 1) << "];";
 		
 		size_t highest_w = 0;
 		size_t highest_h = 0;
@@ -853,6 +888,8 @@ namespace SWFRecomp
 					
 					size_t current_field = 0;
 					
+					MATRIX temp_matrix = matrix;
+					
 					u16 font_id;
 					u8 r;
 					u8 g;
@@ -860,6 +897,8 @@ namespace SWFRecomp
 					s16 x_offset;
 					s16 y_offset;
 					u16 text_height;
+					
+					u32 cxform_id = 0;
 					
 					if (has_font)
 					{
@@ -873,6 +912,35 @@ namespace SWFRecomp
 						r = (u8) tag.fields[current_field++].value;
 						g = (u8) tag.fields[current_field++].value;
 						b = (u8) tag.fields[current_field++].value;
+						
+						cxform_id = (u32) current_cxform;
+						
+						cxform_data << "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "1.0f," << endl
+									
+									<< "\t" << to_string(r) << "/255.0f," << endl
+									<< "\t" << to_string(g) << "/255.0f," << endl
+									<< "\t" << to_string(b) << "/255.0f," << endl
+									<< "\t" << "0.0f," << endl;
+						
+						current_cxform += 1;
 					}
 					
 					if (has_x_offset)
@@ -888,8 +956,8 @@ namespace SWFRecomp
 					if (has_font)
 					{
 						text_height = (u16) tag.fields[current_field++].value;
-						matrix.scale_x = ((float) text_height)/1024.0f;
-						matrix.scale_y = ((float) text_height)/1024.0f;
+						temp_matrix.scale_x = ((float) text_height)/1024.0f;
+						temp_matrix.scale_y = ((float) text_height)/1024.0f;
 					}
 					
 					u8 glyph_count = (u8) tag.fields[current_field++].value;
@@ -899,7 +967,7 @@ namespace SWFRecomp
 					
 					u32 cur_byte_bits_left = 8;
 					
-					recompileMatrix(matrix, transform_data);
+					recompileMatrix(temp_matrix, transform_data);
 					current_transform += 1;
 					
 					for (u8 i = 0; i < glyph_count; ++i)
@@ -917,8 +985,8 @@ namespace SWFRecomp
 						
 						text_data << "\t" << to_string(glyph_index) << "," << endl;
 						
-						matrix.translate_x += advance;
-						recompileMatrix(matrix, transform_data);
+						temp_matrix.translate_x += advance;
+						recompileMatrix(temp_matrix, transform_data);
 						current_transform += 1;
 						
 						current_text += 1;
@@ -935,7 +1003,8 @@ namespace SWFRecomp
 							 << to_string(char_id) << ", "
 							 << to_string(text_start) << ", "
 							 << to_string(text_size) << ", "
-							 << to_string(transform_start)
+							 << to_string(transform_start) << ", "
+							 << to_string(cxform_id)
 							 << ");";
 				}
 				
@@ -1478,7 +1547,7 @@ namespace SWFRecomp
 				Path* current_path = nullptr;
 				
 				s32 last_x = 0;
-				s32 last_y = FRAME_HEIGHT;
+				s32 last_y = is_font ? 1024 : FRAME_HEIGHT;
 				
 				u32 cur_byte_bits_left = 8;
 				
@@ -1654,8 +1723,8 @@ namespace SWFRecomp
 					shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
 					
 					u8 move_bits;
-					u32 move_delta_x;
-					u32 move_delta_y;
+					s32 move_delta_x;
+					s32 move_delta_y;
 					
 					u32 fill_style_0 = last_fill_style_0;
 					u32 fill_style_1 = last_fill_style_1;
@@ -1672,11 +1741,11 @@ namespace SWFRecomp
 					if (state_move_to)
 					{
 						move_bits = (u8) shape_tag.fields[current_field++].value;
-						move_delta_x = (u32) shape_tag.fields[current_field++].value;
-						move_delta_y = (u32) shape_tag.fields[current_field++].value;
+						move_delta_x = (s32) shape_tag.fields[current_field++].value;
+						move_delta_y = (s32) shape_tag.fields[current_field++].value;
 						
 						last_x = move_delta_x;
-						last_y = FRAME_HEIGHT - move_delta_y;
+						last_y = (is_font ? 0 : FRAME_HEIGHT) - move_delta_y;
 					}
 					
 					if (state_fill_style_0)
@@ -2024,7 +2093,7 @@ namespace SWFRecomp
 							for (int j = 0; j < 3; ++j)
 							{
 								float x_f = (float) t.verts[j].x;
-								float y_f = (float) (FRAME_HEIGHT - t.verts[j].y);
+								float y_f = (float) (is_font ? 1024 : FRAME_HEIGHT) - t.verts[j].y;
 								
 								shape_data << "\t" << "{ "
 										   << std::hex << std::uppercase
