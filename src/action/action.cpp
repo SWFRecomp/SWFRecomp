@@ -214,7 +214,6 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// GetVariable" << endl
 							   << "\t" << "actionGetVariable(stack, sp);" << endl;
-
 					break;
 				}
 
@@ -222,7 +221,6 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// SetVariable" << endl
 							   << "\t" << "actionSetVariable(stack, sp);" << endl;
-
 					break;
 				}
 				

@@ -46,6 +46,11 @@ namespace SWFRecomp
 	
 	void SWFTag::configureNextField(FieldType type, u32 bit_length, bool is_nbits)
 	{
+		if (next_field == field_count)
+		{
+			EXC("Configuring field past the field count.");
+		}
+		
 		fields[next_field].type = type;
 		fields[next_field].bit_length = bit_length;
 		fields[next_field].is_nbits = is_nbits;

@@ -121,6 +121,9 @@ namespace SWFRecomp
 								 current_gradient(0),
 								 current_bitmap_pixel(0),
 								 current_bitmap(0),
+								 current_glyph(0),
+								 current_text(0),
+								 current_cxform(0),
 								 jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
@@ -352,7 +355,7 @@ namespace SWFRecomp
 		context.tag_main << "#include <recomp.h>" << endl << endl
 				 << "#include <out.h>" << endl
 				 << "#include \"draws.h\"" << endl << endl
-				 << "void frame_" << to_string(next_frame_i) << "()" << endl
+				 << "void frame_" << to_string(next_frame_i) << "(SWFAppContext* app_context)" << endl
 				 << "{" << endl;
 		next_frame_i += 1;
 		
@@ -388,6 +391,34 @@ namespace SWFRecomp
 					   << "\t" << "1.0f," << endl;
 		
 		current_transform += 1;
+		
+		// output identity cxform at id 0
+		cxform_data << "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl;
+		
+		current_cxform += 1;
 		
 		// prime the loop
 		tag.code = (TagType) 1;
@@ -451,6 +482,21 @@ namespace SWFRecomp
 						  << "u8 bitmap_data[" << to_string(current_bitmap_pixel ? 4*current_bitmap_pixel : 1) << "] =" << endl
 						  << "{" << endl
 						  << (current_bitmap_pixel ? bitmap_data.str() : "\t0\n")
+						  << "};" << endl
+						  << endl
+						  << "u32 glyph_data[" << to_string(current_glyph ? 2*current_glyph : 1) << "][1] =" << endl
+						  << "{" << endl
+						  << (current_glyph ? glyph_data.str() : "\t0\n")
+						  << "};" << endl
+						  << endl
+						  << "u32 text_data[" << to_string(current_text ? current_text : 1) << "] =" << endl
+						  << "{" << endl
+						  << (current_text ? text_data.str() : "\t0\n")
+						  << "};" << endl
+						  << endl
+						  << "float cxform_data[" << to_string(current_cxform ? 20*current_cxform : 1) << "] =" << endl
+						  << "{" << endl
+						  << (current_cxform ? cxform_data.str() : "\t0\n")
 						  << "};";
 		
 		context.out_draws_header << endl
@@ -459,7 +505,10 @@ namespace SWFRecomp
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
 								 << "extern float uninv_mat_data[" << to_string(current_uninv ? 16*current_uninv : 1) << "];" << endl
 								 << "extern u8 gradient_data[" << to_string(current_gradient ? 256*current_gradient : 1) << "][4];" << endl
-								 << "extern u8 bitmap_data[" << to_string(current_bitmap_pixel ? 4*current_bitmap_pixel : 1) << "];";
+								 << "extern u8 bitmap_data[" << to_string(current_bitmap_pixel ? 4*current_bitmap_pixel : 1) << "];" << endl
+								 << "extern u32 glyph_data[" << to_string(current_glyph ? 2*current_glyph : 1) << "][1];" << endl
+								 << "extern u32 text_data[" << to_string(current_text ? current_text : 1) << "];" << endl
+								 << "extern float cxform_data[" << to_string(current_cxform ? 20*current_cxform : 1) << "];";
 		
 		size_t highest_w = 0;
 		size_t highest_h = 0;
@@ -494,7 +543,7 @@ namespace SWFRecomp
 		if (another_frame && tag.code != SWF_TAG_END_TAG)
 		{
 			context.tag_main << "}" << endl << endl
-							 << "void frame_" << to_string(next_frame_i) << "()" << endl
+							 << "void frame_" << to_string(next_frame_i) << "(SWFAppContext* app_context)" << endl
 							 << "{" << endl;
 			next_frame_i += 1;
 			
@@ -532,7 +581,7 @@ namespace SWFRecomp
 					last_queued_script += 1;
 				}
 				
-				context.tag_main << "\t" << "tagShowFrame();" << endl;
+				context.tag_main << "\t" << "tagShowFrame(app_context);" << endl;
 				
 				another_frame = true;
 				
@@ -727,8 +776,237 @@ namespace SWFRecomp
 				
 				for (u16 i = 0; i < num_entries; ++i)
 				{
-					cur_pos = offset_table + entry_offsets[i];
+					size_t glyph_start = 3*current_tri;
+					
 					interpretShape(context, tag);
+					
+					size_t glyph_size = 3*current_tri - glyph_start;
+					
+					glyph_data << "\t" << to_string(glyph_start) << "," << endl
+							   << "\t" << to_string(glyph_size) << "," << endl;
+					
+					current_glyph += 1;
+				}
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_TEXT:
+			{
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 char_id = (u16) tag.fields[0].value;
+				
+				tag.clearFields();
+				tag.setFieldCount(5);
+				
+				tag.configureNextField(SWF_FIELD_UB, 5, true);
+				tag.configureNextField(SWF_FIELD_SB, 0);
+				tag.configureNextField(SWF_FIELD_SB, 0);
+				tag.configureNextField(SWF_FIELD_SB, 0);
+				tag.configureNextField(SWF_FIELD_SB, 0);
+				
+				tag.parseFields(cur_pos);
+				
+				MATRIX matrix;
+				parseMatrix(matrix);
+				
+				tag.clearFields();
+				tag.setFieldCount(2);
+				
+				tag.configureNextField(SWF_FIELD_UI8);
+				tag.configureNextField(SWF_FIELD_UI8);
+				
+				tag.parseFields(cur_pos);
+				
+				u8 glyph_bits = (u8) tag.fields[0].value;
+				u8 advance_bits = (u8) tag.fields[1].value;
+				
+				while (true)
+				{
+					tag.clearFields();
+					tag.setFieldCount(1);
+					
+					tag.configureNextField(SWF_FIELD_UI8);
+					
+					tag.parseFields(cur_pos);
+					
+					u8 flags = (u8) tag.fields[0].value;
+					
+					if (flags == 0)
+					{
+						break;
+					}
+					
+					bool has_font = (flags & 0b1000);
+					bool has_color = (flags & 0b0100);
+					bool has_x_offset = (flags & 0b0010);
+					bool has_y_offset = (flags & 0b0001);
+					
+					// TODO: handle RGBA for DefineText2
+					
+					u32 field_count = 2*has_font + 3*has_color + has_x_offset + has_y_offset + 1;
+					
+					tag.clearFields();
+					tag.setFieldCount(field_count);
+					
+					if (has_font)
+					{
+						tag.configureNextField(SWF_FIELD_UI16);
+					}
+					
+					if (has_color)
+					{
+						tag.configureNextField(SWF_FIELD_UI8);
+						tag.configureNextField(SWF_FIELD_UI8);
+						tag.configureNextField(SWF_FIELD_UI8);
+					}
+					
+					if (has_x_offset)
+					{
+						tag.configureNextField(SWF_FIELD_SI16);
+					}
+					
+					if (has_y_offset)
+					{
+						tag.configureNextField(SWF_FIELD_SI16);
+					}
+					
+					if (has_font)
+					{
+						tag.configureNextField(SWF_FIELD_UI16);
+					}
+					
+					tag.configureNextField(SWF_FIELD_UI8);
+					
+					tag.parseFields(cur_pos);
+					
+					size_t current_field = 0;
+					
+					MATRIX temp_matrix = matrix;
+					
+					u16 font_id;
+					u8 r;
+					u8 g;
+					u8 b;
+					s16 x_offset;
+					s16 y_offset;
+					u16 text_height;
+					
+					u32 cxform_id = 0;
+					
+					if (has_font)
+					{
+						font_id = (u16) tag.fields[current_field++].value;
+					}
+					
+					if (has_color)
+					{
+						// TODO: handle RGBA (DefineText2)
+						
+						r = (u8) tag.fields[current_field++].value;
+						g = (u8) tag.fields[current_field++].value;
+						b = (u8) tag.fields[current_field++].value;
+						
+						cxform_id = (u32) current_cxform;
+						
+						cxform_data << "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "0.0f," << endl
+									<< "\t" << "1.0f," << endl
+									
+									<< "\t" << to_string(r) << "/255.0f," << endl
+									<< "\t" << to_string(g) << "/255.0f," << endl
+									<< "\t" << to_string(b) << "/255.0f," << endl
+									<< "\t" << "0.0f," << endl;
+						
+						current_cxform += 1;
+					}
+					
+					if (has_x_offset)
+					{
+						x_offset = (s16) tag.fields[current_field++].value;
+					}
+					
+					if (has_y_offset)
+					{
+						y_offset = (s16) tag.fields[current_field++].value;
+					}
+					
+					if (has_font)
+					{
+						text_height = (u16) tag.fields[current_field++].value;
+						temp_matrix.scale_x = ((float) text_height)/1024.0f;
+						temp_matrix.scale_y = ((float) text_height)/1024.0f;
+					}
+					
+					u8 glyph_count = (u8) tag.fields[current_field++].value;
+					
+					size_t text_start = current_text;
+					size_t transform_start = current_transform;
+					
+					u32 cur_byte_bits_left = 8;
+					
+					recompileMatrix(temp_matrix, transform_data);
+					current_transform += 1;
+					
+					for (u8 i = 0; i < glyph_count; ++i)
+					{
+						tag.clearFields();
+						tag.setFieldCount(2);
+						
+						tag.configureNextField(SWF_FIELD_UB, glyph_bits);
+						tag.configureNextField(SWF_FIELD_SB, advance_bits);
+						
+						tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+						
+						u32 glyph_index = (u32) tag.fields[0].value;
+						u32 advance = (u32) tag.fields[1].value;
+						
+						text_data << "\t" << to_string(glyph_index) << "," << endl;
+						
+						temp_matrix.translate_x += advance;
+						recompileMatrix(temp_matrix, transform_data);
+						current_transform += 1;
+						
+						current_text += 1;
+					}
+					
+					if (cur_byte_bits_left != 8)
+					{
+						cur_pos += 1;
+					}
+					
+					size_t text_size = current_text - text_start;
+					tag_init << endl
+							 << "\t" << "tagDefineText("
+							 << "app_context, "
+							 << to_string(char_id) << ", "
+							 << to_string(text_start) << ", "
+							 << to_string(text_size) << ", "
+							 << to_string(transform_start) << ", "
+							 << to_string(cxform_id)
+							 << ");";
 				}
 				
 				break;
@@ -815,7 +1093,7 @@ namespace SWFRecomp
 					transform_id = 0;
 				}
 				
-				context.tag_main << "\t" << "tagPlaceObject2(" << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(transform_id) << ");" << endl;
+				context.tag_main << "\t" << "tagPlaceObject2(app_context, " << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(transform_id) << ");" << endl;
 				
 				current_transform += 1;
 				
@@ -1089,6 +1367,11 @@ namespace SWFRecomp
 					
 					break;
 				}
+				
+				default:
+				{
+					EXC_ARG("Fill style %d not implemented.\n", fill_styles[i].type);
+				}
 			}
 		}
 		
@@ -1265,7 +1548,7 @@ namespace SWFRecomp
 				Path* current_path = nullptr;
 				
 				s32 last_x = 0;
-				s32 last_y = FRAME_HEIGHT;
+				s32 last_y = is_font ? 1024 : FRAME_HEIGHT;
 				
 				u32 cur_byte_bits_left = 8;
 				
@@ -1441,8 +1724,8 @@ namespace SWFRecomp
 					shape_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
 					
 					u8 move_bits;
-					u32 move_delta_x;
-					u32 move_delta_y;
+					s32 move_delta_x;
+					s32 move_delta_y;
 					
 					u32 fill_style_0 = last_fill_style_0;
 					u32 fill_style_1 = last_fill_style_1;
@@ -1459,11 +1742,11 @@ namespace SWFRecomp
 					if (state_move_to)
 					{
 						move_bits = (u8) shape_tag.fields[current_field++].value;
-						move_delta_x = (u32) shape_tag.fields[current_field++].value;
-						move_delta_y = (u32) shape_tag.fields[current_field++].value;
+						move_delta_x = (s32) shape_tag.fields[current_field++].value;
+						move_delta_y = (s32) shape_tag.fields[current_field++].value;
 						
 						last_x = move_delta_x;
-						last_y = FRAME_HEIGHT - move_delta_y;
+						last_y = (is_font ? 0 : FRAME_HEIGHT) - move_delta_y;
 					}
 					
 					if (state_fill_style_0)
@@ -1811,7 +2094,7 @@ namespace SWFRecomp
 							for (int j = 0; j < 3; ++j)
 							{
 								float x_f = (float) t.verts[j].x;
-								float y_f = (float) (FRAME_HEIGHT - t.verts[j].y);
+								float y_f = (float) (is_font ? 1024 : FRAME_HEIGHT) - t.verts[j].y;
 								
 								shape_data << "\t" << "{ "
 										   << std::hex << std::uppercase
@@ -1858,9 +2141,19 @@ namespace SWFRecomp
 					}
 				}
 				
-				context.tag_main << "\t" << "tagDefineShape(" << to_string(shape_id) << ", " << to_string(3*current_tri) << ", " << to_string(3*tris_size) << ");" << endl;
+				if (!is_font)
+				{
+					context.tag_main << "\t" << "tagDefineShape(app_context, CHAR_TYPE_SHAPE, " << to_string(shape_id) << ", " << to_string(3*current_tri) << ", " << to_string(3*tris_size) << ");" << endl;
+				}
 				
 				current_tri += tris_size;
+				
+				break;
+			}
+			
+			default:
+			{
+				EXC_ARG("Shape tag %d not implemented.\n", shape_tag.code);
 				
 				break;
 			}
