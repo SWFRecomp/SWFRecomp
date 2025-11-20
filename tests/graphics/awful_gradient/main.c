@@ -29,6 +29,12 @@ int main()
 	app_context.gradient_data_size = sizeof(gradient_data);
 	app_context.bitmap_data = (char*) bitmap_data;
 	app_context.bitmap_data_size = sizeof(bitmap_data);
+	app_context.glyph_data = (u32*) glyph_data;
+	app_context.glyph_data_size = sizeof(glyph_data);
+	app_context.text_data = text_data;
+	app_context.text_data_size = sizeof(text_data);
+	app_context.cxform_data = (char*) cxform_data;
+	app_context.cxform_data_size = sizeof(cxform_data);
 	
 	swfStart(&app_context);
 }

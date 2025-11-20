@@ -52,6 +52,14 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/main.c
 )
 
+target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/RecompiledTags
+    ${CMAKE_SOURCE_DIR}/RecompiledScripts
+    ${RUNTIME_INCLUDES}
+)
+
 add_subdirectory(${PROJECT_SOURCE_DIR}/lib/SWFModernRuntime)
 
 set(RENAME_ZCONF OFF)
@@ -60,12 +68,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     RecompiledTags
     RecompiledScripts
     SWFModernRuntime
-)
-
-target_sources(${PROJECT_NAME} PRIVATE ${SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/RecompiledTags
-    ${CMAKE_SOURCE_DIR}/RecompiledScripts
-    ${RUNTIME_INCLUDES}
 )
