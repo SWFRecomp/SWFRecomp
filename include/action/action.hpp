@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fstream>
-#include <map>
+#include <unordered_map>
 
 #include <common.h>
 #include <stackvalue.hpp>
@@ -43,7 +43,7 @@ namespace SWFRecomp
 	{
 	public:
 		size_t next_str_i;
-		std::map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
+		std::unordered_map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
 		
 		SWFAction();
 		
