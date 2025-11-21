@@ -213,20 +213,14 @@ namespace SWFRecomp
 				case SWF_ACTION_GET_VARIABLE:
 				{
 					out_script << "\t" << "// GetVariable" << endl
-							   << "\t" << "temp_val = GETVAR((char*) STACK_TOP_VALUE, STACK_TOP_N);" << endl
-							   << "\t" << "POP();" << endl
-							   << "\t" << "PUSH_VAR(temp_val);" << endl;
-					
+							   << "\t" << "actionGetVariable(stack, sp);" << endl;
 					break;
 				}
 				
 				case SWF_ACTION_SET_VARIABLE:
 				{
 					out_script << "\t" << "// SetVariable" << endl
-							   << "\t" << "temp_val = GETVAR((char*) STACK_SECOND_TOP_VALUE, STACK_SECOND_TOP_N);" << endl
-							   << "\t" << "SET_VAR(temp_val, STACK_TOP_TYPE, STACK_TOP_N, STACK_TOP_VALUE);" << endl
-							   << "\t" << "POP_2();" << endl;
-					
+							   << "\t" << "actionSetVariable(stack, sp);" << endl;
 					break;
 				}
 				
@@ -276,7 +270,11 @@ namespace SWFRecomp
 								size_t push_str_len = strlen((char*) push_value);
 								push_length += push_str_len + 1;
 								
-								out_script << "\t" << "PUSH_STR(str_" << to_string(next_str_i - 1) << ", " << push_str_len << ");" << endl;
+								// Get the actual string ID (handles deduplication)
+								size_t str_id = getStringId((char*) push_value);
+								
+								out_script << "\t" << "PUSH_STR_ID(str_" << to_string(str_id) << ", "
+								           << push_str_len << ", " << str_id << ");" << endl;
 								
 								break;
 							}
@@ -343,6 +341,10 @@ namespace SWFRecomp
 				}
 			}
 		}
+		
+		// Generate MAX_STRING_ID constant for runtime initialization
+		context.out_script_decls << endl
+		                         << "#define MAX_STRING_ID " << next_str_i << endl;
 	}
 	
 	void SWFAction::declareVariable(Context& context, char* var_name)
@@ -357,6 +359,16 @@ namespace SWFRecomp
 	
 	void SWFAction::declareString(Context& context, char* str)
 	{
+		// Check if this string was already declared (deduplication)
+		auto it = string_to_id.find(str);
+		if (it != string_to_id.end())
+		{
+			// String already exists - don't create duplicate
+			return;
+		}
+		
+		// New string - assign ID and declare
+		string_to_id[str] = next_str_i;
 		context.out_script_defs << endl << "char* str_" << next_str_i << " = \"" << str << "\";";
 		context.out_script_decls << endl << "extern char* str_" << next_str_i << ";";
 		next_str_i += 1;
@@ -367,6 +379,19 @@ namespace SWFRecomp
 		context.out_script_defs << endl << "char str_" << next_str_i << "[" << to_string(size) << "];";
 		context.out_script_decls << endl << "extern char str_" << next_str_i << "[];";
 		next_str_i += 1;
+	}
+	
+	size_t SWFAction::getStringId(const char* str)
+	{
+		auto it = string_to_id.find(str);
+		if (it != string_to_id.end())
+		{
+			return it->second;
+		}
+		
+		// This shouldn't happen if declareString was called first
+		// Return 0 for "no ID" (dynamic strings)
+		return 0;
 	}
 	
 	char SWFAction::actionCodeLookAhead(char* action_buffer, int lookAhead)
