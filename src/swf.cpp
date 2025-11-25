@@ -531,6 +531,10 @@ namespace SWFRecomp
 								 << "#define BITMAP_HIGHEST_W " << to_string(highest_w) << endl
 								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h);
 		
+		// Generate MAX_STRING_ID constant for runtime initialization
+		context.out_script_decls << endl
+								 << "#define MAX_STRING_ID " << action.next_str_i;
+		
 		context.out_script_header.close();
 		context.out_script_defs.close();
 		context.out_script_decls.close();

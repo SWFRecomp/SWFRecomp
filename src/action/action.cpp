@@ -341,10 +341,6 @@ namespace SWFRecomp
 				}
 			}
 		}
-		
-		// Generate MAX_STRING_ID constant for runtime initialization
-		context.out_script_decls << endl
-		                         << "#define MAX_STRING_ID " << next_str_i << endl;
 	}
 	
 	void SWFAction::declareVariable(Context& context, char* var_name)
