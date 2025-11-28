@@ -531,6 +531,10 @@ namespace SWFRecomp
 								 << "#define BITMAP_HIGHEST_W " << to_string(highest_w) << endl
 								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h);
 		
+		// Generate MAX_STRING_ID constant for runtime initialization
+		context.out_script_decls << endl
+								 << "#define MAX_STRING_ID " << action.next_str_i;
+		
 		context.out_script_header.close();
 		context.out_script_defs.close();
 		context.out_script_decls.close();
@@ -577,7 +581,7 @@ namespace SWFRecomp
 			{
 				while (last_queued_script < next_script_i)
 				{
-					context.tag_main << "\t" << "script_" << to_string(last_queued_script) << "(stack, &sp);" << endl;
+					context.tag_main << "\t" << "script_" << to_string(last_queued_script) << "(app_context, stack, &sp);" << endl;
 					last_queued_script += 1;
 				}
 				
@@ -1014,12 +1018,12 @@ namespace SWFRecomp
 			
 			case SWF_TAG_DO_ACTION:
 			{
-				context.out_script_header << endl << "void script_" << to_string(next_script_i) << "(char* stack, u32* sp);";
+				context.out_script_header << endl << "void script_" << to_string(next_script_i) << "(SWFAppContext* app_context, char* stack, u32* sp);";
 				
 				ofstream out_script(context.output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
-						   << "void script_" << next_script_i << "(char* stack, u32* sp)" << endl
+						   << "void script_" << next_script_i << "(SWFAppContext* app_context, char* stack, u32* sp)" << endl
 						   << "{" << endl;
 				
 				next_script_i += 1;
