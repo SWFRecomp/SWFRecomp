@@ -2,6 +2,8 @@
 #include <constants.h>
 #include <draws.h>
 
+#include <script_decls.h>
+
 int main()
 {
 	SWFAppContext app_context;
@@ -35,6 +37,8 @@ int main()
 	app_context.text_data_size = sizeof(text_data);
 	app_context.cxform_data = (char*) cxform_data;
 	app_context.cxform_data_size = sizeof(cxform_data);
+	
+	app_context.max_string_id = MAX_STRING_ID;
 	
 	swfStart(&app_context);
 }
