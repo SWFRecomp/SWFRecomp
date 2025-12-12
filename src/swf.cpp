@@ -447,7 +447,7 @@ namespace SWFRecomp
 		
 		context.tag_main << "};" << endl
 						 << endl
-						 << "void tagInit()" << endl
+						 << "void tagInit(SWFAppContext* app_context)" << endl
 						 << "{"
 						 << tag_init.str() << endl
 						 << "}";
