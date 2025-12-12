@@ -85,7 +85,7 @@ source ./emsdk_env.sh
 ### Build SWFRecomp
 
 ```bash
-git clone https://github.com/PeerInfinity/SWFRecomp.git
+git clone https://github.com/SWFRecomp/SWFRecomp.git
 cd SWFRecomp
 
 # Build the recompiler
