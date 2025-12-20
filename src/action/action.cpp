@@ -96,7 +96,7 @@ namespace SWFRecomp
 				case SWF_ACTION_ADD:
 				{
 					out_script << "\t" << "// Add" << endl
-							   << "\t" << "actionAdd(app_context, stack, sp);" << endl;
+							   << "\t" << "actionAdd(app_context);" << endl;
 					
 					break;
 				}
@@ -104,7 +104,7 @@ namespace SWFRecomp
 				case SWF_ACTION_SUBTRACT:
 				{
 					out_script << "\t" << "// Subtract" << endl
-							   << "\t" << "actionSubtract(app_context, stack, sp);" << endl;
+							   << "\t" << "actionSubtract(app_context);" << endl;
 					
 					break;
 				}
@@ -112,7 +112,7 @@ namespace SWFRecomp
 				case SWF_ACTION_MULTIPLY:
 				{
 					out_script << "\t" << "// Multiply" << endl
-							   << "\t" << "actionMultiply(app_context, stack, sp);" << endl;
+							   << "\t" << "actionMultiply(app_context);" << endl;
 					
 					break;
 				}
@@ -120,7 +120,7 @@ namespace SWFRecomp
 				case SWF_ACTION_DIVIDE:
 				{
 					out_script << "\t" << "// Divide" << endl
-							   << "\t" << "actionDivide(app_context, stack, sp);" << endl;
+							   << "\t" << "actionDivide(app_context);" << endl;
 					
 					break;
 				}
@@ -128,7 +128,7 @@ namespace SWFRecomp
 				case SWF_ACTION_EQUALS:
 				{
 					out_script << "\t" << "// Equals" << endl
-							   << "\t" << "actionEquals(app_context, stack, sp);" << endl;
+							   << "\t" << "actionEquals(app_context);" << endl;
 					
 					break;
 				}
@@ -136,7 +136,7 @@ namespace SWFRecomp
 				case SWF_ACTION_LESS:
 				{
 					out_script << "\t" << "// Less" << endl
-							   << "\t" << "actionLess(app_context, stack, sp);" << endl;
+							   << "\t" << "actionLess(app_context);" << endl;
 					
 					break;
 				}
@@ -144,7 +144,7 @@ namespace SWFRecomp
 				case SWF_ACTION_AND:
 				{
 					out_script << "\t" << "// And" << endl
-							   << "\t" << "actionAnd(app_context, stack, sp);" << endl;
+							   << "\t" << "actionAnd(app_context);" << endl;
 					
 					break;
 				}
@@ -152,7 +152,7 @@ namespace SWFRecomp
 				case SWF_ACTION_OR:
 				{
 					out_script << "\t" << "// Or" << endl
-							   << "\t" << "actionOr(app_context, stack, sp);" << endl;
+							   << "\t" << "actionOr(app_context);" << endl;
 					
 					break;
 				}
@@ -160,7 +160,7 @@ namespace SWFRecomp
 				case SWF_ACTION_NOT:
 				{
 					out_script << "\t" << "// Not" << endl
-							   << "\t" << "actionNot(app_context, stack, sp);" << endl;
+							   << "\t" << "actionNot(app_context);" << endl;
 					
 					break;
 				}
@@ -171,7 +171,7 @@ namespace SWFRecomp
 					declareEmptyString(context, 17);
 					
 					out_script << "\t" << "// StringEquals" << endl
-							   << "\t" << "actionStringEquals(app_context, stack, sp, "
+							   << "\t" << "actionStringEquals(app_context, "
 							   << "str_" << to_string(next_str_i - 2) << ", "
 							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
 					
@@ -183,7 +183,7 @@ namespace SWFRecomp
 					declareEmptyString(context, 17);
 					
 					out_script << "\t" << "// StringLength" << endl
-							   << "\t" << "actionStringLength(app_context, stack, sp, str_"
+							   << "\t" << "actionStringLength(app_context, str_"
 							   << to_string(next_str_i - 1) << ");" << endl;
 					
 					break;
@@ -195,7 +195,7 @@ namespace SWFRecomp
 					declareEmptyString(context, 17);
 					
 					out_script << "\t" << "// StringAdd" << endl
-							   << "\t" << "actionStringAdd(app_context, stack, sp, "
+							   << "\t" << "actionStringAdd(app_context, "
 							   << "str_" << to_string(next_str_i - 2) << ", "
 							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
 					
@@ -213,21 +213,21 @@ namespace SWFRecomp
 				case SWF_ACTION_GET_VARIABLE:
 				{
 					out_script << "\t" << "// GetVariable" << endl
-							   << "\t" << "actionGetVariable(app_context, stack, sp);" << endl;
+							   << "\t" << "actionGetVariable(app_context);" << endl;
 					break;
 				}
 				
 				case SWF_ACTION_SET_VARIABLE:
 				{
 					out_script << "\t" << "// SetVariable" << endl
-							   << "\t" << "actionSetVariable(app_context, stack, sp);" << endl;
+							   << "\t" << "actionSetVariable(app_context);" << endl;
 					break;
 				}
 				
 				case SWF_ACTION_TRACE:
 				{
 					out_script << "\t" << "// Trace" << endl
-							   << "\t" << "actionTrace(app_context, stack, sp);" << endl;
+							   << "\t" << "actionTrace(app_context);" << endl;
 					
 					break;
 				}
@@ -235,7 +235,7 @@ namespace SWFRecomp
 				case SWF_ACTION_GET_TIME:
 				{
 					out_script << "\t" << "// GetTime" << endl
-							   << "\t" << "actionGetTime(app_context, stack, sp);" << endl;
+							   << "\t" << "actionGetTime(app_context);" << endl;
 					
 					break;
 				}
@@ -323,7 +323,7 @@ namespace SWFRecomp
 					s16 offset = VAL(s16, action_buffer);
 					
 					out_script << "\t" << "// If" << endl
-							   << "\t" << "if (evaluateCondition(stack, sp))" << endl
+							   << "\t" << "if (evaluateCondition(app_context))" << endl
 							   << "\t" << "{" << endl
 							   << "\t" << "\t" << "goto label_" << to_string((s16) (action_buffer + length - action_buffer_start + offset)) << ";" << endl
 							   << "\t" << "}" << endl;
