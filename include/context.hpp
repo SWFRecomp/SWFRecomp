@@ -21,5 +21,7 @@ namespace SWFRecomp
 		ofstream out_script_decls;
 		ofstream out_draws;
 		ofstream out_draws_header;
+		
+		bool inside_function2 = false;  // Track if parsing inside DefineFunction2
 	};
 };
