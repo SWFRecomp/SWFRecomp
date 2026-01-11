@@ -2077,7 +2077,17 @@ namespace SWFRecomp
 						
 						std::sort(final_outer_candidates.begin(), final_outer_candidates.end(), compareAreaPtr);
 						
-						final_outer_candidates.back()->holes.push_back(&hole);
+						if (final_outer_candidates.size() == 0)
+						{
+							// false hole, switch inner-fill and draw normally
+							hole.inner_fill = hole.outer_fill;
+							hole.hole = false;
+						}
+						
+						else
+						{
+							final_outer_candidates.back()->holes.push_back(&hole);
+						}
 					}
 				}
 				
