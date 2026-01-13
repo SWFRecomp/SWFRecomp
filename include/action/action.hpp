@@ -72,7 +72,7 @@ namespace SWFRecomp
 		SWF_ACTION_DEFINE_FUNCTION = 0x9B,
 		SWF_ACTION_IF = 0x9D
 	};
-	
+
 	class SWFAction
 	{
 	public:
@@ -80,9 +80,9 @@ namespace SWFRecomp
 		size_t func_counter;
 		std::unordered_map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
 		std::vector<size_t> constant_pool;  // Maps constant pool index to string ID
-		
+
 		SWFAction();
-		
+
 		void parseActions(Context& context, char*& action_buffer, ofstream& out_script);
 		void declareVariable(Context& context, char* var_name);
 		void declareString(Context& context, char* str);
