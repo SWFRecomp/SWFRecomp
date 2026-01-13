@@ -24,7 +24,7 @@
 										std::find(path2.next_neighbors_forward.begin(), path2.next_neighbors_forward.end(), &path1) == path2.next_neighbors_forward.end() && \
 										std::find(path1.next_neighbors_backward.begin(), path1.next_neighbors_backward.end(), &path2) == path1.next_neighbors_backward.end() && \
 										std::find(path2.next_neighbors_backward.begin(), path2.next_neighbors_backward.end(), &path1) == path2.next_neighbors_backward.end())
-
+										
 #define FRAME_WIDTH (header.frame_size.xmax - header.frame_size.xmin)
 #define FRAME_HEIGHT (header.frame_size.ymax - header.frame_size.ymin)
 
@@ -44,7 +44,7 @@ namespace SWFRecomp
 {
 	SWFHeader::SWFHeader()
 	{
-		
+	
 	}
 	
 	SWFHeader::SWFHeader(char* swf_buffer)
@@ -106,7 +106,7 @@ namespace SWFRecomp
 	
 	SWF::SWF()
 	{
-		
+	
 	}
 	
 	SWF::SWF(Context& context) : num_finished_tags(0),
@@ -127,7 +127,7 @@ namespace SWFRecomp
 								 jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
-		// 
+		//
 		// Using a SWFTag without parsing the header
 		// behaves exactly like a SWF struct record
 		RGB.setFieldCount(3);
@@ -247,7 +247,7 @@ namespace SWFRecomp
 								 << "#define FRAME_WIDTH_TWIPS " << width_twips << endl
 								 << "#define FRAME_HEIGHT_TWIPS " << height_twips << endl << endl
 								 << "extern const float stage_to_ndc[16];";
-		
+								
 		context.constants << "#include \"constants.h\"" << endl << endl
 						  << "const float stage_to_ndc[16] =" << endl
 						  << "{" << endl
@@ -368,28 +368,28 @@ namespace SWFRecomp
 		context.out_script_decls = ofstream(context.output_scripts_folder + "script_decls.h", ios_base::out);
 		context.out_script_decls << "#pragma once" << endl << endl
 								 << "#include <stackvalue.h>" << endl;
-		
+								
 		// output identity matrix at transform id 0
 		transform_data << "\t" << "1.0f," << endl
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "0.0f," << endl
-					   
+					
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "1.0f," << endl
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "0.0f," << endl
-					   
+					
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "1.0f," << endl
 					   << "\t" << "0.0f," << endl
-					   
+					
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "0.0f," << endl
 					   << "\t" << "1.0f," << endl;
-		
+					
 		current_transform += 1;
 		
 		// output identity cxform at id 0
@@ -417,7 +417,7 @@ namespace SWFRecomp
 					<< "\t" << "0.0f," << endl
 					<< "\t" << "0.0f," << endl
 					<< "\t" << "0.0f," << endl;
-		
+					
 		current_cxform += 1;
 		
 		// prime the loop
@@ -434,7 +434,7 @@ namespace SWFRecomp
 						 << "typedef void (*frame_func)();" << endl << endl
 						 << "frame_func frame_funcs[] =" << endl
 						 << "{" << endl;
-		
+						
 		for (size_t i = 0; i < next_frame_i; ++i)
 		{
 			context.tag_main << "\t" << "frame_" << to_string(i) << "," << endl;
@@ -451,7 +451,7 @@ namespace SWFRecomp
 						 << "{"
 						 << tag_init.str() << endl
 						 << "}";
-		
+						
 		context.out_draws << endl << endl;
 		
 		context.out_draws << "u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4] =" << endl
@@ -498,7 +498,7 @@ namespace SWFRecomp
 						  << "{" << endl
 						  << (current_cxform ? cxform_data.str() : "\t0\n")
 						  << "};";
-		
+						
 		context.out_draws_header << endl
 								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
@@ -509,7 +509,7 @@ namespace SWFRecomp
 								 << "extern u32 glyph_data[" << to_string(current_glyph ? 2*current_glyph : 1) << "][1];" << endl
 								 << "extern u32 text_data[" << to_string(current_text ? current_text : 1) << "];" << endl
 								 << "extern float cxform_data[" << to_string(current_cxform ? 20*current_cxform : 1) << "];";
-		
+								
 		size_t highest_w = 0;
 		size_t highest_h = 0;
 		
@@ -530,11 +530,11 @@ namespace SWFRecomp
 								 << "#define BITMAP_COUNT " << to_string(current_bitmap) << endl
 								 << "#define BITMAP_HIGHEST_W " << to_string(highest_w) << endl
 								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h);
-		
+								
 		// Generate MAX_STRING_ID constant for runtime initialization
 		context.out_script_decls << endl
 								 << "#define MAX_STRING_ID " << action.next_str_i;
-		
+								
 		context.out_script_header.close();
 		context.out_script_defs.close();
 		context.out_script_decls.close();
@@ -666,7 +666,7 @@ namespace SWFRecomp
 								<< "\t0x" << (u32) decompressed[i + 1] << "," << endl
 								<< "\t0x" << (u32) decompressed[i + 2] << "," << endl
 								<< "\t0xFF," << endl;
-					
+								
 					current_bitmap_pixel += 1;
 				}
 				
@@ -679,7 +679,7 @@ namespace SWFRecomp
 						 << to_string(w) << ", "
 						 << to_string(h)
 						 << ");";
-				
+						
 				current_bitmap += 1;
 				
 				cur_pos += new_length;
@@ -734,7 +734,7 @@ namespace SWFRecomp
 								 << to_string((u8) RGB.fields[0].value) << ", "
 								 << to_string((u8) RGB.fields[1].value) << ", "
 								 << to_string((u8) RGB.fields[2].value) << ");" << endl;
-				
+								
 				break;
 			}
 			
@@ -788,7 +788,7 @@ namespace SWFRecomp
 					
 					glyph_data << "\t" << to_string(glyph_start) << "," << endl
 							   << "\t" << to_string(glyph_size) << "," << endl;
-					
+							
 					current_glyph += 1;
 				}
 				
@@ -943,7 +943,7 @@ namespace SWFRecomp
 									<< "\t" << to_string(g) << "/255.0f," << endl
 									<< "\t" << to_string(b) << "/255.0f," << endl
 									<< "\t" << "0.0f," << endl;
-						
+									
 						current_cxform += 1;
 					}
 					
@@ -1025,7 +1025,7 @@ namespace SWFRecomp
 						   << "#include \"script_decls.h\"" << endl << endl
 						   << "void script_" << next_script_i << "(SWFAppContext* app_context)" << endl
 						   << "{" << endl;
-				
+						
 				next_script_i += 1;
 				
 				action.parseActions(context, cur_pos, out_script);
@@ -1129,7 +1129,7 @@ namespace SWFRecomp
 				context.tag_main << "\t" << "tagScriptLimits("
 								 << to_string((u16) tag.fields[0].value) << ", "
 								 << to_string((u16) tag.fields[1].value) << ");" << endl;
-				
+								
 				break;
 			}
 			
@@ -1255,7 +1255,7 @@ namespace SWFRecomp
 							   << to_string(fill_styles[i].g) << "/255.0f, "
 							   << to_string(fill_styles[i].b) << "/255.0f, "
 							   << "255/255.0f }," << endl;
-					
+							
 					current_color += 1;
 					
 					break;
@@ -1413,7 +1413,7 @@ namespace SWFRecomp
 					   << to_string(line_styles[i].g) << "/255.0f, "
 					   << to_string(line_styles[i].b) << "/255.0f, "
 					   << "255/255.0f }," << endl;
-			
+					
 			current_color += 1;
 		}
 		
@@ -1523,7 +1523,7 @@ namespace SWFRecomp
 							   << to_string(fill_style->g) << "/255.0f, "
 							   << to_string(fill_style->b) << "/255.0f, "
 							   << "255/255.0f }," << endl;
-					
+							
 					current_color += 1;
 				}
 				

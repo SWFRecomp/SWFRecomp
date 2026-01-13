@@ -93,32 +93,112 @@ namespace SWFRecomp
 					break;
 				}
 				
-				// REMOVED OPCODE: Add - not supported in minimal build
 				case SWF_ACTION_ADD:
-				// REMOVED OPCODE: Subtract - not supported in minimal build
+				{
+					out_script << "\t" << "// Add" << endl
+							   << "\t" << "actionAdd(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_SUBTRACT:
-				// REMOVED OPCODE: Multiply - not supported in minimal build
+				{
+					out_script << "\t" << "// Subtract" << endl
+							   << "\t" << "actionSubtract(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_MULTIPLY:
-				// REMOVED OPCODE: Divide - not supported in minimal build
+				{
+					out_script << "\t" << "// Multiply" << endl
+							   << "\t" << "actionMultiply(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_DIVIDE:
-				// REMOVED OPCODE: Equals - not supported in minimal build
+				{
+					out_script << "\t" << "// Divide" << endl
+							   << "\t" << "actionDivide(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_EQUALS:
-				// REMOVED OPCODE: Less - not supported in minimal build
+				{
+					out_script << "\t" << "// Equals" << endl
+							   << "\t" << "actionEquals(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_LESS:
-				// REMOVED OPCODE: And - not supported in minimal build
+				{
+					out_script << "\t" << "// Less" << endl
+							   << "\t" << "actionLess(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_AND:
-				// REMOVED OPCODE: Or - not supported in minimal build
+				{
+					out_script << "\t" << "// And" << endl
+							   << "\t" << "actionAnd(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_OR:
-				// REMOVED OPCODE: Not - not supported in minimal build
+				{
+					out_script << "\t" << "// Or" << endl
+							   << "\t" << "actionOr(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_NOT:
-				// REMOVED OPCODE: StringEquals - not supported in minimal build
+				{
+					out_script << "\t" << "// Not" << endl
+							   << "\t" << "actionNot(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_STRING_EQUALS:
-				// REMOVED OPCODE: StringLength - not supported in minimal build
+				{
+					declareEmptyString(context, 17);
+					declareEmptyString(context, 17);
+					
+					out_script << "\t" << "// StringEquals" << endl
+							   << "\t" << "actionStringEquals(app_context, "
+							   << "str_" << to_string(next_str_i - 2) << ", "
+							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_STRING_LENGTH:
-				// REMOVED OPCODE: StringAdd - not supported in minimal build
+				{
+					declareEmptyString(context, 17);
+					
+					out_script << "\t" << "// StringLength" << endl
+							   << "\t" << "actionStringLength(app_context, str_"
+							   << to_string(next_str_i - 1) << ");" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_STRING_ADD:
 				{
-					EXC_ARG("Opcode 0x%02X not supported in minimal build (objects/functions only)\n", code);
+					declareEmptyString(context, 17);
+					declareEmptyString(context, 17);
+					
+					out_script << "\t" << "// StringAdd" << endl
+							   << "\t" << "actionStringAdd(app_context, "
+							   << "str_" << to_string(next_str_i - 2) << ", "
+							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
+							
 					break;
 				}
 				
@@ -130,16 +210,33 @@ namespace SWFRecomp
 					break;
 				}
 				
-				// REMOVED OPCODE: GetVariable - not supported in minimal build
 				case SWF_ACTION_GET_VARIABLE:
-				// REMOVED OPCODE: SetVariable - not supported in minimal build
+				{
+					out_script << "\t" << "// GetVariable" << endl
+							   << "\t" << "actionGetVariable(app_context);" << endl;
+					break;
+				}
+				
 				case SWF_ACTION_SET_VARIABLE:
-				// REMOVED OPCODE: Trace - not supported in minimal build
+				{
+					out_script << "\t" << "// SetVariable" << endl
+							   << "\t" << "actionSetVariable(app_context);" << endl;
+					break;
+				}
+				
 				case SWF_ACTION_TRACE:
-				// REMOVED OPCODE: GetTime - not supported in minimal build
+				{
+					out_script << "\t" << "// Trace" << endl
+							   << "\t" << "actionTrace(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_GET_TIME:
 				{
-					EXC_ARG("Opcode 0x%02X not supported in minimal build (objects/functions only)\n", code);
+					out_script << "\t" << "// GetTime" << endl
+							   << "\t" << "actionGetTime(app_context);" << endl;
+							
 					break;
 				}
 				
