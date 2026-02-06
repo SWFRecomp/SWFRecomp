@@ -6,7 +6,7 @@ This is a stupid idea.
 
 ## What is this?
 
-SWFRecomp is a **static recompiler** (not an emulator) that converts Flash SWF files into C code.
+SWFRecomp is a static recompiler that converts Flash SWF files into C code.
 
 This project applies the same approach to preserve Flash content.
 
