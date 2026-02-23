@@ -2,6 +2,8 @@
 
 #include <fstream>
 #include <unordered_map>
+#include <sstream>
+#include <queue>
 #include <vector>
 
 #include <common.h>
@@ -72,22 +74,33 @@ namespace SWFRecomp
 		SWF_ACTION_DEFINE_FUNCTION = 0x9B,
 		SWF_ACTION_IF = 0x9D
 	};
-
+	
+	struct Constant
+	{
+		size_t str_id;
+		size_t str_length;
+	};
+	
 	class SWFAction
 	{
 	public:
 		size_t next_str_i;
+		size_t next_empty_str_i;
 		size_t func_counter;
 		std::unordered_map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
-		std::vector<size_t> constant_pool;  // Maps constant pool index to string ID
-
+		std::unordered_map<size_t, std::string> string_id_to_func_name;  // Track functions by string id
+		std::unordered_map<size_t, std::stringstream> string_id_to_stream;  // Track functions' streams by string id
+		std::priority_queue<size_t, std::vector<size_t>, std::greater<size_t>> func_string_ids;  // Track which string ids are functions for table
+		std::vector<Constant> constant_pool;  // Maps constant pool index to string ID
+		
 		SWFAction();
 
-		void parseActions(Context& context, char*& action_buffer, ofstream& out_script);
+		void parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at = nullptr);
+		void recompileFunctionTable(Context& context);
 		void declareVariable(Context& context, char* var_name);
-		void declareString(Context& context, char* str);
+		void declareString(Context& context, const char* str);
 		void declareEmptyString(Context& context, size_t size);
-		size_t getStringId(const char* str);  // Get ID for a previously declared string
+		size_t getStringId(Context& context, const char* str);  // Get ID for a previously declared string
 		char actionCodeLookAhead(char* action_buffer, int lookAhead);
 		size_t actionCodeLookAheadIndex(char* action_buffer, int lookAhead);
 	};

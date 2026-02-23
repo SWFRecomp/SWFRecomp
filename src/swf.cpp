@@ -367,8 +367,11 @@ namespace SWFRecomp
 		
 		context.out_script_decls = ofstream(context.output_scripts_folder + "script_decls.h", ios_base::out);
 		context.out_script_decls << "#pragma once" << endl << endl
+								 << "#include <action.h>" << endl
 								 << "#include <stackvalue.h>" << endl;
-								
+		
+		context.num_files = 0;
+		
 		// output identity matrix at transform id 0
 		transform_data << "\t" << "1.0f," << endl
 					   << "\t" << "0.0f," << endl
@@ -535,6 +538,9 @@ namespace SWFRecomp
 		context.out_script_decls << endl
 								 << "#define MAX_STRING_ID " << action.next_str_i;
 								
+		
+		action.recompileFunctionTable(context);
+		
 		context.out_script_header.close();
 		context.out_script_defs.close();
 		context.out_script_decls.close();

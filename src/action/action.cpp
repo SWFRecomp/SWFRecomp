@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <vector>
 
+#include <tag.hpp>
 #include <action.hpp>
 
 #define VAL(type, x) *((type*) x)
@@ -14,12 +15,12 @@ using std::endl;
 
 namespace SWFRecomp
 {
-	SWFAction::SWFAction() : next_str_i(1), func_counter(0)
+	SWFAction::SWFAction() : next_str_i(1), next_empty_str_i(0), func_counter(0)
 	{
 	
 	}
 	
-	void SWFAction::parseActions(Context& context, char*& action_buffer, ofstream& out_script)
+	void SWFAction::parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at)
 	{
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
@@ -29,7 +30,7 @@ namespace SWFRecomp
 		std::vector<char*> labels;
 		
 		// Parse action bytes once to mark labels
-		while (code != SWF_ACTION_END_OF_ACTIONS)
+		while (code != SWF_ACTION_END_OF_ACTIONS && action_buffer != stop_at)
 		{
 			code = (SWFActionType) (u8) action_buffer[0];
 			action_buffer += 1;
@@ -58,7 +59,7 @@ namespace SWFRecomp
 		action_buffer = action_buffer_start;
 		code = SWF_ACTION_CONSTANT_POOL;
 		
-		while (code != SWF_ACTION_END_OF_ACTIONS)
+		while (code != SWF_ACTION_END_OF_ACTIONS && action_buffer != stop_at)
 		{
 			for (const char* ptr : labels)
 			{
@@ -69,6 +70,7 @@ namespace SWFRecomp
 			}
 			
 			code = (SWFActionType) (u8) action_buffer[0];
+			
 			action_buffer += 1;
 			length = 0;
 			
@@ -172,9 +174,9 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// StringEquals" << endl
 							   << "\t" << "actionStringEquals(app_context, "
-							   << "str_" << to_string(next_str_i - 2) << ", "
-							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
-							
+							   << "str_" << to_string(next_empty_str_i - 2) << ", "
+							   << "str_" << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -184,8 +186,8 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// StringLength" << endl
 							   << "\t" << "actionStringLength(app_context, str_"
-							   << to_string(next_str_i - 1) << ");" << endl;
-							
+							   << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -196,9 +198,9 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// StringAdd" << endl
 							   << "\t" << "actionStringAdd(app_context, "
-							   << "str_" << to_string(next_str_i - 2) << ", "
-							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
-							
+							   << "str_" << to_string(next_empty_str_i - 2) << ", "
+							   << "str_" << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -242,7 +244,30 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_CONSTANT_POOL:
 				{
-					action_buffer += length;
+					u16 str_count = VAL(u16, action_buffer);
+					action_buffer += 2;
+					
+					SWFTag constant_pool_tag;
+					constant_pool_tag.clearFields();
+					constant_pool_tag.setFieldCount(str_count);
+					
+					for (u16 i = 0; i < str_count; ++i)
+					{
+						constant_pool_tag.configureNextField(SWF_FIELD_STRING);
+					}
+					
+					constant_pool_tag.parseFields(action_buffer);
+					
+					constant_pool.clear();
+					
+					Constant c;
+					
+					for (u16 i = 0; i < str_count; ++i)
+					{
+						c.str_id = getStringId(context, (char*) constant_pool_tag.fields[i].value);
+						c.str_length = (size_t) constant_pool_tag.fields[i].str_length;
+						constant_pool.push_back(c);
+					}
 					
 					break;
 				}
@@ -254,7 +279,8 @@ namespace SWFRecomp
 					
 					while (push_length < length)
 					{
-						ActionStackValueType push_type = (ActionStackValueType) action_buffer[push_length];
+						ActionStackValueType push_type = (ActionStackValueType) action_buffer[0];
+						action_buffer += 1;
 						push_length += 1;
 						
 						out_script << "\t" << "// Push ";
@@ -265,15 +291,20 @@ namespace SWFRecomp
 							{
 								out_script << "(String)" << endl;
 								
-								push_value = (u64) &action_buffer[push_length];
-								declareString(context, (char*) push_value);
-								size_t push_str_len = strlen((char*) push_value);
+								SWFTag tag = SWFTag();
+								tag.clearFields();
+								tag.setFieldCount(1);
+								tag.configureNextField(SWF_FIELD_STRING);
+								tag.parseFields(action_buffer);
+								
+								push_value = tag.fields[0].value;
+								size_t push_str_len = tag.fields[0].str_length;
 								push_length += push_str_len + 1;
 								
 								// Get the actual string ID (handles deduplication)
-								size_t str_id = getStringId((char*) push_value);
+								size_t str_id = getStringId(context, (char*) push_value);
 								
-								out_script << "\t" << "PUSH_STR_ID(str_" << to_string(str_id) << ", "
+								out_script << "\t" << "PUSH_STR_ID(const_str_" << to_string(str_id) << ", "
 								           << push_str_len << ", " << str_id << ");" << endl;
 								
 								break;
@@ -283,7 +314,8 @@ namespace SWFRecomp
 							{
 								out_script << "(float)" << endl;
 								
-								push_value = (u64) VAL(u32, &action_buffer[push_length]);
+								push_value = (u64) VAL(u32, action_buffer);
+								action_buffer += 4;
 								push_length += 4;
 								
 								char hex_float[11];
@@ -294,14 +326,41 @@ namespace SWFRecomp
 								break;
 							}
 							
+							case ACTION_STACK_VALUE_INT:
+							{
+								out_script << "(integer)" << endl;
+								
+								push_value = (u64) VAL(u32, action_buffer);
+								action_buffer += 4;
+								push_length += 4;
+								
+								out_script << "\t" << "PUSH(ACTION_STACK_VALUE_INT, " << to_string(push_value) << ");" << endl;
+								
+								break;
+							}
+							
+							case ACTION_STACK_VALUE_CONST8:
+							{
+								out_script << "(String)" << endl;
+								
+								u8 const_index = VAL(u8, action_buffer);
+								action_buffer += 1;
+								push_length += 1;
+								
+								Constant& c = constant_pool[const_index];
+								
+								out_script << "\t" << "PUSH_STR_ID(const_str_" << to_string(c.str_id) << ", "
+								           << c.str_length << ", " << c.str_id << ");" << endl;
+								
+								break;
+							}
+							
 							default:
 							{
 								EXC_ARG("Undefined push type: %d\n", push_type);
 							}
 						}
 					}
-					
-					action_buffer += push_length;
 					
 					break;
 				}
@@ -347,8 +406,8 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// Delete2" << endl
 							   << "\t" << "actionDelete2(app_context, "
-							   << "str_" << to_string(next_str_i - 1) << ");" << endl;
-							
+							   << "str_" << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -363,7 +422,7 @@ namespace SWFRecomp
 				case SWF_ACTION_CALL_FUNCTION:
 				{
 					out_script << "\t" << "// CallFunction" << endl
-							   << "\t" << "actionCallFunction(app_context, str_buffer);" << endl;
+							   << "\t" << "actionCallFunction(app_context);" << endl;
 							
 					break;
 				}
@@ -377,13 +436,6 @@ namespace SWFRecomp
 							   << "\t\t" << "return ret_val;" << endl
 							   << "\t" << "}" << endl;
 							
-					break;
-				}
-				
-				// REMOVED OPCODE: Modulo - not supported in minimal build
-				case SWF_ACTION_MODULO:
-				{
-					EXC_ARG("Opcode 0x%02X not supported in minimal build (objects/functions only)\n", code);
 					break;
 				}
 				
@@ -425,8 +477,8 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// Typeof" << endl
 							   << "\t" << "actionTypeof(app_context, str_"
-							   << to_string(next_str_i - 1) << ");" << endl;
-							
+							   << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -436,27 +488,8 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// Enumerate" << endl
 							   << "\t" << "actionEnumerate(app_context, str_"
-							   << to_string(next_str_i - 1) << ");" << endl;
-							
-					break;
-				}
-				
-				// REMOVED OPCODE: Add2 - not supported in minimal build
-				case SWF_ACTION_ADD2:
-				// REMOVED OPCODE: Less2 - not supported in minimal build
-				case SWF_ACTION_LESS2:
-				// REMOVED OPCODE: Equals2 - not supported in minimal build
-				case SWF_ACTION_EQUALS2:
-				// REMOVED OPCODE: ToNumber - not supported in minimal build
-				case SWF_ACTION_TO_NUMBER:
-				// REMOVED OPCODE: ToString - not supported in minimal build
-				case SWF_ACTION_TO_STRING:
-				// REMOVED OPCODE: Duplicate - not supported in minimal build
-				case SWF_ACTION_DUPLICATE:
-				// REMOVED OPCODE: StackSwap - not supported in minimal build
-				case SWF_ACTION_STACK_SWAP:
-				{
-					EXC_ARG("Opcode 0x%02X not supported in minimal build (objects/functions only)\n", code);
+							   << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -464,7 +497,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// GetMember" << endl
 							   << "\t" << "actionGetMember(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -473,15 +506,6 @@ namespace SWFRecomp
 					out_script << "\t" << "// SetMember" << endl
 							   << "\t" << "actionSetMember(app_context);" << endl;
 							
-					break;
-				}
-				
-				// REMOVED OPCODE: Increment - not supported in minimal build
-				case SWF_ACTION_INCREMENT:
-				// REMOVED OPCODE: Decrement - not supported in minimal build
-				case SWF_ACTION_DECREMENT:
-				{
-					EXC_ARG("Opcode 0x%02X not supported in minimal build (objects/functions only)\n", code);
 					break;
 				}
 				
@@ -515,17 +539,8 @@ namespace SWFRecomp
 					
 					out_script << "\t" << "// Enumerate2" << endl
 							   << "\t" << "actionEnumerate2(app_context, str_"
-							   << to_string(next_str_i - 1) << ");" << endl;
-							
-					break;
-				}
-				
-				// REMOVED OPCODE: StrictEquals - not supported in minimal build
-				case SWF_ACTION_STRICT_EQUALS:
-				// REMOVED OPCODE: Greater - not supported in minimal build
-				case SWF_ACTION_GREATER:
-				{
-					EXC_ARG("Opcode 0x%02X not supported in minimal build (objects/functions only)\n", code);
+							   << to_string(next_empty_str_i - 1) << ");" << endl;
+					
 					break;
 				}
 				
@@ -596,8 +611,8 @@ namespace SWFRecomp
 					static int func2_counter = 0;
 					std::string func_id = std::string("func2_") + (name_len > 0 ? std::string(func_name) : "anonymous") + "_" + std::to_string(func2_counter++);
 					
-				// Add function declaration to header (uses app_context)
-				context.out_script_decls << endl << "ActionVar " << func_id << "(SWFAppContext* app_context, ActionVar* args, u32 arg_count, ActionVar* registers, void* this_obj);" << endl;
+					// Add function declaration to header (uses app_context)
+					context.out_script_decls << endl << "ActionVar " << func_id << "(SWFAppContext* app_context, ActionVar* args, u32 arg_count, ActionVar* registers, void* this_obj);" << endl;
 					// Generate function definition in out_script_defs
 					context.out_script_defs << endl << endl
 						<< "// DefineFunction2: " << (name_len > 0 ? func_name : "(anonymous)") << endl
@@ -769,48 +784,30 @@ namespace SWFRecomp
 					action_buffer += 2;
 					
 					// Generate unique function ID
-					static int func_counter = 0;
-					std::string func_id = std::string("func_") + (name_len > 0 ? std::string(func_name) : "anonymous") + "_" + std::to_string(func_counter++);
+					std::string func_id = (name_len > 0 ? std::string(func_name) : std::string("anonymous")) + "_" + std::to_string(func_counter++);
+					
+					size_t string_id = getStringId(context, func_name);
+					string_id_to_func_name[string_id] = func_id;
+					string_id_to_stream[string_id] = std::stringstream();
+					ostream& func_stream = string_id_to_stream[string_id];
+					
+					func_string_ids.push(string_id);
 					
 					// Add function declaration to header (uses app_context)
 					context.out_script_decls << endl << "void " << func_id << "(SWFAppContext* app_context);" << endl;
 					
 					// Generate function definition
-					context.out_script_defs << endl << endl
-						<< "// DefineFunction: " << (name_len > 0 ? func_name : "(anonymous)") << endl
-						<< "void " << func_id << "(SWFAppContext* app_context)" << endl
-						<< "{" << endl;
-						
-					// Bind parameters (simple DefineFunction uses variables, not registers)
-					for (size_t i = 0; i < params.size(); i++)
-					{
-						context.out_script_defs << "\t// TODO: Bind parameter '" << params[i] << "' from arguments" << endl;
-					}
+					func_stream << "// DefineFunction: " << (name_len > 0 ? func_name : "(anonymous)") << endl
+								<< "void " << func_id << "(SWFAppContext* app_context)" << endl
+								<< "{" << endl;
 					
 					// Parse function body recursively
-					context.out_script_defs << endl << "\t// Function body (" << code_size << " bytes)" << endl;
+					func_stream << "\t// Function body (" << code_size << " bytes)" << endl;
 					
-					char* func_body_start = action_buffer;
-					char* func_body_end = action_buffer + code_size;
+					parseActions(context, action_buffer, func_stream, action_buffer + code_size);
 					
-					// Create temporary buffer with END_OF_ACTIONS marker
-					char* temp_buffer = (char*)malloc(code_size + 1);
-					memcpy(temp_buffer, func_body_start, code_size);
-					temp_buffer[code_size] = 0x00;
+					func_stream << "}";
 					
-					char* temp_ptr = temp_buffer;
-					parseActions(context, temp_ptr, context.out_script_defs);
-					free(temp_buffer);
-					
-					action_buffer = func_body_end;
-					
-					context.out_script_defs << "}" << endl;
-					
-					// Generate runtime call to register function
-					out_script << "\t// DefineFunction: " << (name_len > 0 ? func_name : "(anonymous)") << endl;
-					out_script << "\tactionDefineFunction(app_context, \"" << (name_len > 0 ? func_name : "") << "\", "
-							   << func_id << ", " << num_params << ");" << endl;
-							
 					break;
 				}
 				
@@ -824,6 +821,55 @@ namespace SWFRecomp
 		}
 	}
 	
+	void SWFAction::recompileFunctionTable(Context& context)
+	{
+		context.out_script_decls << endl << "action_func func_table["
+								 << next_str_i << "];";
+		
+		context.out_script_defs << endl << "action_func func_table["
+								<< next_str_i << "] ="
+								<< endl << "{";
+		
+		size_t last_id = 0;
+		size_t num_funcs_in_file = 0;
+		
+		while (!func_string_ids.empty())
+		{
+			size_t string_id = func_string_ids.top();
+			
+			for (size_t i = last_id; i < string_id - last_id; ++i)
+			{
+				context.out_script_defs << endl << "\t" << "NULL,";
+			}
+			
+			last_id = string_id;
+			
+			context.out_script_defs << endl << "\t" << string_id_to_func_name[string_id] << ",";
+			
+			if (context.num_files == 0 || num_funcs_in_file >= 50)
+			{
+				context.out_funcs.push_back(ofstream(context.output_scripts_folder + "funcs_" + to_string(context.num_files) + ".c", std::ios_base::out));
+				context.num_files += 1;
+				num_funcs_in_file = 0;
+				
+				context.out_funcs.back() << "#include <recomp.h>" << endl << "#include \"script_decls.h\"";
+			}
+			
+			context.out_funcs.back() << endl << endl << string_id_to_stream[string_id].str();
+			
+			num_funcs_in_file += 1;
+			
+			func_string_ids.pop();
+		}
+		
+		for (size_t i = last_id; i < next_str_i - last_id; ++i)
+		{
+			context.out_script_defs << endl << "\t" << "NULL,";
+		}
+		
+		context.out_script_defs << endl << "};";
+	}
+	
 	void SWFAction::declareVariable(Context& context, char* var_name)
 	{
 		context.out_script_defs << endl << "#ifndef DEF_VAR_" << var_name << endl
@@ -834,31 +880,23 @@ namespace SWFRecomp
 		context.out_script_decls << endl << "extern var " << var_name << ";";
 	}
 	
-	void SWFAction::declareString(Context& context, char* str)
+	void SWFAction::declareString(Context& context, const char* str)
 	{
-		// Check if this string was already declared (deduplication)
-		auto it = string_to_id.find(str);
-		if (it != string_to_id.end())
-		{
-			// String already exists - don't create duplicate
-			return;
-		}
-		
 		// New string - assign ID and declare
 		string_to_id[str] = next_str_i;
-		context.out_script_defs << endl << "char* str_" << next_str_i << " = \"" << str << "\";";
-		context.out_script_decls << endl << "extern char* str_" << next_str_i << ";";
+		context.out_script_defs << endl << "char* const_str_" << next_str_i << " = \"" << str << "\";";
+		context.out_script_decls << endl << "extern char* const_str_" << next_str_i << ";";
 		next_str_i += 1;
 	}
 	
 	void SWFAction::declareEmptyString(Context& context, size_t size)
 	{
-		context.out_script_defs << endl << "char str_" << next_str_i << "[" << to_string(size) << "];";
-		context.out_script_decls << endl << "extern char str_" << next_str_i << "[];";
-		next_str_i += 1;
+		context.out_script_defs << endl << "char str_" << next_empty_str_i << "[" << to_string(size) << "];";
+		context.out_script_decls << endl << "extern char str_" << next_empty_str_i << "[];";
+		next_empty_str_i += 1;
 	}
 	
-	size_t SWFAction::getStringId(const char* str)
+	size_t SWFAction::getStringId(Context& context, const char* str)
 	{
 		auto it = string_to_id.find(str);
 		if (it != string_to_id.end())
@@ -866,9 +904,9 @@ namespace SWFRecomp
 			return it->second;
 		}
 		
-		// This shouldn't happen if declareString was called first
-		// Return 0 for "no ID" (dynamic strings)
-		return 0;
+		size_t id = next_str_i;
+		declareString(context, str);
+		return id;
 	}
 	
 	char SWFAction::actionCodeLookAhead(char* action_buffer, int lookAhead)
