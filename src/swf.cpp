@@ -12,6 +12,7 @@
 #include <stb_image.h>
 
 #include <swf.hpp>
+#include <initial_strings.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
@@ -106,7 +107,7 @@ namespace SWFRecomp
 	
 	SWF::SWF()
 	{
-	
+		
 	}
 	
 	SWF::SWF(Context& context) : num_finished_tags(0),
@@ -370,6 +371,15 @@ namespace SWFRecomp
 								 << "#include <action.h>" << endl
 								 << "#include <stackvalue.h>" << endl;
 		
+		std::vector<std::string> initial_strings_vec;
+		
+		for (int i = 0; i < sizeof(initial_strings)/sizeof(char*); ++i)
+		{
+			initial_strings_vec.push_back(std::string(initial_strings[i]));
+		}
+		
+		action = SWFAction(context, initial_strings_vec);
+		
 		context.num_files = 0;
 		
 		// output identity matrix at transform id 0
@@ -539,6 +549,7 @@ namespace SWFRecomp
 								 << "#define MAX_STRING_ID " << action.next_str_i;
 								
 		
+		action.recompileStringTable(context);
 		action.recompileFunctionTable(context);
 		
 		context.out_script_header.close();
@@ -1034,7 +1045,7 @@ namespace SWFRecomp
 						
 				next_script_i += 1;
 				
-				action.parseActions(context, cur_pos, out_script);
+				(void) action.parseActions(context, cur_pos, out_script);
 				
 				out_script << "}";
 				

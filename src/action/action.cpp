@@ -17,13 +17,22 @@ namespace SWFRecomp
 {
 	SWFAction::SWFAction() : next_str_i(1), next_empty_str_i(0), func_counter(0)
 	{
-	
+		
 	}
 	
-	void SWFAction::parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at)
+	SWFAction::SWFAction(Context& context, const std::vector<std::string>& initial_strings) : next_str_i(1), next_empty_str_i(0), func_counter(0)
+	{
+		for (const std::string& s : initial_strings)
+		{
+			declareString(context, s.c_str());
+		}
+	}
+	
+	bool SWFAction::parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at)
 	{
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
+		bool last_action_return = false;
 		
 		char* action_buffer_start = action_buffer;
 		
@@ -70,6 +79,8 @@ namespace SWFRecomp
 			}
 			
 			code = (SWFActionType) (u8) action_buffer[0];
+			
+			last_action_return = code == SWF_ACTION_RETURN;
 			
 			action_buffer += 1;
 			length = 0;
@@ -305,7 +316,7 @@ namespace SWFRecomp
 								size_t str_id = getStringId(context, (char*) push_value);
 								
 								out_script << "\t" << "PUSH_STR_ID(const_str_" << to_string(str_id) << ", "
-								           << push_str_len << ", " << str_id << ");" << endl;
+								           << str_id << ", " << push_str_len << ");" << endl;
 								
 								break;
 							}
@@ -350,7 +361,7 @@ namespace SWFRecomp
 								Constant& c = constant_pool[const_index];
 								
 								out_script << "\t" << "PUSH_STR_ID(const_str_" << to_string(c.str_id) << ", "
-								           << c.str_length << ", " << c.str_id << ");" << endl;
+								           << c.str_id << ", " << c.str_length << ");" << endl;
 								
 								break;
 							}
@@ -430,12 +441,8 @@ namespace SWFRecomp
 				case SWF_ACTION_RETURN:
 				{
 					out_script << "\t" << "// Return" << endl
-							   << "\t" << "{" << endl
-							   << "\t\t" << "ActionVar ret_val;" << endl
-							   << "\t\t" << "popVar(app_context, &ret_val);" << endl
-							   << "\t\t" << "return ret_val;" << endl
-							   << "\t" << "}" << endl;
-							
+							   << "\t" << "return;" << endl;
+					
 					break;
 				}
 				
@@ -449,8 +456,8 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_DECLARE_LOCAL:
 				{
-					out_script << "\t" << "// DeclareLocal" << endl
-							   << "\t" << "actionDeclareLocal(app_context);" << endl;
+					out_script << "\t" << "// DefineLocal2" << endl
+							   << "\t" << "actionDefineLocal2(app_context);" << endl;
 							
 					break;
 				}
@@ -512,7 +519,7 @@ namespace SWFRecomp
 				case SWF_ACTION_CALL_METHOD:
 				{
 					out_script << "\t" << "// CallMethod" << endl
-							   << "\t" << "actionCallMethod(app_context, str_buffer);" << endl;
+							   << "\t" << "actionCallMethod(app_context);" << endl;
 							
 					break;
 				}
@@ -771,42 +778,58 @@ namespace SWFRecomp
 					action_buffer += 2;
 					
 					// Parse parameter names
-					std::vector<std::string> params;
+					func_id_to_param_string_ids[func_counter] = std::vector<size_t>();
+					std::vector<size_t>& params = func_id_to_param_string_ids[func_counter];
 					for (u16 i = 0; i < num_params; i++)
 					{
 						char* param_name = action_buffer;
-						size_t param_len = strlen(param_name);
-						action_buffer += param_len + 1;
-						params.push_back(std::string(param_name));
+						action_buffer += strlen(param_name) + 1;
+						params.push_back(getStringId(context, param_name));
 					}
 					
 					u16 code_size = VAL(u16, action_buffer);
 					action_buffer += 2;
 					
+					bool anonymous = name_len == 0;
+					
 					// Generate unique function ID
-					std::string func_id = (name_len > 0 ? std::string(func_name) : std::string("anonymous")) + "_" + std::to_string(func_counter++);
+					std::string func_id = (!anonymous ? std::string(func_name) : std::string("anonymous")) + "_" + std::to_string(func_counter);
 					
 					size_t string_id = getStringId(context, func_name);
-					string_id_to_func_name[string_id] = func_id;
-					string_id_to_stream[string_id] = std::stringstream();
-					ostream& func_stream = string_id_to_stream[string_id];
-					
-					func_string_ids.push(string_id);
+					func_id_to_stream[func_counter] = std::stringstream();
+					ostream& func_stream = func_id_to_stream[func_counter];
 					
 					// Add function declaration to header (uses app_context)
 					context.out_script_decls << endl << "void " << func_id << "(SWFAppContext* app_context);" << endl;
 					
 					// Generate function definition
-					func_stream << "// DefineFunction: " << (name_len > 0 ? func_name : "(anonymous)") << endl
+					func_stream << "// DefineFunction: " << (!anonymous ? func_name : "(anonymous)") << endl
 								<< "void " << func_id << "(SWFAppContext* app_context)" << endl
 								<< "{" << endl;
 					
 					// Parse function body recursively
-					func_stream << "\t// Function body (" << code_size << " bytes)" << endl;
+					func_stream << "\t// Function body (" << code_size << " bytes)" << endl << "\t" << endl;
 					
-					parseActions(context, action_buffer, func_stream, action_buffer + code_size);
+					bool has_return = parseActions(context, action_buffer, func_stream, action_buffer + code_size);
+					
+					if (!has_return)
+					{
+						func_stream << "\t// Return (void)" << endl
+									<< "\tPUSH_UNDEFINED();" << endl
+									<< "\treturn;" << endl;
+					}
 					
 					func_stream << "}";
+					
+					// Generate runtime call to register function
+					out_script << "\t// DefineFunction" << endl;
+					out_script << "\tactionDefineFunction(app_context, "
+							   << to_string(string_id) << ", "
+							   << func_id << ", "
+							   << "func_params_" << func_counter << ", "
+							   << (anonymous ? "true" : "false") << ");" << endl;
+					
+					func_counter += 1;
 					
 					break;
 				}
@@ -819,32 +842,64 @@ namespace SWFRecomp
 				}
 			}
 		}
+		
+		return last_action_return;
+	}
+	
+	void SWFAction::recompileStringTable(Context& context)
+	{
+		context.out_script_decls << endl << "char* str_table["
+								 << next_str_i << "];";
+		
+		context.out_script_defs << endl << "char* str_table["
+								<< next_str_i << "] ="
+								<< endl << "{"
+								<< endl << "\tNULL," << endl;
+		
+		for (size_t i = 1; i < next_str_i; ++i)
+		{
+			context.out_script_defs << "\t\"" << id_to_string[i].c_str() << "\"," << endl;
+		}
+		
+		context.out_script_defs << "};";
 	}
 	
 	void SWFAction::recompileFunctionTable(Context& context)
 	{
-		context.out_script_decls << endl << "action_func func_table["
-								 << next_str_i << "];";
-		
-		context.out_script_defs << endl << "action_func func_table["
-								<< next_str_i << "] ="
-								<< endl << "{";
-		
 		size_t last_id = 0;
 		size_t num_funcs_in_file = 0;
 		
-		while (!func_string_ids.empty())
+		for (size_t func_id = 0; func_id < func_counter; ++func_id)
 		{
-			size_t string_id = func_string_ids.top();
+			std::vector<size_t>& params = func_id_to_param_string_ids[func_id];
 			
-			for (size_t i = last_id; i < string_id - last_id; ++i)
+			if (params.size() == 0)
 			{
-				context.out_script_defs << endl << "\t" << "NULL,";
+				context.out_script_decls << endl << "u32* func_params_" << func_id << ";";
+				
+				context.out_script_defs << endl << "u32* func_params_" << func_id
+										<< " = ";
+				
+				context.out_script_defs << "NULL";
 			}
 			
-			last_id = string_id;
+			else
+			{
+				context.out_script_decls << endl << "u32 func_params_" << func_id << "[" << params.size() << "];";
+				context.out_script_defs << endl << "u32 func_params_" << func_id
+										<< "[] = ";
+				
+				context.out_script_defs << "{ ";
+				
+				for (size_t i = 0; i < params.size(); ++i)
+				{
+					context.out_script_defs << params[i] << ", ";
+				}
+				
+				context.out_script_defs << "}";
+			}
 			
-			context.out_script_defs << endl << "\t" << string_id_to_func_name[string_id] << ",";
+			context.out_script_defs << ";";
 			
 			if (context.num_files == 0 || num_funcs_in_file >= 50)
 			{
@@ -855,19 +910,10 @@ namespace SWFRecomp
 				context.out_funcs.back() << "#include <recomp.h>" << endl << "#include \"script_decls.h\"";
 			}
 			
-			context.out_funcs.back() << endl << endl << string_id_to_stream[string_id].str();
+			context.out_funcs.back() << endl << endl << func_id_to_stream[func_id].str();
 			
 			num_funcs_in_file += 1;
-			
-			func_string_ids.pop();
 		}
-		
-		for (size_t i = last_id; i < next_str_i - last_id; ++i)
-		{
-			context.out_script_defs << endl << "\t" << "NULL,";
-		}
-		
-		context.out_script_defs << endl << "};";
 	}
 	
 	void SWFAction::declareVariable(Context& context, char* var_name)
@@ -884,6 +930,7 @@ namespace SWFRecomp
 	{
 		// New string - assign ID and declare
 		string_to_id[str] = next_str_i;
+		id_to_string[next_str_i] = str;
 		context.out_script_defs << endl << "char* const_str_" << next_str_i << " = \"" << str << "\";";
 		context.out_script_decls << endl << "extern char* const_str_" << next_str_i << ";";
 		next_str_i += 1;

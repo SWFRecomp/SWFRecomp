@@ -88,14 +88,16 @@ namespace SWFRecomp
 		size_t next_empty_str_i;
 		size_t func_counter;
 		std::unordered_map<std::string, size_t> string_to_id;  // Track declared strings for deduplication
-		std::unordered_map<size_t, std::string> string_id_to_func_name;  // Track functions by string id
-		std::unordered_map<size_t, std::stringstream> string_id_to_stream;  // Track functions' streams by string id
-		std::priority_queue<size_t, std::vector<size_t>, std::greater<size_t>> func_string_ids;  // Track which string ids are functions for table
+		std::unordered_map<size_t, std::string> id_to_string;  // Track the string associated with an id
+		std::unordered_map<size_t, std::stringstream> func_id_to_stream;  // Track functions' streams by func id
+		std::unordered_map<size_t, std::vector<size_t>> func_id_to_param_string_ids;  // Track functions' parameters' string ids
 		std::vector<Constant> constant_pool;  // Maps constant pool index to string ID
 		
 		SWFAction();
-
-		void parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at = nullptr);
+		SWFAction(Context& context, const std::vector<std::string>& initial_strings);
+		
+		bool parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at = nullptr);
+		void recompileStringTable(Context& context);
 		void recompileFunctionTable(Context& context);
 		void declareVariable(Context& context, char* var_name);
 		void declareString(Context& context, const char* str);
