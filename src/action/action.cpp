@@ -337,6 +337,24 @@ namespace SWFRecomp
 								break;
 							}
 							
+							case ACTION_STACK_VALUE_NULL:
+							{
+								out_script << "(null)" << endl;
+								
+								out_script << "\t" << "PUSH_NULL();" << endl;
+								
+								break;
+							}
+							
+							case ACTION_STACK_VALUE_UNDEFINED:
+							{
+								out_script << "(undefined)" << endl;
+								
+								out_script << "\t" << "PUSH_UNDEFINED();" << endl;
+								
+								break;
+							}
+							
 							case ACTION_STACK_VALUE_INT:
 							{
 								out_script << "(integer)" << endl;
