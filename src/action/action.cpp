@@ -323,7 +323,7 @@ namespace SWFRecomp
 							
 							case ACTION_STACK_VALUE_F32:
 							{
-								out_script << "(float)" << endl;
+								out_script << "(f32)" << endl;
 								
 								push_value = (u64) VAL(u32, action_buffer);
 								action_buffer += 4;
@@ -333,6 +333,28 @@ namespace SWFRecomp
 								snprintf(hex_float, 11, "0x%08X", (u32) push_value);
 								
 								out_script << "\t" << "PUSH(ACTION_STACK_VALUE_F32, " << hex_float << ");" << endl;
+								
+								break;
+							}
+							
+							case ACTION_STACK_VALUE_F64:
+							{
+								out_script << "(f64)" << endl;
+								
+								push_value = VAL(u32, action_buffer);
+								action_buffer += 4;
+								push_length += 4;
+								
+								push_value <<= 32;
+								
+								push_value |= VAL(u32, action_buffer);
+								action_buffer += 4;
+								push_length += 4;
+								
+								char hex_float[19];
+								snprintf(hex_float, 19, "0x%016llX", (u64) push_value);
+								
+								out_script << "\t" << "PUSH(ACTION_STACK_VALUE_F64, " << hex_float << ");" << endl;
 								
 								break;
 							}
