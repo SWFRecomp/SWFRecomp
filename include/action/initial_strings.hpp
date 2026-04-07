@@ -7,6 +7,8 @@ char* initial_strings[] =
 	"recomp",
 	"Object",
 	"this",
+	"prototype",
+	"__proto__",
 	"length",
 	"Math",
 	"abs",
