@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <common.h>
+#include <context.hpp>
 #include <stackvalue.hpp>
 
 using std::string;
@@ -75,10 +76,22 @@ namespace SWFRecomp
 		SWF_ACTION_IF = 0x9D
 	};
 	
+	enum FunctionType
+	{
+		FUNC_TYPE_1,
+		FUNC_TYPE_2,
+	};
+	
 	struct Constant
 	{
 		size_t str_id;
 		size_t str_length;
+	};
+	
+	struct Function2Param
+	{
+		u8 reg;
+		size_t string_id;
 	};
 	
 	class SWFAction
@@ -91,6 +104,10 @@ namespace SWFRecomp
 		std::unordered_map<size_t, std::string> id_to_string;  // Track the string associated with an id
 		std::unordered_map<size_t, std::stringstream> func_id_to_stream;  // Track functions' streams by func id
 		std::unordered_map<size_t, std::vector<size_t>> func_id_to_param_string_ids;  // Track functions' parameters' string ids
+		std::unordered_map<size_t, std::vector<Function2Param>> func_id_to_param_regs;  // Track functions' parameters' regs (DefineFunction2)
+		std::unordered_map<size_t, u8> func_id_to_param_reg_counts;  // Track functions' parameters' reg counts (DefineFunction2)
+		std::unordered_map<size_t, u16> func_id_to_param_flags;  // Track functions' parameters' flags (DefineFunction2)
+		std::unordered_map<size_t, int> func_id_to_type;  // Track functions' type
 		std::vector<Constant> constant_pool;  // Maps constant pool index to string ID
 		
 		SWFAction();

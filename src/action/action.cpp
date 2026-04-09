@@ -337,6 +337,19 @@ namespace SWFRecomp
 								break;
 							}
 							
+							case ACTION_STACK_VALUE_REGISTER:
+							{
+								out_script << "(register)" << endl;
+								
+								u8 reg = VAL(u8, action_buffer);
+								action_buffer += 1;
+								push_length += 1;
+								
+								out_script << "\t" << "PUSH(ACTION_STACK_VALUE_REGISTER, " << to_string(reg) << ");" << endl;
+								
+								break;
+							}
+							
 							case ACTION_STACK_VALUE_F64:
 							{
 								out_script << "(f64)" << endl;
@@ -599,27 +612,27 @@ namespace SWFRecomp
 					break;
 				}
 				
-				case SWF_ACTION_STORE_REGISTER:
-				{
-					// Read register number from bytecode
-					u8 register_num = (u8) action_buffer[0];
+				//~ case SWF_ACTION_STORE_REGISTER:
+				//~ {
+					//~ // Read register number from bytecode
+					//~ u8 register_num = (u8) action_buffer[0];
 					
-					out_script << "\t" << "// StoreRegister " << (int)register_num << endl;
+					//~ out_script << "\t" << "// StoreRegister " << (int)register_num << endl;
 					
-					if (context.inside_function2)
-					{
-						// Inside DefineFunction2: store to local registers array
-						out_script << "\t" << "peekVar(app_context, &regs[" << (int)register_num << "]);" << endl;
-					}
-					else
-					{
-						// Outside functions: store to global registers
-						out_script << "\t" << "actionStoreRegister(app_context, " << (int)register_num << ");" << endl;
-					}
+					//~ if (context.inside_function2)
+					//~ {
+						//~ // Inside DefineFunction2: store to local registers array
+						//~ out_script << "\t" << "peekVar(app_context, &regs[" << (int)register_num << "]);" << endl;
+					//~ }
+					//~ else
+					//~ {
+						//~ // Outside functions: store to global registers
+						//~ out_script << "\t" << "actionStoreRegister(app_context, " << (int)register_num << ");" << endl;
+					//~ }
 					
-					action_buffer += length;
-					break;
-				}
+					//~ action_buffer += length;
+					//~ break;
+				//~ }
 				
 				case SWF_ACTION_DEFINE_FUNCTION2:
 				{
@@ -631,179 +644,96 @@ namespace SWFRecomp
 					u16 num_params = VAL(u16, action_buffer);
 					action_buffer += 2;
 					
-					u8 register_count = VAL(u8, action_buffer);
+					u8 reg_count = VAL(u8, action_buffer);
 					action_buffer += 1;
 					
 					u16 flags = VAL(u16, action_buffer);
 					action_buffer += 2;
 					
-					// Parse parameters
-					std::vector<std::pair<u8, std::string>> params;
+					func_id_to_type[func_counter] = FUNC_TYPE_2;
+					func_id_to_param_reg_counts[func_counter] = reg_count;
+					func_id_to_param_flags[func_counter] = flags;
+					
+					// Parse parameter names and registers
+					func_id_to_param_string_ids[func_counter] = std::vector<size_t>();
+					func_id_to_param_regs[func_counter] = std::vector<Function2Param>();
+					std::vector<size_t>& params = func_id_to_param_string_ids[func_counter];
+					std::vector<Function2Param>& param_regs = func_id_to_param_regs[func_counter];
+					
+					SWFTag tag = SWFTag();
+					
+					tag.clearFields();
+					tag.setFieldCount(2);
+					tag.configureNextField(SWF_FIELD_UI8);
+					tag.configureNextField(SWF_FIELD_STRING);
+					
 					for (u16 i = 0; i < num_params; i++)
 					{
-						u8 reg = VAL(u8, action_buffer);
-						action_buffer += 1;
+						tag.parseFields(action_buffer);
+						u8 reg = (u8) tag.fields[0].value;
+						char* param_name = (char*) tag.fields[1].value;
 						
-						char* param_name = action_buffer;
-						size_t param_len = strlen(param_name);
-						action_buffer += param_len + 1;
+						size_t string_id = getStringId(context, param_name);
 						
-						params.push_back(std::make_pair(reg, std::string(param_name)));
+						if (reg == 0)
+						{
+							params.push_back(string_id);
+						}
+						
+						else
+						{
+							Function2Param p;
+							p.reg = reg;
+							p.string_id = string_id;
+							param_regs.push_back(p);
+						}
 					}
 					
 					u16 code_size = VAL(u16, action_buffer);
 					action_buffer += 2;
 					
+					bool anonymous = name_len == 0;
+					
 					// Generate unique function ID
-					static int func2_counter = 0;
-					std::string func_id = std::string("func2_") + (name_len > 0 ? std::string(func_name) : "anonymous") + "_" + std::to_string(func2_counter++);
+					std::string func_id = (!anonymous ? std::string(func_name) : std::string("anonymous")) + "_" + std::to_string(func_counter);
+					
+					size_t string_id = getStringId(context, func_name);
+					func_id_to_stream[func_counter] = std::stringstream();
+					ostream& func_stream = func_id_to_stream[func_counter];
 					
 					// Add function declaration to header (uses app_context)
-					context.out_script_decls << endl << "ActionVar " << func_id << "(SWFAppContext* app_context, ActionVar* args, u32 arg_count, ActionVar* registers, void* this_obj);" << endl;
-					// Generate function definition in out_script_defs
-					context.out_script_defs << endl << endl
-						<< "// DefineFunction2: " << (name_len > 0 ? func_name : "(anonymous)") << endl
-						<< "ActionVar " << func_id << "(SWFAppContext* app_context, ActionVar* args, u32 arg_count, ActionVar* registers, void* this_obj)" << endl
-						<< "{" << endl;
-						
-					// Initialize local registers
-					if (register_count > 0)
-					{
-						context.out_script_defs << "\tActionVar regs[" << (int)register_count << "];" << endl;
-						context.out_script_defs << "\tmemset(regs, 0, sizeof(regs));" << endl;
-					}
+					context.out_script_decls << endl << "void " << func_id << "(SWFAppContext* app_context);" << endl;
 					
-					// Parse flags
-					bool preload_this = (flags & 0x0001);
-					bool preload_arguments = (flags & 0x0002);
-					bool preload_super = (flags & 0x0004);
-					bool preload_root = (flags & 0x0008);
-					bool preload_parent = (flags & 0x0010);
-					bool preload_global = (flags & 0x0020);
-					bool suppress_this = (flags & 0x0080);
-					bool suppress_arguments = (flags & 0x0100);
-					bool suppress_super = (flags & 0x0200);
-					
-					// Preload special variables into registers
-					int next_reg = 1; // Register 0 is reserved
-					
-					if (preload_this && !suppress_this)
-					{
-						context.out_script_defs << "\t// Preload 'this' into register " << next_reg << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].type = ACTION_STACK_VALUE_OBJECT;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].data.numeric_value = (u64)this_obj;" << endl;
-						next_reg++;
-					}
-					
-					if (preload_arguments && !suppress_arguments)
-					{
-						context.out_script_defs << "\t// Preload 'arguments' into register " << next_reg << endl;
-						context.out_script_defs << "\t// Create arguments array object" << endl;
-						context.out_script_defs << "\tASArray* arguments_array = allocArray(arg_count);" << endl;
-						context.out_script_defs << "\tfor (u32 i = 0; i < arg_count; i++) {" << endl;
-						context.out_script_defs << "\t\tsetArrayElement(arguments_array, i, &args[i]);" << endl;
-						context.out_script_defs << "\t}" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].type = ACTION_STACK_VALUE_ARRAY;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].data.numeric_value = (u64)arguments_array;" << endl;
-						next_reg++;
-					}
-					
-					if (preload_super && !suppress_super)
-					{
-						context.out_script_defs << "\t// Preload 'super' into register " << next_reg << endl;
-						context.out_script_defs << "\t// TODO: Create super reference (requires prototype chain support)" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].type = ACTION_STACK_VALUE_UNDEFINED;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].data.numeric_value = 0;" << endl;
-						next_reg++;
-					}
-					
-					if (preload_root)
-					{
-						context.out_script_defs << "\t// Preload '_root' into register " << next_reg << endl;
-						context.out_script_defs << "\textern MovieClip root_movieclip;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].type = ACTION_STACK_VALUE_MOVIECLIP;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].data.numeric_value = (u64)&root_movieclip;" << endl;
-						next_reg++;
-					}
-					
-					if (preload_parent)
-					{
-						context.out_script_defs << "\t// Preload '_parent' into register " << next_reg << endl;
-						context.out_script_defs << "\t// For now, _parent points to _root (no clip hierarchy in NO_GRAPHICS mode)" << endl;
-						context.out_script_defs << "\textern MovieClip root_movieclip;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].type = ACTION_STACK_VALUE_MOVIECLIP;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].data.numeric_value = (u64)&root_movieclip;" << endl;
-						next_reg++;
-					}
-					
-					if (preload_global)
-					{
-						context.out_script_defs << "\t// Preload '_global' into register " << next_reg << endl;
-						context.out_script_defs << "\textern ASObject* global_object;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].type = ACTION_STACK_VALUE_OBJECT;" << endl;
-						context.out_script_defs << "\tregs[" << next_reg << "].data.numeric_value = (u64)global_object;" << endl;
-						next_reg++;
-					}
-					
-					// Bind parameters to registers or variables
-					for (size_t i = 0; i < params.size(); i++)
-					{
-						if (params[i].first == 0)
-						{
-							// Variable parameter
-							context.out_script_defs << "\tif (" << i << " < arg_count) {" << endl;
-							context.out_script_defs << "\t\tsetVariableByName(\"" << params[i].second << "\", &args[" << i << "]);" << endl;
-							context.out_script_defs << "\t}" << endl;
-						}
-						else
-						{
-							// Register parameter
-							context.out_script_defs << "\tif (" << i << " < arg_count) {" << endl;
-							context.out_script_defs << "\t\tregs[" << (int)params[i].first << "] = args[" << i << "];" << endl;
-							context.out_script_defs << "\t}" << endl;
-						}
-					}
+					// Generate function definition
+					func_stream << "// DefineFunction2: " << (!anonymous ? func_name : "(anonymous)") << endl
+								<< "void " << func_id << "(SWFAppContext* app_context)" << endl
+								<< "{" << endl;
 					
 					// Parse function body recursively
-					context.out_script_defs << endl << "\t// Function body (" << code_size << " bytes)" << endl;
+					func_stream << "\t// Function body (" << code_size << " bytes)" << endl << "\t" << endl;
 					
-					// Save the function body boundaries
-					char* func_body_start = action_buffer;
-					char* func_body_end = action_buffer + code_size;
+					bool has_return = parseActions(context, action_buffer, func_stream, action_buffer + code_size);
 					
-					// Create a temporary buffer for the function body that ends with END_OF_ACTIONS
-					// This ensures parseActions stops at the right place
-					char* temp_buffer = (char*)malloc(code_size + 1);
-					memcpy(temp_buffer, func_body_start, code_size);
-					temp_buffer[code_size] = 0x00; // Add END_OF_ACTIONS marker
+					if (!has_return)
+					{
+						func_stream << "\t// Return (void)" << endl
+									<< "\tPUSH_UNDEFINED();" << endl
+									<< "\treturn;" << endl;
+					}
 					
-					// Set flag to indicate we're inside a DefineFunction2 (for local register handling)
-					bool prev_inside_function2 = context.inside_function2;
-					context.inside_function2 = true;
-					
-					char* temp_ptr = temp_buffer;
-					parseActions(context, temp_ptr, context.out_script_defs);
-					free(temp_buffer);
-					
-					// Restore previous state
-					context.inside_function2 = prev_inside_function2;
-					
-					// Advance the actual buffer past the function body
-					action_buffer = func_body_end;
-					
-					context.out_script_defs << endl << "\t// Return undefined if no explicit return" << endl;
-					context.out_script_defs << "\tActionVar ret;" << endl;
-					context.out_script_defs << "\tret.type = ACTION_STACK_VALUE_UNDEFINED;" << endl;
-					context.out_script_defs << "\tret.data.numeric_value = 0;" << endl;
-					context.out_script_defs << "\treturn ret;" << endl;
-					context.out_script_defs << "}" << endl;
+					func_stream << "}";
 					
 					// Generate runtime call to register function
-					out_script << "\t// DefineFunction2: " << (name_len > 0 ? func_name : "(anonymous)") << endl;
-					out_script << "\tactionDefineFunction2(app_context, \"" << (name_len > 0 ? func_name : "") << "\", "
-							   << func_id << ", " << num_params << ", " << (int)register_count << ", " << flags << ");" << endl;
-							
-					// action_buffer has already been advanced by parseActions
+					out_script << "\t// DefineFunction2" << endl;
+					out_script << "\tactionDefineFunction2(app_context, "
+							   << to_string(string_id) << ", "
+							   << func_id << ", "
+							   << "func_params_" << func_counter << ", "
+							   << "func_params_" << func_counter << "_reg_count, "
+							   << "func_params_" << func_counter << "_flags, "
+							   << (anonymous ? "true" : "false") << ");" << endl;
+					
+					func_counter += 1;
 					break;
 				}
 				
@@ -816,6 +746,8 @@ namespace SWFRecomp
 					
 					u16 num_params = VAL(u16, action_buffer);
 					action_buffer += 2;
+					
+					func_id_to_type[func_counter] = FUNC_TYPE_1;
 					
 					// Parse parameter names
 					func_id_to_param_string_ids[func_counter] = std::vector<size_t>();
@@ -911,39 +843,88 @@ namespace SWFRecomp
 		
 		for (size_t func_id = 0; func_id < func_counter; ++func_id)
 		{
-			std::vector<size_t>& params = func_id_to_param_string_ids[func_id];
-			
-			if (params.size() == 0)
+			switch (func_id_to_type[func_id])
 			{
-				context.out_script_decls << endl << "u32* func_params_" << func_id << ";";
-				
-				context.out_script_defs << endl << "u32* func_params_" << func_id
-										<< " = ";
-				
-				context.out_script_defs << "NULL";
-			}
-			
-			else
-			{
-				context.out_script_decls << endl << "u32 func_params_" << func_id << "[" << params.size() << "];";
-				context.out_script_defs << endl << "u32 func_params_" << func_id
-										<< "[] = ";
-				
-				context.out_script_defs << "{ ";
-				
-				for (size_t i = 0; i < params.size(); ++i)
+				case FUNC_TYPE_1:
 				{
-					context.out_script_defs << params[i] << ", ";
+					std::vector<size_t>& params = func_id_to_param_string_ids[func_id];
+					
+					if (params.size() == 0)
+					{
+						context.out_script_decls << endl << "extern u32* func_params_" << func_id << ";";
+						
+						context.out_script_defs << endl << "u32* func_params_" << func_id
+												<< " = ";
+						
+						context.out_script_defs << "NULL;";
+					}
+					
+					else
+					{
+						context.out_script_decls << endl << "extern u32 func_params_" << func_id << "[" << params.size() << "];";
+						context.out_script_defs << endl << "u32 func_params_" << func_id
+												<< "[] = ";
+						
+						context.out_script_defs << "{ ";
+						
+						for (size_t i = 0; i < params.size(); ++i)
+						{
+							context.out_script_defs << params[i] << ", ";
+						}
+						
+						context.out_script_defs << "};";
+					}
+					
+					break;
 				}
 				
-				context.out_script_defs << "}";
+				case FUNC_TYPE_2:
+				{
+					std::vector<Function2Param>& params = func_id_to_param_regs[func_id];
+					
+					if (params.size() == 0)
+					{
+						context.out_script_decls << endl << "extern Function2Param* func_params_" << func_id << ";";
+						
+						context.out_script_defs << endl << "Function2Param* func_params_" << func_id
+												<< " = ";
+						
+						context.out_script_defs << "NULL;";
+					}
+					
+					else
+					{
+						context.out_script_decls << endl << "extern Function2Param func_params_" << func_id << "[" << params.size() << "];";
+						context.out_script_defs << endl << "Function2Param func_params_" << func_id
+												<< "[] = ";
+						
+						context.out_script_defs << "{ ";
+						
+						for (size_t i = 0; i < params.size(); ++i)
+						{
+							context.out_script_defs << "{ ";
+							context.out_script_defs << to_string(params[i].reg) << ", ";
+							context.out_script_defs << to_string(params[i].string_id) << " }, ";
+						}
+						
+						context.out_script_defs << "};";
+						
+						context.out_script_decls << endl << "extern u8 func_params_" << func_id << "_reg_count;";
+						context.out_script_defs << endl << "u8 func_params_" << func_id
+												<< "_reg_count = " << to_string(func_id_to_param_reg_counts[func_id]) << ";";
+						
+						context.out_script_decls << endl << "extern u16 func_params_" << func_id << "_flags;";
+						context.out_script_defs << endl << "u16 func_params_" << func_id
+												<< "_flags = " << to_string(func_id_to_param_flags[func_id]) << ";";
+					}
+					
+					break;
+				}
 			}
 			
-			context.out_script_defs << ";";
-			
-			if (context.num_files == 0 || num_funcs_in_file >= 50)
+			if (context.num_files == 0 || num_funcs_in_file >= context.config.funcs_per_file)
 			{
-				context.out_funcs.push_back(ofstream(context.output_scripts_folder + "funcs_" + to_string(context.num_files) + ".c", std::ios_base::out));
+				context.out_funcs.push_back(ofstream(context.config.output_scripts_folder + "funcs_" + to_string(context.num_files) + ".c", std::ios_base::out));
 				context.num_files += 1;
 				num_funcs_in_file = 0;
 				

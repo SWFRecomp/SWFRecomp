@@ -136,12 +136,12 @@ namespace SWFRecomp
 		RGB.configureNextField(SWF_FIELD_UI8);  // Green
 		RGB.configureNextField(SWF_FIELD_UI8);  // Blue
 		
-		printf("Reading %s...\n", context.swf_path.c_str());
+		printf("Reading %s...\n", context.config.swf_path.c_str());
 		
-		ifstream swf_file(context.swf_path, ios_base::in | ios_base::binary);
+		ifstream swf_file(context.config.swf_path, ios_base::in | ios_base::binary);
 		if (!swf_file.good())
 		{
-			EXC_ARG("SWF file `%s' not found\n", context.swf_path.c_str());
+			EXC_ARG("SWF file `%s' not found\n", context.config.swf_path.c_str());
 		}
 		
 		swf_file.seekg(0, ios_base::end);
@@ -360,13 +360,13 @@ namespace SWFRecomp
 				 << "{" << endl;
 		next_frame_i += 1;
 		
-		context.out_script_header = ofstream(context.output_scripts_folder + "out.h", ios_base::out);
+		context.out_script_header = ofstream(context.config.output_scripts_folder + "out.h", ios_base::out);
 		context.out_script_header << "#pragma once" << endl;
 		
-		context.out_script_defs = ofstream(context.output_scripts_folder + "script_defs.c", ios_base::out);
+		context.out_script_defs = ofstream(context.config.output_scripts_folder + "script_defs.c", ios_base::out);
 		context.out_script_defs << "#include \"script_decls.h\"" << endl;
 		
-		context.out_script_decls = ofstream(context.output_scripts_folder + "script_decls.h", ios_base::out);
+		context.out_script_decls = ofstream(context.config.output_scripts_folder + "script_decls.h", ios_base::out);
 		context.out_script_decls << "#pragma once" << endl << endl
 								 << "#include <action.h>" << endl
 								 << "#include <stackvalue.h>" << endl;
@@ -1037,7 +1037,7 @@ namespace SWFRecomp
 			{
 				context.out_script_header << endl << "void script_" << to_string(next_script_i) << "(SWFAppContext* app_context);";
 				
-				ofstream out_script(context.output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
+				ofstream out_script(context.config.output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
 						   << "void script_" << next_script_i << "(SWFAppContext* app_context)" << endl

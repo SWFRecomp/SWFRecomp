@@ -3,6 +3,8 @@
 #include <fstream>
 #include <vector>
 
+#include <config.hpp>
+
 using std::string;
 using std::ofstream;
 using std::vector;
@@ -11,9 +13,7 @@ namespace SWFRecomp
 {
 	struct Context
 	{
-		string swf_path;
-		string output_tags_folder;
-		string output_scripts_folder;
+		Config config;
 		
 		ofstream tag_main;
 		ofstream constants;
@@ -25,7 +25,5 @@ namespace SWFRecomp
 		size_t num_files;
 		ofstream out_draws;
 		ofstream out_draws_header;
-		
-		bool inside_function2 = false;  // Track if parsing inside DefineFunction2
 	};
 };

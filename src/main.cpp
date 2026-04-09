@@ -12,13 +12,8 @@ int main(int argc, char** argv)
 		return -1;
 	}
 	
-	SWFRecomp::Config config;
-	config.parseFile(argv[1]);
-	
 	SWFRecomp::Context context;
-	context.swf_path = config.swf_path;
-	context.output_tags_folder = "RecompiledTags";
-	context.output_scripts_folder = "RecompiledScripts";
+	context.config.parseFile(argv[1]);
 	
 	SWFRecomp::recompile(context);
 	
