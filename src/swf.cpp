@@ -1146,7 +1146,7 @@ namespace SWFRecomp
 				context.tag_main << "\t" << "tagScriptLimits("
 								 << to_string((u16) tag.fields[0].value) << ", "
 								 << to_string((u16) tag.fields[1].value) << ");" << endl;
-								
+				
 				break;
 			}
 			
