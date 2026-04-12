@@ -22,10 +22,12 @@ namespace SWFRecomp
 		string_view output_tags_folder_view = parseStringView("output_tags_folder");
 		string_view output_scripts_folder_view = parseStringView("output_scripts_folder");
 		string_view funcs_per_file_view = parseStringViewOrEmpty("funcs_per_file");
+		string_view prelude_swf_path_view = parseStringViewOrEmpty("prelude_swf_path");
 		
 		swf_path = string(swf_path_view);
 		output_tags_folder = string(output_tags_folder_view);
 		output_scripts_folder = string(output_scripts_folder_view);
+		prelude_swf_path = string(prelude_swf_path_view);
 		
 		std::string funcs_per_file_str = string(funcs_per_file_view);
 		

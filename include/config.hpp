@@ -15,6 +15,7 @@ namespace SWFRecomp
 		std::string swf_path;
 		std::string output_tags_folder;
 		std::string output_scripts_folder;
+		std::string prelude_swf_path;
 		size_t funcs_per_file;
 		
 		Config();

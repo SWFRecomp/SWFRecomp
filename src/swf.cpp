@@ -79,28 +79,6 @@ namespace SWFRecomp
 		
 		frame_count = *((u16*) swf_buffer);
 		swf_buffer += 2;
-		
-		printf("\n");
-		
-		printf("SWF version: %d\n", version);
-		printf("Decompressed file length: %d\n", file_length);
-		
-		printf("\n");
-		
-		printf("Window dimensions:\n");
-		printf("xmin: %d twips\n", frame_size.xmin);
-		printf("xmax: %d twips\n", frame_size.xmax);
-		printf("ymin: %d twips\n", frame_size.ymin);
-		printf("ymax: %d twips\n", frame_size.ymax);
-		
-		printf("\n");
-		
-		printf("Which means resolution is %dx%d\n", (frame_size.xmax - frame_size.xmin)/20, (frame_size.ymax - frame_size.ymin)/20);
-		
-		printf("\n");
-		
-		printf("FPS: %d\n", framerate >> 8);
-		printf("SWF frame count: %d\n", frame_count);
 	}
 	
 	
@@ -110,22 +88,23 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(Context& context) : num_finished_tags(0),
-								 next_frame_i(0),
-								 another_frame(false),
-								 next_script_i(0),
-								 last_queued_script(0),
-								 current_tri(0),
-								 current_transform(0),
-								 current_color(0),
-								 current_uninv(0),
-								 current_gradient(0),
-								 current_bitmap_pixel(0),
-								 current_bitmap(0),
-								 current_glyph(0),
-								 current_text(0),
-								 current_cxform(0),
-								 jpeg_tables(nullptr)
+	SWF::SWF(Context& context, std::string swf_path) : num_finished_tags(0),
+													   next_frame_i(0),
+													   another_frame(false),
+													   next_script_i(0),
+													   next_init_script_i(0),
+													   last_queued_script(0),
+													   current_tri(0),
+													   current_transform(0),
+													   current_color(0),
+													   current_uninv(0),
+													   current_gradient(0),
+													   current_bitmap_pixel(0),
+													   current_bitmap(0),
+													   current_glyph(0),
+													   current_text(0),
+													   current_cxform(0),
+													   jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
 		//
@@ -136,12 +115,10 @@ namespace SWFRecomp
 		RGB.configureNextField(SWF_FIELD_UI8);  // Green
 		RGB.configureNextField(SWF_FIELD_UI8);  // Blue
 		
-		printf("Reading %s...\n", context.config.swf_path.c_str());
-		
-		ifstream swf_file(context.config.swf_path, ios_base::in | ios_base::binary);
+		ifstream swf_file(swf_path, ios_base::in | ios_base::binary);
 		if (!swf_file.good())
 		{
-			EXC_ARG("SWF file `%s' not found\n", context.config.swf_path.c_str());
+			EXC_ARG("SWF file `%s' not found\n", swf_path.c_str());
 		}
 		
 		swf_file.seekg(0, ios_base::end);
@@ -160,16 +137,12 @@ namespace SWFRecomp
 			{
 				// uncompressed
 				
-				printf("SWF is uncompressed.\n");
-				
 				break;
 			}
 			
 			case 'C':
 			{
 				// zlib
-				
-				printf("SWF is compressed with zlib. Decompressing...\n");
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
@@ -188,8 +161,6 @@ namespace SWFRecomp
 				// Yeah, Adobe definitely screwed the format up on this one.
 				// I'm not sure if they just didn't get it, or what...
 				// Whatever this mangled garbage is, it's NOT REAL LZMA.
-				
-				printf("SWF is compressed with LZMA. Decompressing...\n");
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
@@ -237,7 +208,10 @@ namespace SWFRecomp
 		cur_pos = swf_buffer + 8;
 		
 		header.loadOtherData(cur_pos);
-		
+	}
+	
+	void SWF::openSWF(Context& context)
+	{
 		std::string version = to_string(header.version);
 		std::string width = to_string(FRAME_WIDTH/20);
 		std::string height = to_string(FRAME_HEIGHT/20);
@@ -271,89 +245,6 @@ namespace SWFRecomp
 						  << "\t" << "0.0f," << endl
 						  << "\t" << "1.0f," << endl
 						  << "};";
-	}
-	
-	void SWF::parseMatrix(MATRIX& matrix_out)
-	{
-		u32 cur_byte_bits_left = 8;
-		
-		SWFTag matrix_tag;
-		
-		matrix_tag.clearFields();
-		matrix_tag.setFieldCount(1);
-		
-		matrix_tag.configureNextField(SWF_FIELD_UB, 1);
-		
-		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-		
-		bool has_scale = matrix_tag.fields[0].value & 1;
-		
-		matrix_out.scale_x = 1;
-		matrix_out.scale_y = 1;
-		
-		if (has_scale)
-		{
-			matrix_tag.clearFields();
-			matrix_tag.setFieldCount(3);
-			
-			matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
-			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
-			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
-			
-			matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-			
-			matrix_out.scale_x = VAL(float, &matrix_tag.fields[1].value);
-			matrix_out.scale_y = VAL(float, &matrix_tag.fields[2].value);
-		}
-		
-		matrix_tag.clearFields();
-		matrix_tag.setFieldCount(1);
-		
-		matrix_tag.configureNextField(SWF_FIELD_UB, 1);
-		
-		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-		
-		bool has_rotate = matrix_tag.fields[0].value & 1;
-		
-		matrix_out.rotateskew_0 = 0;
-		matrix_out.rotateskew_1 = 0;
-		
-		if (has_rotate)
-		{
-			matrix_tag.clearFields();
-			matrix_tag.setFieldCount(3);
-			
-			matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
-			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
-			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
-			
-			matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-			
-			matrix_out.rotateskew_0 = VAL(float, &matrix_tag.fields[1].value);
-			matrix_out.rotateskew_1 = VAL(float, &matrix_tag.fields[2].value);
-		}
-		
-		matrix_tag.clearFields();
-		matrix_tag.setFieldCount(3);
-		
-		matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
-		matrix_tag.configureNextField(SWF_FIELD_SB, 0);
-		matrix_tag.configureNextField(SWF_FIELD_SB, 0);
-		
-		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
-		
-		matrix_out.translate_x = (s32) matrix_tag.fields[1].value;
-		matrix_out.translate_y = (s32) matrix_tag.fields[2].value;
-		
-		if (cur_byte_bits_left != 8)
-		{
-			cur_pos += 1;
-		}
-	}
-	
-	void SWF::parseAllTags(Context& context)
-	{
-		SWFTag tag;
 		
 		context.tag_main << "#include <recomp.h>" << endl << endl
 				 << "#include <out.h>" << endl
@@ -434,6 +325,119 @@ namespace SWFRecomp
 					<< "\t" << "0.0f," << endl;
 		
 		current_cxform += 1;
+	}
+	
+	void SWF::parseMatrix(MATRIX& matrix_out)
+	{
+		u32 cur_byte_bits_left = 8;
+		
+		SWFTag matrix_tag;
+		
+		matrix_tag.clearFields();
+		matrix_tag.setFieldCount(1);
+		
+		matrix_tag.configureNextField(SWF_FIELD_UB, 1);
+		
+		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+		
+		bool has_scale = matrix_tag.fields[0].value & 1;
+		
+		matrix_out.scale_x = 1;
+		matrix_out.scale_y = 1;
+		
+		if (has_scale)
+		{
+			matrix_tag.clearFields();
+			matrix_tag.setFieldCount(3);
+			
+			matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			
+			matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+			
+			matrix_out.scale_x = VAL(float, &matrix_tag.fields[1].value);
+			matrix_out.scale_y = VAL(float, &matrix_tag.fields[2].value);
+		}
+		
+		matrix_tag.clearFields();
+		matrix_tag.setFieldCount(1);
+		
+		matrix_tag.configureNextField(SWF_FIELD_UB, 1);
+		
+		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+		
+		bool has_rotate = matrix_tag.fields[0].value & 1;
+		
+		matrix_out.rotateskew_0 = 0;
+		matrix_out.rotateskew_1 = 0;
+		
+		if (has_rotate)
+		{
+			matrix_tag.clearFields();
+			matrix_tag.setFieldCount(3);
+			
+			matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			matrix_tag.configureNextField(SWF_FIELD_FB, 0);
+			
+			matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+			
+			matrix_out.rotateskew_0 = VAL(float, &matrix_tag.fields[1].value);
+			matrix_out.rotateskew_1 = VAL(float, &matrix_tag.fields[2].value);
+		}
+		
+		matrix_tag.clearFields();
+		matrix_tag.setFieldCount(3);
+		
+		matrix_tag.configureNextField(SWF_FIELD_UB, 5, true);
+		matrix_tag.configureNextField(SWF_FIELD_SB, 0);
+		matrix_tag.configureNextField(SWF_FIELD_SB, 0);
+		
+		matrix_tag.parseFieldsContinue(cur_pos, cur_byte_bits_left);
+		
+		matrix_out.translate_x = (s32) matrix_tag.fields[1].value;
+		matrix_out.translate_y = (s32) matrix_tag.fields[2].value;
+		
+		if (cur_byte_bits_left != 8)
+		{
+			cur_pos += 1;
+		}
+	}
+	
+	void SWF::parsePrelude(Context& context, char* prelude_buffer)
+	{
+		char* old_pos = cur_pos;
+		cur_pos = prelude_buffer;
+		
+		SWFTag tag;
+		
+		// prime the loop
+		tag.code = (TagType) 1;
+		
+		while (tag.code != 0)
+		{
+			tag.parseHeader(cur_pos);
+			
+			if (tag.code == SWF_TAG_DO_INIT_ACTION)
+			{
+				interpretTag(context, tag);
+			}
+			
+			else
+			{
+				cur_pos += tag.length;
+			}
+			
+			tag.clearFields();
+		}
+		
+		cur_pos = old_pos;
+	}
+	
+	void SWF::parseAllTags(Context& context)
+	{
+		SWFTag tag;
 		
 		// prime the loop
 		tag.code = (TagType) 1;
@@ -444,7 +448,10 @@ namespace SWFRecomp
 			interpretTag(context, tag);
 			tag.clearFields();
 		}
-		
+	}
+	
+	void SWF::closeSWF(Context& context)
+	{
 		context.tag_main << endl << endl
 						 << "typedef void (*frame_func)();" << endl << endl
 						 << "frame_func frame_funcs[] =" << endl
@@ -457,14 +464,14 @@ namespace SWFRecomp
 		
 		if (current_bitmap_pixel)
 		{
-			tag_init << endl << "\tfinalizeBitmaps();";
+			context.tag_init << endl << "\tfinalizeBitmaps();";
 		}
 		
 		context.tag_main << "};" << endl
 						 << endl
 						 << "void tagInit(SWFAppContext* app_context)" << endl
 						 << "{"
-						 << tag_init.str() << endl
+						 << context.tag_init.str() << endl
 						 << "}";
 		
 		context.out_draws << endl << endl;
@@ -691,7 +698,7 @@ namespace SWFRecomp
 				
 				char_id_to_bitmap_id[char_id] = current_bitmap;
 				
-				tag_init << endl
+				context.tag_init << endl
 						 << "\tdefineBitmap("
 						 << to_string(4*bitmap_start) << ", "
 						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
@@ -1021,7 +1028,7 @@ namespace SWFRecomp
 					}
 					
 					size_t text_size = current_text - text_start;
-					tag_init << endl
+					context.tag_init << endl
 							 << "\t" << "tagDefineText("
 							 << "app_context, "
 							 << to_string(char_id) << ", "
@@ -1047,7 +1054,7 @@ namespace SWFRecomp
 				
 				next_script_i += 1;
 				
-				(void) action.parseActions(context, cur_pos, out_script);
+				(void) action.parseActions(context, cur_pos, out_script, true, false);
 				
 				out_script << "}";
 				
@@ -1126,6 +1133,28 @@ namespace SWFRecomp
 			case SWF_TAG_ENABLE_DEBUGGER:
 			{
 				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DO_INIT_ACTION:
+			{
+				context.out_script_header << endl << "void init_script_" << to_string(next_init_script_i) << "(SWFAppContext* app_context);";
+				
+				ofstream out_script(context.config.output_scripts_folder + "init_script_" + to_string(next_init_script_i) + ".c", ios_base::out);
+				out_script << "#include <recomp.h>" << endl
+						   << "#include \"script_decls.h\"" << endl << endl
+						   << "void init_script_" << next_init_script_i << "(SWFAppContext* app_context)" << endl
+						   << "{" << endl;
+				
+				next_init_script_i += 1;
+				
+				u16 sprite_id = VAL(u16, cur_pos);
+				cur_pos += 2;
+				
+				(void) action.parseActions(context, cur_pos, out_script, true, false);
+				
+				out_script << "}";
 				
 				break;
 			}

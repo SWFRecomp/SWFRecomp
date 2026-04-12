@@ -113,7 +113,7 @@ namespace SWFRecomp
 		SWFAction();
 		SWFAction(Context& context, const std::vector<std::string>& initial_strings);
 		
-		bool parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at = nullptr);
+		bool parseActions(Context& context, char*& action_buffer, ostream& out_script, bool should_emit_return, bool is_function, char* stop_at = nullptr);
 		void recompileStringTable(Context& context);
 		void recompileFunctionTable(Context& context);
 		void declareVariable(Context& context, char* var_name);

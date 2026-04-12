@@ -47,9 +47,28 @@ namespace SWFRecomp
 		context.out_draws_header = ofstream(string("") + context.config.output_tags_folder + "draws.h", ios_base::out);
 		context.out_draws_header << "#pragma once" << endl;
 		
-		SWF swf = SWF(context);
+		SWF swf = SWF(context, context.config.swf_path);
+		
+		swf.openSWF(context);
+		
+		std::string prelude_swf_path = context.config.prelude_swf_path;
+		
+		if (prelude_swf_path != "")
+		{
+			SWF prelude = SWF(context, prelude_swf_path);
+			
+			swf.parsePrelude(context, prelude.cur_pos);
+			
+			for (size_t i = 0; i < swf.next_init_script_i; ++i)
+			{
+				context.tag_init << endl
+								 << "\tinit_script_" << to_string(i) << "(app_context);";
+			}
+		}
 		
 		swf.parseAllTags(context);
+		
+		swf.closeSWF(context);
 		
 		context.tag_main.close();
 		context.constants.close();

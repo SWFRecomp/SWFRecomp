@@ -157,9 +157,8 @@ namespace SWFRecomp
 		size_t next_frame_i;
 		bool another_frame;
 		size_t next_script_i;
+		size_t next_init_script_i;
 		size_t last_queued_script;
-		
-		std::stringstream tag_init;
 		
 		std::stringstream shape_data;
 		size_t current_tri;
@@ -192,10 +191,13 @@ namespace SWFRecomp
 		SWFTag RGB;
 		
 		SWF();
-		SWF(Context& context);
+		SWF(Context& context, std::string swf_path);
 		
+		void openSWF(Context& context);
 		void parseMatrix(MATRIX& matrix_out);
+		void parsePrelude(Context& context, char* prelude_buffer);
 		void parseAllTags(Context& context);
+		void closeSWF(Context& context);
 		void interpretTag(Context& context, SWFTag& tag);
 		void recompileMatrix(MATRIX matrix, std::stringstream& out);
 		FillStyle* parseFillStyles(u16 fill_style_count);

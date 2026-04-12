@@ -14,6 +14,7 @@ char* initial_strings[] =
 	"prototype",
 	"__proto__",
 	"length",
+	"ASSetPropFlags",
 	"Math",
 	"abs",
 	"x",

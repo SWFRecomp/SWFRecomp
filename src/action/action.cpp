@@ -28,7 +28,7 @@ namespace SWFRecomp
 		}
 	}
 	
-	bool SWFAction::parseActions(Context& context, char*& action_buffer, ostream& out_script, char* stop_at)
+	bool SWFAction::parseActions(Context& context, char*& action_buffer, ostream& out_script, bool should_emit_return, bool is_function, char* stop_at)
 	{
 		SWFActionType code = SWF_ACTION_CONSTANT_POOL;
 		u16 length;
@@ -42,6 +42,7 @@ namespace SWFRecomp
 		while (code != SWF_ACTION_END_OF_ACTIONS && action_buffer != stop_at)
 		{
 			code = (SWFActionType) (u8) action_buffer[0];
+			
 			action_buffer += 1;
 			length = 0;
 			
@@ -608,31 +609,21 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Extends - Set up prototype chain for inheritance" << endl
 							   << "\t" << "actionExtends(app_context);" << endl;
-							
+					
 					break;
 				}
 				
-				//~ case SWF_ACTION_STORE_REGISTER:
-				//~ {
-					//~ // Read register number from bytecode
-					//~ u8 register_num = (u8) action_buffer[0];
+				case SWF_ACTION_STORE_REGISTER:
+				{
+					// Read register number from bytecode
+					u8 register_num = (u8) action_buffer[0];
 					
-					//~ out_script << "\t" << "// StoreRegister " << (int)register_num << endl;
+					out_script << "\t" << "// StoreRegister " << (int)register_num << endl;
+					out_script << "\t" << "actionStoreRegister(app_context, " << (int)register_num << ");" << endl;
 					
-					//~ if (context.inside_function2)
-					//~ {
-						//~ // Inside DefineFunction2: store to local registers array
-						//~ out_script << "\t" << "peekVar(app_context, &regs[" << (int)register_num << "]);" << endl;
-					//~ }
-					//~ else
-					//~ {
-						//~ // Outside functions: store to global registers
-						//~ out_script << "\t" << "actionStoreRegister(app_context, " << (int)register_num << ");" << endl;
-					//~ }
-					
-					//~ action_buffer += length;
-					//~ break;
-				//~ }
+					action_buffer += length;
+					break;
+				}
 				
 				case SWF_ACTION_DEFINE_FUNCTION2:
 				{
@@ -712,14 +703,7 @@ namespace SWFRecomp
 					// Parse function body recursively
 					func_stream << "\t// Function body (" << code_size << " bytes)" << endl << "\t" << endl;
 					
-					bool has_return = parseActions(context, action_buffer, func_stream, action_buffer + code_size);
-					
-					if (!has_return)
-					{
-						func_stream << "\t// Return (void)" << endl
-									<< "\tPUSH_UNDEFINED();" << endl
-									<< "\treturn;" << endl;
-					}
+					bool has_return = parseActions(context, action_buffer, func_stream, true, true, action_buffer + code_size);
 					
 					func_stream << "}";
 					
@@ -782,14 +766,7 @@ namespace SWFRecomp
 					// Parse function body recursively
 					func_stream << "\t// Function body (" << code_size << " bytes)" << endl << "\t" << endl;
 					
-					bool has_return = parseActions(context, action_buffer, func_stream, action_buffer + code_size);
-					
-					if (!has_return)
-					{
-						func_stream << "\t// Return (void)" << endl
-									<< "\tPUSH_UNDEFINED();" << endl
-									<< "\treturn;" << endl;
-					}
+					bool has_return = parseActions(context, action_buffer, func_stream, true, true, action_buffer + code_size);
 					
 					func_stream << "}";
 					
@@ -813,6 +790,17 @@ namespace SWFRecomp
 					break;
 				}
 			}
+		}
+		
+		if (should_emit_return)
+		{
+			if (is_function && !last_action_return)
+			{
+				out_script << "\t// Return (void)" << endl
+						   << "\tPUSH_UNDEFINED();" << endl;
+			}
+			
+			out_script << "\treturn;" << endl;
 		}
 		
 		return last_action_return;
@@ -908,15 +896,15 @@ namespace SWFRecomp
 						}
 						
 						context.out_script_defs << "};";
-						
-						context.out_script_decls << endl << "extern u8 func_params_" << func_id << "_reg_count;";
-						context.out_script_defs << endl << "u8 func_params_" << func_id
-												<< "_reg_count = " << to_string(func_id_to_param_reg_counts[func_id]) << ";";
-						
-						context.out_script_decls << endl << "extern u16 func_params_" << func_id << "_flags;";
-						context.out_script_defs << endl << "u16 func_params_" << func_id
-												<< "_flags = " << to_string(func_id_to_param_flags[func_id]) << ";";
 					}
+					
+					context.out_script_decls << endl << "extern u8 func_params_" << func_id << "_reg_count;";
+					context.out_script_defs << endl << "u8 func_params_" << func_id
+											<< "_reg_count = " << to_string(func_id_to_param_reg_counts[func_id]) << ";";
+					
+					context.out_script_decls << endl << "extern u16 func_params_" << func_id << "_flags;";
+					context.out_script_defs << endl << "u16 func_params_" << func_id
+											<< "_flags = " << to_string(func_id_to_param_flags[func_id]) << ";";
 					
 					break;
 				}
