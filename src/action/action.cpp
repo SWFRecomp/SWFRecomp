@@ -103,7 +103,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Stop" << endl
 							   << "\t" << "quit_swf = 1;" << endl;
-							
+					
 					break;
 				}
 				
@@ -111,7 +111,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Add" << endl
 							   << "\t" << "actionAdd(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -119,7 +119,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Subtract" << endl
 							   << "\t" << "actionSubtract(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -127,7 +127,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Multiply" << endl
 							   << "\t" << "actionMultiply(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -135,7 +135,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Divide" << endl
 							   << "\t" << "actionDivide(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -143,7 +143,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Equals" << endl
 							   << "\t" << "actionEquals(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -151,15 +151,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Less" << endl
 							   << "\t" << "actionLess(app_context);" << endl;
-							
-					break;
-				}
-				
-				case SWF_ACTION_LESS2:
-				{
-					out_script << "\t" << "// Less2" << endl
-							   << "\t" << "actionLess2(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -167,7 +159,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// And" << endl
 							   << "\t" << "actionAnd(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -175,7 +167,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Or" << endl
 							   << "\t" << "actionOr(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -183,7 +175,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Not" << endl
 							   << "\t" << "actionNot(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -228,7 +220,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Pop" << endl
 							   << "\t" << "POP();" << endl;
-							
+					
 					break;
 				}
 				
@@ -250,7 +242,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Trace" << endl
 							   << "\t" << "actionTrace(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -258,7 +250,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// GetTime" << endl
 							   << "\t" << "actionGetTime(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -469,7 +461,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Delete" << endl
 							   << "\t" << "actionDelete(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -488,7 +480,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// DefineLocal" << endl
 							   << "\t" << "actionDefineLocal(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -496,7 +488,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// CallFunction" << endl
 							   << "\t" << "actionCallFunction(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -512,7 +504,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// NewObject" << endl
 							   << "\t" << "actionNewObject(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -520,7 +512,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// DefineLocal2" << endl
 							   << "\t" << "actionDefineLocal2(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -528,7 +520,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// InitArray" << endl
 							   << "\t" << "actionInitArray(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -536,7 +528,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// InitObject" << endl
 							   << "\t" << "actionInitObject(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -562,6 +554,22 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_ADD2:
+				{
+					out_script << "\t" << "// Add2" << endl
+							   << "\t" << "actionAdd2(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_LESS2:
+				{
+					out_script << "\t" << "// Less2" << endl
+							   << "\t" << "actionLess2(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_GET_MEMBER:
 				{
 					out_script << "\t" << "// GetMember" << endl
@@ -574,7 +582,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// SetMember" << endl
 							   << "\t" << "actionSetMember(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -582,7 +590,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// CallMethod" << endl
 							   << "\t" << "actionCallMethod(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -590,7 +598,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// NewMethod" << endl
 							   << "\t" << "actionNewMethod(app_context);" << endl;
-							
+					
 					break;
 				}
 				
@@ -598,7 +606,7 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// InstanceOf" << endl
 							   << "\t" << "actionInstanceOf(app_context);" << endl;
-							
+					
 					break;
 				}
 				
