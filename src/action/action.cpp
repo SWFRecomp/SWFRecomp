@@ -155,6 +155,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_LESS2:
+				{
+					out_script << "\t" << "// Less2" << endl
+							   << "\t" << "actionLess2(app_context);" << endl;
+							
+					break;
+				}
+				
 				case SWF_ACTION_AND:
 				{
 					out_script << "\t" << "// And" << endl

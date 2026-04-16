@@ -18,4 +18,6 @@ char* initial_strings[] =
 	"Math",
 	"abs",
 	"x",
+	"y",
+	"z",
 };
