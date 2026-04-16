@@ -570,6 +570,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_EQUALS2:
+				{
+					out_script << "\t" << "// Equals2" << endl
+							   << "\t" << "actionEquals2(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_GET_MEMBER:
 				{
 					out_script << "\t" << "// GetMember" << endl
