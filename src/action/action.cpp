@@ -500,6 +500,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_MODULO:
+				{
+					out_script << "\t" << "// Modulo" << endl
+							   << "\t" << "actionModulo(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_NEW_OBJECT:
 				{
 					out_script << "\t" << "// NewObject" << endl
