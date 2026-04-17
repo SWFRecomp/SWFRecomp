@@ -8,6 +8,7 @@ char* initial_strings[] =
 	"_parent",
 	"recomp",
 	"Object",
+	"Number",
 	"this",
 	"arguments",
 	"super",
@@ -20,4 +21,9 @@ char* initial_strings[] =
 	"x",
 	"y",
 	"z",
+	"NaN",
+	"POSITIVE_INFINITY",
+	"NEGATIVE_INFINITY",
+	"MAX_VALUE",
+	"MIN_VALUE",
 };
