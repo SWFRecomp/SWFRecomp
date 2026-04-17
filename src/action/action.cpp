@@ -602,6 +602,22 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_INCREMENT:
+				{
+					out_script << "\t" << "// Increment" << endl
+							   << "\t" << "actionIncrement(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_DECREMENT:
+				{
+					out_script << "\t" << "// Decrement" << endl
+							   << "\t" << "actionDecrement(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_CALL_METHOD:
 				{
 					out_script << "\t" << "// CallMethod" << endl
@@ -633,6 +649,54 @@ namespace SWFRecomp
 					out_script << "\t" << "// Enumerate2" << endl
 							   << "\t" << "actionEnumerate2(app_context, str_"
 							   << to_string(next_empty_str_i - 1) << ");" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_BIT_AND:
+				{
+					out_script << "\t" << "// BitAnd" << endl
+							   << "\t" << "actionBitAnd(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_BIT_OR:
+				{
+					out_script << "\t" << "// BitOr" << endl
+							   << "\t" << "actionBitOr(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_BIT_XOR:
+				{
+					out_script << "\t" << "// BitXor" << endl
+							   << "\t" << "actionBitXor(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_BIT_LSHIFT:
+				{
+					out_script << "\t" << "// BitLShift" << endl
+							   << "\t" << "actionBitLShift(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_BIT_RSHIFT:
+				{
+					out_script << "\t" << "// BitRShift" << endl
+							   << "\t" << "actionBitRShift(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_BIT_URSHIFT:
+				{
+					out_script << "\t" << "// BitURShift" << endl
+							   << "\t" << "actionBitURShift(app_context);" << endl;
 					
 					break;
 				}
