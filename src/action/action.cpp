@@ -61,6 +61,17 @@ namespace SWFRecomp
 					labels.push_back(action_buffer + length + ((s64) offset));
 					break;
 				}
+				
+				case SWF_ACTION_DEFINE_FUNCTION:
+				case SWF_ACTION_DEFINE_FUNCTION2:
+				{
+					action_buffer += length - 2;
+					
+					u16 code_size = VAL(u16, action_buffer);
+					action_buffer += code_size + 2;
+					
+					break;
+				}
 			}
 			
 			action_buffer += length;
@@ -885,6 +896,14 @@ namespace SWFRecomp
 					
 					break;
 				}
+			}
+		}
+		
+		for (const char* ptr : labels)
+		{
+			if (action_buffer == ptr)
+			{
+				out_script << "label_" << to_string((s16) (ptr - action_buffer_start)) << ":" << endl;
 			}
 		}
 		
