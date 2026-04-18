@@ -915,7 +915,10 @@ namespace SWFRecomp
 						   << "\tPUSH_UNDEFINED();" << endl;
 			}
 			
-			out_script << "\treturn;" << endl;
+			if (!last_action_return)
+			{
+				out_script << "\treturn;" << endl;
+			}
 		}
 		
 		return last_action_return;
