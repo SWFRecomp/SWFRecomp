@@ -918,6 +918,21 @@ namespace SWFRecomp
 		}
 		
 		context.out_script_defs << "};";
+		
+		context.out_script_decls << endl << "u32 str_len_table["
+								 << next_str_i << "];";
+		
+		context.out_script_defs << endl << "u32 str_len_table["
+								<< next_str_i << "] ="
+								<< endl << "{"
+								<< endl << "\t0," << endl;
+		
+		for (size_t i = 1; i < next_str_i; ++i)
+		{
+			context.out_script_defs << "\t" << strlen(id_to_string[i].c_str()) << "," << endl;
+		}
+		
+		context.out_script_defs << "};";
 	}
 	
 	void SWFAction::recompileFunctionTable(Context& context)
