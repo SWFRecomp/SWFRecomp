@@ -553,11 +553,8 @@ namespace SWFRecomp
 				
 				case SWF_ACTION_TYPEOF:
 				{
-					declareEmptyString(context, 17);
-					
-					out_script << "\t" << "// Typeof" << endl
-							   << "\t" << "actionTypeof(app_context, str_"
-							   << to_string(next_empty_str_i - 1) << ");" << endl;
+					out_script << "\t" << "// TypeOf" << endl
+							   << "\t" << "actionTypeOf(app_context);" << endl;
 					
 					break;
 				}
@@ -593,6 +590,22 @@ namespace SWFRecomp
 				{
 					out_script << "\t" << "// Equals2" << endl
 							   << "\t" << "actionEquals2(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_TO_NUMBER:
+				{
+					out_script << "\t" << "// ToNumber" << endl
+							   << "\t" << "actionToNumber(app_context);" << endl;
+					
+					break;
+				}
+				
+				case SWF_ACTION_TO_STRING:
+				{
+					out_script << "\t" << "// ToString" << endl
+							   << "\t" << "actionToString(app_context);" << endl;
 					
 					break;
 				}

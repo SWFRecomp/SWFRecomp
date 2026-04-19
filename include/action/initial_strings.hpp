@@ -11,6 +11,7 @@ char* initial_strings[] =
 	"toString",
 	"valueOf",
 	"Number",
+	"String",
 	"this",
 	"arguments",
 	"super",
