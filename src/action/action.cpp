@@ -362,6 +362,19 @@ namespace SWFRecomp
 								break;
 							}
 							
+							case ACTION_STACK_VALUE_BOOLEAN:
+							{
+								out_script << "(Boolean)" << endl;
+								
+								bool b = VAL(u8, action_buffer);
+								action_buffer += 1;
+								push_length += 1;
+								
+								out_script << "\t" << "PUSH(ACTION_STACK_VALUE_BOOLEAN, " << to_string(b) << ");" << endl;
+								
+								break;
+							}
+							
 							case ACTION_STACK_VALUE_F64:
 							{
 								out_script << "(f64)" << endl;
