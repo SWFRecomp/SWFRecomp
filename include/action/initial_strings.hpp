@@ -14,6 +14,8 @@ char* initial_strings[] =
 	"Number",
 	"String",
 	"Array",
+	"push",
+	"pop",
 	"this",
 	"arguments",
 	"super",
