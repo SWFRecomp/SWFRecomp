@@ -390,7 +390,7 @@ namespace SWFRecomp
 								push_length += 4;
 								
 								char hex_float[19];
-								snprintf(hex_float, 19, "0x%016lX", (u64) push_value);
+								snprintf(hex_float, 19, "0x%016llX", (u64) push_value);
 								
 								out_script << "\t" << "PUSH(ACTION_STACK_VALUE_F64, " << hex_float << ");" << endl;
 								
