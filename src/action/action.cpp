@@ -952,7 +952,7 @@ namespace SWFRecomp
 	
 	void SWFAction::recompileStringTable(Context& context)
 	{
-		context.out_script_decls << endl << "char* str_table["
+		context.out_script_decls << endl << "extern char* str_table["
 								 << next_str_i << "];";
 		
 		context.out_script_defs << endl << "char* str_table["
@@ -967,7 +967,7 @@ namespace SWFRecomp
 		
 		context.out_script_defs << "};";
 		
-		context.out_script_decls << endl << "u32 str_len_table["
+		context.out_script_decls << endl << "extern u32 str_len_table["
 								 << next_str_i << "];";
 		
 		context.out_script_defs << endl << "u32 str_len_table["
