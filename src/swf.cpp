@@ -94,6 +94,7 @@ namespace SWFRecomp
 													   next_script_i(0),
 													   next_init_script_i(0),
 													   last_queued_script(0),
+													   last_queued_init_script(0),
 													   current_tri(0),
 													   current_transform(0),
 													   current_color(0),
@@ -605,6 +606,14 @@ namespace SWFRecomp
 			
 			case SWF_TAG_SHOW_FRAME:
 			{
+				while (last_queued_init_script < next_init_script_i)
+				{
+					context.tag_main << "\t" << "init_script_" << to_string(last_queued_init_script) << "(app_context);" << endl;
+					last_queued_init_script += 1;
+				}
+				
+				// TODO: move calls to PlaceObject/PlaceObject2 tags here
+				
 				while (last_queued_script < next_script_i)
 				{
 					context.tag_main << "\t" << "script_" << to_string(last_queued_script) << "(app_context);" << endl;
@@ -1195,19 +1204,19 @@ namespace SWFRecomp
 					//~ entry_offsets.push_back((u16) tag.fields[i].value);
 				//~ }
 				
-				for (u16 i = 0; i < num_entries; ++i)
-				{
-					size_t glyph_start = 3*current_tri;
+				//~ for (u16 i = 0; i < num_entries; ++i)
+				//~ {
+					//~ size_t glyph_start = 3*current_tri;
 					
-					interpretShape(context, tag);
+					//~ interpretShape(context, tag);
 					
-					size_t glyph_size = 3*current_tri - glyph_start;
+					//~ size_t glyph_size = 3*current_tri - glyph_start;
 					
-					glyph_data << "\t" << to_string(glyph_start) << "," << endl
-							   << "\t" << to_string(glyph_size) << "," << endl;
+					//~ glyph_data << "\t" << to_string(glyph_start) << "," << endl
+							   //~ << "\t" << to_string(glyph_size) << "," << endl;
 					
-					current_glyph += 1;
-				}
+					//~ current_glyph += 1;
+				//~ }
 				
 				break;
 			}

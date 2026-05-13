@@ -15,6 +15,8 @@ namespace SWFRecomp
 	{
 		Config config;
 		
+		bool prelude;
+		
 		std::stringstream tag_init;
 		
 		ofstream tag_main;

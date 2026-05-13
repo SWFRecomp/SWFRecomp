@@ -55,6 +55,8 @@ namespace SWFRecomp
 		
 		if (prelude_swf_path != "")
 		{
+			context.prelude = true;
+			
 			SWF prelude = SWF(context, prelude_swf_path);
 			
 			swf.parsePrelude(context, prelude.cur_pos);
@@ -65,6 +67,8 @@ namespace SWFRecomp
 								 << "\tinit_script_" << to_string(i) << "(app_context);";
 			}
 		}
+		
+		context.prelude = false;
 		
 		swf.parseAllTags(context);
 		

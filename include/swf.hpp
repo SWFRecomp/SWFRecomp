@@ -159,6 +159,7 @@ namespace SWFRecomp
 		size_t next_script_i;
 		size_t next_init_script_i;
 		size_t last_queued_script;
+		size_t last_queued_init_script;
 		
 		std::stringstream shape_data;
 		size_t current_tri;
