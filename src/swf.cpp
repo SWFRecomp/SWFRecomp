@@ -814,7 +814,7 @@ namespace SWFRecomp
 					
 					glyph_data << "\t" << to_string(glyph_start) << "," << endl
 							   << "\t" << to_string(glyph_size) << "," << endl;
-							
+					
 					current_glyph += 1;
 				}
 				
@@ -1029,14 +1029,14 @@ namespace SWFRecomp
 					
 					size_t text_size = current_text - text_start;
 					context.tag_init << endl
-							 << "\t" << "tagDefineText("
-							 << "app_context, "
-							 << to_string(char_id) << ", "
-							 << to_string(text_start) << ", "
-							 << to_string(text_size) << ", "
-							 << to_string(transform_start) << ", "
-							 << to_string(cxform_id)
-							 << ");";
+									 << "\t" << "tagDefineText("
+									 << "app_context, "
+									 << to_string(char_id) << ", "
+									 << to_string(text_start) << ", "
+									 << to_string(text_size) << ", "
+									 << to_string(transform_start) << ", "
+									 << to_string(cxform_id)
+									 << ");";
 				}
 				
 				break;
@@ -1126,6 +1126,88 @@ namespace SWFRecomp
 				context.tag_main << "\t" << "tagPlaceObject2(app_context, " << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(transform_id) << ");" << endl;
 				
 				current_transform += 1;
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_FONT_2:
+			{
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 font_id = (u16) tag.fields[0].value;
+				
+				u8 flags = (u8) *cur_pos;
+				cur_pos += 1;
+				
+				bool has_layout = flags & 0b10000000;
+				bool shift_jis = flags & 0b01000000;
+				
+				bool wide_offsets = flags & 0b00001000;
+				bool wide_codes = flags & 0b00000100;
+				
+				fprintf(stderr, "flags: 0x%02X, l: %d, w: %d\n", flags, has_layout, wide_codes);
+				
+				u8 langcode = (u8) *cur_pos;
+				cur_pos += 1;
+				
+				u8 name_len = (u8) *cur_pos;
+				cur_pos += 1 + name_len;
+				
+				u16 num_glyphs = VAL(u16, cur_pos);
+				cur_pos += 2;
+				
+				char* offset_table = cur_pos;
+				
+				int offset_stride = wide_offsets ? sizeof(u32) : sizeof(u16);
+				cur_pos += offset_stride*num_glyphs;
+				
+				// TODO: finish implementing DefineFont2
+				
+				//~ tag.clearFields();
+				//~ tag.setFieldCount(1);
+				
+				//~ tag.configureNextField(SWF_FIELD_UI16);
+				
+				//~ tag.parseFields(cur_pos);
+				
+				//~ std::vector<u16> entry_offsets;
+				//~ entry_offsets.push_back((u16) tag.fields[0].value);
+				
+				//~ u16 num_entries = entry_offsets.back()/2;
+				
+				//~ tag.clearFields();
+				//~ tag.setFieldCount(num_entries - 1);
+				
+				//~ for (u16 i = 0; i < num_entries - 1; ++i)
+				//~ {
+					//~ tag.configureNextField(SWF_FIELD_UI16);
+				//~ }
+				
+				//~ tag.parseFields(cur_pos);
+				
+				//~ for (u16 i = 0; i < num_entries - 1; ++i)
+				//~ {
+					//~ entry_offsets.push_back((u16) tag.fields[i].value);
+				//~ }
+				
+				for (u16 i = 0; i < num_entries; ++i)
+				{
+					size_t glyph_start = 3*current_tri;
+					
+					interpretShape(context, tag);
+					
+					size_t glyph_size = 3*current_tri - glyph_start;
+					
+					glyph_data << "\t" << to_string(glyph_start) << "," << endl
+							   << "\t" << to_string(glyph_size) << "," << endl;
+					
+					current_glyph += 1;
+				}
 				
 				break;
 			}
