@@ -6,6 +6,8 @@ const char* initial_strings[] =
 	"_global",  // getStringId(context, "_global") == 2
 	"_root",
 	"_parent",
+	"flash",
+	"display",
 	"recomp",
 	"Object",
 	"toString",
@@ -25,6 +27,9 @@ const char* initial_strings[] =
 	"__proto__",
 	"length",
 	"MovieClip",
+	"createEmptyMovieClip",
+	"BitmapData",
+	"loadBitmap",
 	"ASSetPropFlags",
 	"Math",
 	"abs",

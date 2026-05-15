@@ -219,7 +219,9 @@ namespace SWFRecomp
 		std::string width_twips = to_string(FRAME_WIDTH);
 		std::string height_twips = to_string(FRAME_HEIGHT);
 		
-		context.constants_header << "#define SWF_VERSION " << version << endl
+		context.constants_header << "#include <common.h>" << endl
+								 << endl
+								 << "#define SWF_VERSION " << version << endl
 								 << "#define FRAME_WIDTH " << width << endl
 								 << "#define FRAME_HEIGHT " << height << endl
 								 << "#define FRAME_WIDTH_TWIPS " << width_twips << endl
@@ -552,7 +554,55 @@ namespace SWFRecomp
 		context.constants_header << endl << endl
 								 << "#define BITMAP_COUNT " << to_string(current_bitmap) << endl
 								 << "#define BITMAP_HIGHEST_W " << to_string(highest_w) << endl
-								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h);
+								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h) << endl
+								 << endl
+								 << "#define EXPORTED_ASSETS_COUNT " << to_string(assets.size());
+		
+		if (assets.size() > 0)
+		{
+			context.constants_header << endl << endl
+									 << "extern u16 exported_char_ids[" << to_string(assets.size()) << "];";
+			
+			context.constants_header << endl << endl
+									 << "extern u32 exported_string_ids[" << to_string(assets.size()) << "];";
+			
+			context.constants << endl << endl
+						  << "u16 exported_char_ids[] =" << endl
+						  << "{" << endl;
+			
+			for (size_t i = 0; i < assets.size(); ++i)
+			{
+				context.constants << "\t" << assets[i].char_id << "," << endl;
+			}
+			
+			context.constants << "};";
+			
+			context.constants << endl << endl
+							  << "u32 exported_string_ids[] =" << endl
+							  << "{" << endl;
+			
+			for (size_t i = 0; i < assets.size(); ++i)
+			{
+				context.constants << "\t" << assets[i].string_id << "," << endl;
+			}
+			
+			context.constants << "};";
+		}
+		
+		else
+		{
+			context.constants_header << endl << endl
+									 << "extern u16* exported_char_ids;";
+			
+			context.constants_header << endl << endl
+									 << "extern u32* exported_string_ids;";
+			
+			context.constants << endl << endl
+							  << "u16* exported_char_ids = NULL;";
+			
+			context.constants << endl << endl
+							  << "u32* exported_string_ids = NULL;";
+		}
 		
 		// Generate MAX_STRING_ID constant for runtime initialization
 		context.out_script_decls << endl
@@ -1139,6 +1189,13 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_TAG_DEFINE_SPRITE:
+			{
+				cur_pos += tag.length;
+				
+				break;
+			}
+			
 			case SWF_TAG_DEFINE_FONT_2:
 			{
 				tag.clearFields();
@@ -1217,6 +1274,33 @@ namespace SWFRecomp
 					
 					//~ current_glyph += 1;
 				//~ }
+				
+				break;
+			}
+			
+			case SWF_TAG_EXPORT_ASSETS:
+			{
+				u16 count = VAL(u16, cur_pos);
+				cur_pos += 2;
+				
+				for (u16 i = 0; i < count; ++i)
+				{
+					ExportedAsset asset;
+					
+					asset.char_id = VAL(u16, cur_pos);
+					cur_pos += 2;
+					
+					tag.clearFields();
+					tag.setFieldCount(1);
+					tag.configureNextField(SWF_FIELD_STRING);
+					
+					tag.parseFields(cur_pos);
+					
+					asset.name = (char*) tag.fields[0].value;
+					asset.string_id = action.getStringId(context, asset.name);
+					
+					assets.push_back(asset);
+				}
 				
 				break;
 			}

@@ -128,6 +128,14 @@ namespace SWFRecomp
 		u8 b;
 	};
 	
+	struct ExportedAsset
+	{
+		u16 char_id;
+		
+		char* name;
+		size_t string_id;
+	};
+	
 	class SWFHeader
 	{
 	public:
@@ -186,6 +194,8 @@ namespace SWFRecomp
 		
 		std::unordered_map<u16, size_t> char_id_to_bitmap_id;
 		std::vector<Vertex> bitmap_sizes;
+		
+		std::vector<ExportedAsset> assets;
 		
 		SWFAction action;
 		
