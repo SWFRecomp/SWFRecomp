@@ -27,6 +27,7 @@ const char* initial_strings[] =
 	"__proto__",
 	"length",
 	"MovieClip",
+	"attachBitmap",
 	"createEmptyMovieClip",
 	"BitmapData",
 	"loadBitmap",

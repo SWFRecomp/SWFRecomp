@@ -467,7 +467,7 @@ namespace SWFRecomp
 		
 		if (current_bitmap_pixel)
 		{
-			context.tag_init << endl << "\tfinalizeBitmaps();";
+			context.tag_init << endl << "\tfinalizeBitmaps(app_context);";
 		}
 		
 		context.tag_main << "};" << endl
@@ -525,6 +525,8 @@ namespace SWFRecomp
 						  << "};";
 		
 		context.out_draws_header << endl
+								 << "#define SHAPE_DATA_EXISTS " << to_string(current_tri > 0) << endl
+								 << endl
 								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
@@ -759,6 +761,7 @@ namespace SWFRecomp
 				
 				context.tag_init << endl
 						 << "\tdefineBitmap("
+						 << "app_context, "
 						 << to_string(4*bitmap_start) << ", "
 						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
 						 << to_string(w) << ", "
@@ -816,6 +819,7 @@ namespace SWFRecomp
 				RGB.parseFields(cur_pos);
 				
 				context.tag_main << "\t" << "tagSetBackgroundColor("
+								 << "app_context, "
 								 << to_string((u8) RGB.fields[0].value) << ", "
 								 << to_string((u8) RGB.fields[1].value) << ", "
 								 << to_string((u8) RGB.fields[2].value) << ");" << endl;
