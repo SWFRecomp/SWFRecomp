@@ -27,6 +27,7 @@ const char* initial_strings[] =
 	"__proto__",
 	"length",
 	"MovieClip",
+	"_parent",
 	"_rotation",
 	"_x",
 	"_y",
