@@ -1131,6 +1131,168 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_TAG_DEFINE_BITS_LOSSLESS:
+			{
+				long unsigned int compressed_length = tag.length;
+				
+				u16 char_id = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u8 bitmap_format = *cur_pos;
+				cur_pos += 1;
+				compressed_length -= 1;
+				
+				u16 width = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u16 height = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				if (bitmap_format == 3 || bitmap_format == 4)
+				{
+					EXC_ARG("DefineBitsLossless tag had unsupported format: %d\n", bitmap_format);
+				}
+				
+				u32 image_data_size = width*height;
+				
+				long unsigned int uncompressed_length = 4*image_data_size;
+				
+				char* bitmap_buffer_uncompressed = new char[uncompressed_length];
+				uncompress((u8*) bitmap_buffer_uncompressed, &uncompressed_length, const_cast<const u8*>((u8*) cur_pos), (uLong) (compressed_length));
+				
+				Vertex v;
+				v.x = width;
+				v.y = height;
+				
+				printf("w: %d, h: %d\n", width, height);
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < uncompressed_length; i += 4)
+				{
+					u8 reserved = bitmap_buffer_uncompressed[i];
+					u8 red = bitmap_buffer_uncompressed[i + 1];
+					u8 green = bitmap_buffer_uncompressed[i + 2];
+					u8 blue = bitmap_buffer_uncompressed[i + 3];
+					
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) red << "," << endl
+								<< "\t0x" << (u32) green << "," << endl
+								<< "\t0x" << (u32) blue << "," << endl
+								<< "\t0xFF," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				context.tag_init << endl
+						 << "\tdefineBitmap("
+						 << "app_context, "
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(width) << ", "
+						 << to_string(height)
+						 << ");";
+				
+				current_bitmap += 1;
+				
+				cur_pos += compressed_length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_JPEG_2:
+			{
+				size_t new_length = tag.length;
+				
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 char_id = (u16) tag.fields[0].value;
+				new_length -= 2;
+				
+				// stupid swf edge cases are stupid
+				if ((u8) cur_pos[0] == 0xFF &&
+					(u8) cur_pos[1] == 0xD9 &&
+					(u8) cur_pos[2] == 0xFF &&
+					(u8) cur_pos[3] == 0xD8)
+				{
+					cur_pos += 4;
+					new_length -= 4;
+				}
+				
+				else if ((u8) cur_pos[0] == 0xFF &&
+						 (u8) cur_pos[1] == 0xD8)
+				{
+					cur_pos += 2;
+					new_length -= 2;
+				}
+				
+				size_t jpeg_data_size = new_length;
+				u8* jpeg_data = new u8[jpeg_data_size];
+				
+				for (size_t i = 0; i < jpeg_data_size; ++i)
+				{
+					jpeg_data[i] = cur_pos[i];
+				}
+				
+				int w;
+				int h;
+				int comp;
+				u8* decompressed = stbi_load_from_memory(jpeg_data, (int) jpeg_data_size, &w, &h, &comp, 3);
+				
+				if (decompressed == nullptr)
+				{
+					EXC("JPEG data returned NULL.\n");
+				}
+				
+				Vertex v;
+				v.x = w;
+				v.y = h;
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < 3*w*h; i += 3)
+				{
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) decompressed[i] << "," << endl
+								<< "\t0x" << (u32) decompressed[i + 1] << "," << endl
+								<< "\t0x" << (u32) decompressed[i + 2] << "," << endl
+								<< "\t0xFF," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				context.tag_init << endl
+						 << "\tdefineBitmap("
+						 << "app_context, "
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(w) << ", "
+						 << to_string(h)
+						 << ");";
+				
+				current_bitmap += 1;
+				
+				cur_pos += new_length;
+				
+				break;
+			}
+			
 			case SWF_TAG_PLACE_OBJECT_2:
 			{
 				tag.setFieldCount(2);
