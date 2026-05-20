@@ -614,6 +614,8 @@ namespace SWFRecomp
 		action.recompileStringTable(context);
 		action.recompileFunctionTable(context);
 		
+		recompileBitmapIds(context);
+		
 		context.out_script_header.close();
 		context.out_script_defs.close();
 		context.out_script_decls.close();
@@ -1167,8 +1169,6 @@ namespace SWFRecomp
 				v.x = width;
 				v.y = height;
 				
-				printf("w: %d, h: %d\n", width, height);
-				
 				bitmap_sizes.push_back(v);
 				
 				size_t bitmap_start = current_bitmap_pixel;
@@ -1577,6 +1577,45 @@ namespace SWFRecomp
 	{
 		int diff = end - start;
 		return (u8) (start + t*diff);
+	}
+	
+	void SWF::recompileBitmapIds(Context& context)
+	{
+		if (char_id_to_bitmap_id.size() == 0)
+		{
+			context.out_script_decls << endl << "extern u16* bitmap_char_ids;";
+			context.out_script_defs << endl << "u16* bitmap_char_ids = NULL;";
+			
+			context.out_script_decls << endl << "extern u16* bitmap_ids;";
+			context.out_script_defs << endl << "u16* bitmap_ids = NULL;";
+		}
+		
+		else
+		{
+			context.out_script_decls << endl << "extern u16 bitmap_char_ids[" << char_id_to_bitmap_id.size() << "];";
+			context.out_script_defs << endl << "u16 bitmap_char_ids[" << to_string(char_id_to_bitmap_id.size()) << "] =" << endl;
+			
+			context.out_script_defs << "{" << endl;
+			
+			for (const auto& [c, b] : char_id_to_bitmap_id)
+			{
+				context.out_script_defs << "\t" << to_string(c) << "," << endl;
+			}
+			
+			context.out_script_defs << "};";
+			
+			context.out_script_decls << endl << "extern u16 bitmap_ids[" << char_id_to_bitmap_id.size() << "];";
+			context.out_script_defs << endl << "u16 bitmap_ids[" << to_string(char_id_to_bitmap_id.size()) << "] =" << endl;
+			
+			context.out_script_defs << "{" << endl;
+			
+			for (const auto& [c, b] : char_id_to_bitmap_id)
+			{
+				context.out_script_defs << "\t" << to_string(b) << "," << endl;
+			}
+			
+			context.out_script_defs << "};";
+		}
 	}
 	
 	void SWF::recompileMatrix(MATRIX matrix, std::stringstream& out)

@@ -210,6 +210,7 @@ namespace SWFRecomp
 		void parseAllTags(Context& context);
 		void closeSWF(Context& context);
 		void interpretTag(Context& context, SWFTag& tag);
+		void recompileBitmapIds(Context& context);
 		void recompileMatrix(MATRIX matrix, std::stringstream& out);
 		FillStyle* parseFillStyles(u16 fill_style_count);
 		LineStyle* parseLineStyles(u16 line_style_count);
