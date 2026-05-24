@@ -70,7 +70,7 @@ namespace SWFRecomp
 					u16 code_size = VAL(u16, action_buffer);
 					action_buffer += code_size + 2;
 					
-					break;
+					continue;
 				}
 			}
 			
