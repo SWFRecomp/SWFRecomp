@@ -39,6 +39,8 @@ const char* initial_strings[] =
 	"onEnterFrame",
 	"BitmapData",
 	"loadBitmap",
+	"width",
+	"height",
 	"Sound",
 	"loadSound",
 	"onLoad",
