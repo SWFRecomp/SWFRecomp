@@ -36,6 +36,7 @@ const char* initial_strings[] =
 	"_yscale",
 	"attachBitmap",
 	"createEmptyMovieClip",
+	"onEnterFrame",
 	"BitmapData",
 	"loadBitmap",
 	"Sound",
