@@ -10,6 +10,7 @@ const char* initial_strings[] =
 	"display",
 	"recomp",
 	"Object",
+	"destroy",
 	"toString",
 	"valueOf",
 	"recompId",
