@@ -821,9 +821,12 @@ namespace SWFRecomp
 					// Generate unique function ID
 					std::string func_id = (!anonymous ? std::string(func_name) : std::string("anonymous")) + "_" + std::to_string(func_counter);
 					
+					size_t this_func_counter = func_counter;
+					func_counter += 1;
+					
 					size_t string_id = getStringId(context, func_name);
-					func_id_to_stream[func_counter] = std::stringstream();
-					ostream& func_stream = func_id_to_stream[func_counter];
+					func_id_to_stream[this_func_counter] = std::stringstream();
+					ostream& func_stream = func_id_to_stream[this_func_counter];
 					
 					// Add function declaration to header (uses app_context)
 					context.out_script_decls << endl << "void " << func_id << "(SWFAppContext* app_context);" << endl;
@@ -834,7 +837,7 @@ namespace SWFRecomp
 								<< "{" << endl;
 					
 					// Parse function body recursively
-					func_stream << "\t// Function body (" << code_size << " bytes)" << endl << "\t" << endl;
+					func_stream << "\t// Function body " << to_string(this_func_counter) << " (" << code_size << " bytes)" << endl << "\t" << endl;
 					
 					bool has_return = parseActions(context, action_buffer, func_stream, true, true, action_buffer + code_size);
 					
@@ -845,12 +848,11 @@ namespace SWFRecomp
 					out_script << "\tactionDefineFunction2(app_context, "
 							   << to_string(string_id) << ", "
 							   << func_id << ", "
-							   << "func_params_" << func_counter << ", "
-							   << "func_params_" << func_counter << "_reg_count, "
-							   << "func_params_" << func_counter << "_flags, "
+							   << "func_params_" << this_func_counter << ", "
+							   << "func_params_" << this_func_counter << "_reg_count, "
+							   << "func_params_" << this_func_counter << "_flags, "
 							   << (anonymous ? "true" : "false") << ");" << endl;
 					
-					func_counter += 1;
 					break;
 				}
 				
@@ -884,9 +886,12 @@ namespace SWFRecomp
 					// Generate unique function ID
 					std::string func_id = (!anonymous ? std::string(func_name) : std::string("anonymous")) + "_" + std::to_string(func_counter);
 					
+					size_t this_func_counter = func_counter;
+					func_counter += 1;
+					
 					size_t string_id = getStringId(context, func_name);
-					func_id_to_stream[func_counter] = std::stringstream();
-					ostream& func_stream = func_id_to_stream[func_counter];
+					func_id_to_stream[this_func_counter] = std::stringstream();
+					ostream& func_stream = func_id_to_stream[this_func_counter];
 					
 					// Add function declaration to header (uses app_context)
 					context.out_script_decls << endl << "void " << func_id << "(SWFAppContext* app_context);" << endl;
@@ -908,10 +913,8 @@ namespace SWFRecomp
 					out_script << "\tactionDefineFunction(app_context, "
 							   << to_string(string_id) << ", "
 							   << func_id << ", "
-							   << "func_params_" << func_counter << ", "
+							   << "func_params_" << this_func_counter << ", "
 							   << (anonymous ? "true" : "false") << ");" << endl;
-					
-					func_counter += 1;
 					
 					break;
 				}
