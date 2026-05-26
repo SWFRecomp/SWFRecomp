@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
+#include <set>
 
 #include <tag.hpp>
 #include <action.hpp>
@@ -36,7 +37,7 @@ namespace SWFRecomp
 		
 		char* action_buffer_start = action_buffer;
 		
-		std::vector<char*> labels;
+		std::set<char*> labels;
 		
 		// Parse action bytes once to mark labels
 		while (code != SWF_ACTION_END_OF_ACTIONS && action_buffer != stop_at)
@@ -58,7 +59,7 @@ namespace SWFRecomp
 				case SWF_ACTION_IF:
 				{
 					s16 offset = VAL(s16, action_buffer);
-					labels.push_back(action_buffer + length + ((s64) offset));
+					labels.insert(action_buffer + length + ((s64) offset));
 					break;
 				}
 				
