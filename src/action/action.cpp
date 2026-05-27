@@ -236,6 +236,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_TO_INTEGER:
+				{
+					out_script << "\t" << "// ToInteger" << endl
+							   << "\t" << "actionToInteger(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_GET_VARIABLE:
 				{
 					out_script << "\t" << "// GetVariable" << endl
