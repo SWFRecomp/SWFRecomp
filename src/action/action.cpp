@@ -747,6 +747,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_GREATER:
+				{
+					out_script << "\t" << "// Greater" << endl
+							   << "\t" << "actionGreater(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_EXTENDS:
 				{
 					out_script << "\t" << "// Extends - Set up prototype chain for inheritance" << endl
