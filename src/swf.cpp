@@ -1355,6 +1355,80 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_TAG_DEFINE_BITS_LOSSLESS_2:
+			{
+				long unsigned int compressed_length = tag.length;
+				
+				u16 char_id = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u8 bitmap_format = *cur_pos;
+				cur_pos += 1;
+				compressed_length -= 1;
+				
+				u16 width = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u16 height = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				if (bitmap_format == 3 || bitmap_format == 4)
+				{
+					EXC_ARG("DefineBitsLossless2 tag had unsupported format: %d\n", bitmap_format);
+				}
+				
+				u32 image_data_size = width*height;
+				
+				long unsigned int uncompressed_length = 4*image_data_size;
+				
+				char* bitmap_buffer_uncompressed = new char[uncompressed_length];
+				uncompress((u8*) bitmap_buffer_uncompressed, &uncompressed_length, const_cast<const u8*>((u8*) cur_pos), (uLong) (compressed_length));
+				
+				Vertex v;
+				v.x = width;
+				v.y = height;
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < uncompressed_length; i += 4)
+				{
+					u8 alpha = bitmap_buffer_uncompressed[i];
+					u8 red = bitmap_buffer_uncompressed[i + 1];
+					u8 green = bitmap_buffer_uncompressed[i + 2];
+					u8 blue = bitmap_buffer_uncompressed[i + 3];
+					
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) alpha << "," << endl
+								<< "\t0x" << (u32) red << "," << endl
+								<< "\t0x" << (u32) green << "," << endl
+								<< "\t0x" << (u32) blue << "," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				context.tag_init << endl
+						 << "\tdefineBitmap("
+						 << "app_context, "
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(width) << ", "
+						 << to_string(height)
+						 << ");";
+				
+				current_bitmap += 1;
+				
+				cur_pos += compressed_length;
+				
+				break;
+			}
+			
 			case SWF_TAG_DEFINE_SPRITE:
 			{
 				cur_pos += tag.length;
