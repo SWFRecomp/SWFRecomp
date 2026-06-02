@@ -11,6 +11,8 @@ const char* initial_strings[] =
 	"recomp",
 	"recompGetLastKey",
 	"recompSetDisplayScale",
+	"recompSin",
+	"recompCos",
 	"Object",
 	"destroy",
 	"toString",
