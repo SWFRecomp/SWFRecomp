@@ -66,6 +66,8 @@ namespace SWFRecomp
 				context.tag_init << endl
 								 << "\tinit_script_" << to_string(i) << "(app_context);";
 			}
+			
+			swf.last_queued_script = swf.next_init_script_i - 1;
 		}
 		
 		context.prelude = false;
