@@ -67,7 +67,7 @@ namespace SWFRecomp
 								 << "\tinit_script_" << to_string(i) << "(app_context);";
 			}
 			
-			swf.last_queued_script = swf.next_init_script_i - 1;
+			swf.last_queued_init_script = swf.next_init_script_i;
 		}
 		
 		context.prelude = false;
