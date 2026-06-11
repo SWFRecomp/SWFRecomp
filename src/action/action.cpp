@@ -266,6 +266,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_CAST_OP:
+				{
+					out_script << "\t" << "// CastOp" << endl
+							   << "\t" << "actionCastOp(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_GET_TIME:
 				{
 					out_script << "\t" << "// GetTime" << endl
