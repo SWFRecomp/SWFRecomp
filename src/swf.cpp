@@ -456,7 +456,6 @@ namespace SWFRecomp
 	void SWF::closeSWF(Context& context)
 	{
 		context.tag_main << endl << endl
-						 << "typedef void (*frame_func)();" << endl << endl
 						 << "frame_func frame_funcs[] =" << endl
 						 << "{" << endl;
 		
