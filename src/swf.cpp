@@ -1471,6 +1471,28 @@ namespace SWFRecomp
 				int offset_stride = wide_offsets ? sizeof(u32) : sizeof(u16);
 				cur_pos += offset_stride*num_glyphs;
 				
+				u32 code_table_offset = wide_offsets ? VAL(u32, cur_pos) : VAL(u16, cur_pos);
+				u8* code_table_u8 = offset_stride + code_table_offset;
+				u16* code_table_u16 = (u16*) code_table_u8;
+				cur_pos = code_table_u8 + (wide_codes/2)*num_glyphs;
+				
+				if (has_layout)
+				{
+					u16 font_ascent = VAL(u16, cur_pos);
+					cur_pos += 2;
+					
+					u16 font_descent = VAL(u16, cur_pos);
+					cur_pos += 2;
+					
+					s16 font_leading = VAL(s16, cur_pos);
+					cur_pos += 2;
+					
+					s16* font_advance_table = cur_pos;
+					cur_pos += sizeof(s16)*num_glyphs;
+					
+					
+				}
+				
 				// TODO: finish implementing DefineFont2
 				
 				//~ tag.clearFields();
