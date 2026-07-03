@@ -1,4 +1,5 @@
 #include <common.h>
+#include <context.hpp>
 
 namespace SWFRecomp
 {

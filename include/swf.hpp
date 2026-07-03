@@ -128,6 +128,14 @@ namespace SWFRecomp
 		u8 b;
 	};
 	
+	struct ExportedAsset
+	{
+		u16 char_id;
+		
+		char* name;
+		size_t string_id;
+	};
+	
 	class SWFHeader
 	{
 	public:
@@ -157,9 +165,9 @@ namespace SWFRecomp
 		size_t next_frame_i;
 		bool another_frame;
 		size_t next_script_i;
+		size_t next_init_script_i;
 		size_t last_queued_script;
-		
-		std::stringstream tag_init;
+		size_t last_queued_init_script;
 		
 		std::stringstream shape_data;
 		size_t current_tri;
@@ -187,16 +195,22 @@ namespace SWFRecomp
 		std::unordered_map<u16, size_t> char_id_to_bitmap_id;
 		std::vector<Vertex> bitmap_sizes;
 		
+		std::vector<ExportedAsset> assets;
+		
 		SWFAction action;
 		
 		SWFTag RGB;
 		
 		SWF();
-		SWF(Context& context);
+		SWF(Context& context, std::string swf_path);
 		
+		void openSWF(Context& context);
 		void parseMatrix(MATRIX& matrix_out);
+		void parsePrelude(Context& context, char* prelude_buffer);
 		void parseAllTags(Context& context);
+		void closeSWF(Context& context);
 		void interpretTag(Context& context, SWFTag& tag);
+		void recompileBitmapIds(Context& context);
 		void recompileMatrix(MATRIX matrix, std::stringstream& out);
 		FillStyle* parseFillStyles(u16 fill_style_count);
 		LineStyle* parseLineStyles(u16 line_style_count);

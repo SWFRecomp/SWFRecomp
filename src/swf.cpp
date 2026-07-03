@@ -12,6 +12,7 @@
 #include <stb_image.h>
 
 #include <swf.hpp>
+#include <initial_strings.hpp>
 
 #define MIN(x, y) ((x < y) ? x : y)
 #define MAX(x, y) ((x > y) ? x : y)
@@ -24,7 +25,7 @@
 										std::find(path2.next_neighbors_forward.begin(), path2.next_neighbors_forward.end(), &path1) == path2.next_neighbors_forward.end() && \
 										std::find(path1.next_neighbors_backward.begin(), path1.next_neighbors_backward.end(), &path2) == path1.next_neighbors_backward.end() && \
 										std::find(path2.next_neighbors_backward.begin(), path2.next_neighbors_backward.end(), &path1) == path2.next_neighbors_backward.end())
-
+										
 #define FRAME_WIDTH (header.frame_size.xmax - header.frame_size.xmin)
 #define FRAME_HEIGHT (header.frame_size.ymax - header.frame_size.ymin)
 
@@ -44,7 +45,7 @@ namespace SWFRecomp
 {
 	SWFHeader::SWFHeader()
 	{
-		
+	
 	}
 	
 	SWFHeader::SWFHeader(char* swf_buffer)
@@ -78,28 +79,6 @@ namespace SWFRecomp
 		
 		frame_count = *((u16*) swf_buffer);
 		swf_buffer += 2;
-		
-		printf("\n");
-		
-		printf("SWF version: %d\n", version);
-		printf("Decompressed file length: %d\n", file_length);
-		
-		printf("\n");
-		
-		printf("Window dimensions:\n");
-		printf("xmin: %d twips\n", frame_size.xmin);
-		printf("xmax: %d twips\n", frame_size.xmax);
-		printf("ymin: %d twips\n", frame_size.ymin);
-		printf("ymax: %d twips\n", frame_size.ymax);
-		
-		printf("\n");
-		
-		printf("Which means resolution is %dx%d\n", (frame_size.xmax - frame_size.xmin)/20, (frame_size.ymax - frame_size.ymin)/20);
-		
-		printf("\n");
-		
-		printf("FPS: %d\n", framerate >> 8);
-		printf("SWF frame count: %d\n", frame_count);
 	}
 	
 	
@@ -109,25 +88,27 @@ namespace SWFRecomp
 		
 	}
 	
-	SWF::SWF(Context& context) : num_finished_tags(0),
-								 next_frame_i(0),
-								 another_frame(false),
-								 next_script_i(0),
-								 last_queued_script(0),
-								 current_tri(0),
-								 current_transform(0),
-								 current_color(0),
-								 current_uninv(0),
-								 current_gradient(0),
-								 current_bitmap_pixel(0),
-								 current_bitmap(0),
-								 current_glyph(0),
-								 current_text(0),
-								 current_cxform(0),
-								 jpeg_tables(nullptr)
+	SWF::SWF(Context& context, std::string swf_path) : num_finished_tags(0),
+													   next_frame_i(0),
+													   another_frame(false),
+													   next_script_i(0),
+													   next_init_script_i(0),
+													   last_queued_script(0),
+													   last_queued_init_script(0),
+													   current_tri(0),
+													   current_transform(0),
+													   current_color(0),
+													   current_uninv(0),
+													   current_gradient(0),
+													   current_bitmap_pixel(0),
+													   current_bitmap(0),
+													   current_glyph(0),
+													   current_text(0),
+													   current_cxform(0),
+													   jpeg_tables(nullptr)
 	{
 		// Configure reusable struct records
-		// 
+		//
 		// Using a SWFTag without parsing the header
 		// behaves exactly like a SWF struct record
 		RGB.setFieldCount(3);
@@ -135,12 +116,10 @@ namespace SWFRecomp
 		RGB.configureNextField(SWF_FIELD_UI8);  // Green
 		RGB.configureNextField(SWF_FIELD_UI8);  // Blue
 		
-		printf("Reading %s...\n", context.swf_path.c_str());
-		
-		ifstream swf_file(context.swf_path, ios_base::in | ios_base::binary);
+		ifstream swf_file(swf_path, ios_base::in | ios_base::binary);
 		if (!swf_file.good())
 		{
-			EXC_ARG("SWF file `%s' not found\n", context.swf_path.c_str());
+			EXC_ARG("SWF file `%s' not found\n", swf_path.c_str());
 		}
 		
 		swf_file.seekg(0, ios_base::end);
@@ -159,16 +138,12 @@ namespace SWFRecomp
 			{
 				// uncompressed
 				
-				printf("SWF is uncompressed.\n");
-				
 				break;
 			}
 			
 			case 'C':
 			{
 				// zlib
-				
-				printf("SWF is compressed with zlib. Decompressing...\n");
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
@@ -187,8 +162,6 @@ namespace SWFRecomp
 				// Yeah, Adobe definitely screwed the format up on this one.
 				// I'm not sure if they just didn't get it, or what...
 				// Whatever this mangled garbage is, it's NOT REAL LZMA.
-				
-				printf("SWF is compressed with LZMA. Decompressing...\n");
 				
 				char* swf_buffer_uncompressed = new char[header.file_length];
 				memcpy(swf_buffer_uncompressed, swf_buffer, 8);
@@ -236,13 +209,20 @@ namespace SWFRecomp
 		cur_pos = swf_buffer + 8;
 		
 		header.loadOtherData(cur_pos);
-		
+	}
+	
+	void SWF::openSWF(Context& context)
+	{
+		std::string version = to_string(header.version);
 		std::string width = to_string(FRAME_WIDTH/20);
 		std::string height = to_string(FRAME_HEIGHT/20);
 		std::string width_twips = to_string(FRAME_WIDTH);
 		std::string height_twips = to_string(FRAME_HEIGHT);
 		
-		context.constants_header << "#define FRAME_WIDTH " << width << endl
+		context.constants_header << "#include <common.h>" << endl
+								 << endl
+								 << "#define SWF_VERSION " << version << endl
+								 << "#define FRAME_WIDTH " << width << endl
 								 << "#define FRAME_HEIGHT " << height << endl
 								 << "#define FRAME_WIDTH_TWIPS " << width_twips << endl
 								 << "#define FRAME_HEIGHT_TWIPS " << height_twips << endl << endl
@@ -268,6 +248,86 @@ namespace SWFRecomp
 						  << "\t" << "0.0f," << endl
 						  << "\t" << "1.0f," << endl
 						  << "};";
+		
+		context.tag_main << "#include <recomp.h>" << endl << endl
+				 << "#include <out.h>" << endl
+				 << "#include \"draws.h\"" << endl << endl
+				 << "void frame_" << to_string(next_frame_i) << "(SWFAppContext* app_context)" << endl
+				 << "{" << endl;
+		next_frame_i += 1;
+		
+		context.out_script_header = ofstream(context.config.output_scripts_folder + "out.h", ios_base::out);
+		context.out_script_header << "#pragma once" << endl;
+		
+		context.out_script_defs = ofstream(context.config.output_scripts_folder + "script_defs.c", ios_base::out);
+		context.out_script_defs << "#include \"script_decls.h\"" << endl;
+		
+		context.out_script_decls = ofstream(context.config.output_scripts_folder + "script_decls.h", ios_base::out);
+		context.out_script_decls << "#pragma once" << endl << endl
+								 << "#include <action.h>" << endl
+								 << "#include <stackvalue.h>" << endl;
+		
+		std::vector<std::string> initial_strings_vec;
+		
+		for (int i = 0; i < sizeof(initial_strings)/sizeof(char*); ++i)
+		{
+			initial_strings_vec.push_back(std::string(initial_strings[i]));
+		}
+		
+		action = SWFAction(context, initial_strings_vec);
+		
+		context.num_files = 0;
+		
+		// output identity matrix at transform id 0
+		transform_data << "\t" << "1.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "1.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "1.0f," << endl
+					   << "\t" << "0.0f," << endl
+					
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "0.0f," << endl
+					   << "\t" << "1.0f," << endl;
+		
+		current_transform += 1;
+		
+		// output identity cxform at id 0
+		cxform_data << "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					<< "\t" << "0.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "1.0f," << endl
+					
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl
+					<< "\t" << "0.0f," << endl;
+		
+		current_cxform += 1;
 	}
 	
 	void SWF::parseMatrix(MATRIX& matrix_out)
@@ -348,77 +408,39 @@ namespace SWFRecomp
 		}
 	}
 	
+	void SWF::parsePrelude(Context& context, char* prelude_buffer)
+	{
+		char* old_pos = cur_pos;
+		cur_pos = prelude_buffer;
+		
+		SWFTag tag;
+		
+		// prime the loop
+		tag.code = (TagType) 1;
+		
+		while (tag.code != 0)
+		{
+			tag.parseHeader(cur_pos);
+			
+			if (tag.code == SWF_TAG_DO_INIT_ACTION)
+			{
+				interpretTag(context, tag);
+			}
+			
+			else
+			{
+				cur_pos += tag.length;
+			}
+			
+			tag.clearFields();
+		}
+		
+		cur_pos = old_pos;
+	}
+	
 	void SWF::parseAllTags(Context& context)
 	{
 		SWFTag tag;
-		
-		context.tag_main << "#include <recomp.h>" << endl << endl
-				 << "#include <out.h>" << endl
-				 << "#include \"draws.h\"" << endl << endl
-				 << "void frame_" << to_string(next_frame_i) << "(SWFAppContext* app_context)" << endl
-				 << "{" << endl;
-		next_frame_i += 1;
-		
-		context.out_script_header = ofstream(context.output_scripts_folder + "out.h", ios_base::out);
-		context.out_script_header << "#pragma once" << endl;
-		
-		context.out_script_defs = ofstream(context.output_scripts_folder + "script_defs.c", ios_base::out);
-		context.out_script_defs << "#include \"script_decls.h\"" << endl;
-		
-		context.out_script_decls = ofstream(context.output_scripts_folder + "script_decls.h", ios_base::out);
-		context.out_script_decls << "#pragma once" << endl << endl
-								 << "#include <stackvalue.h>" << endl;
-		
-		// output identity matrix at transform id 0
-		transform_data << "\t" << "1.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "1.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "1.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "0.0f," << endl
-					   << "\t" << "1.0f," << endl;
-		
-		current_transform += 1;
-		
-		// output identity cxform at id 0
-		cxform_data << "\t" << "1.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "1.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "1.0f," << endl
-					<< "\t" << "0.0f," << endl
-					
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "1.0f," << endl
-					
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl
-					<< "\t" << "0.0f," << endl;
-		
-		current_cxform += 1;
 		
 		// prime the loop
 		tag.code = (TagType) 1;
@@ -429,9 +451,11 @@ namespace SWFRecomp
 			interpretTag(context, tag);
 			tag.clearFields();
 		}
-		
+	}
+	
+	void SWF::closeSWF(Context& context)
+	{
 		context.tag_main << endl << endl
-						 << "typedef void (*frame_func)();" << endl << endl
 						 << "frame_func frame_funcs[] =" << endl
 						 << "{" << endl;
 		
@@ -442,14 +466,14 @@ namespace SWFRecomp
 		
 		if (current_bitmap_pixel)
 		{
-			tag_init << endl << "\tfinalizeBitmaps();";
+			context.tag_init << endl << "\tfinalizeBitmaps(app_context);";
 		}
 		
 		context.tag_main << "};" << endl
 						 << endl
 						 << "void tagInit(SWFAppContext* app_context)" << endl
 						 << "{"
-						 << tag_init.str() << endl
+						 << context.tag_init.str() << endl
 						 << "}";
 		
 		context.out_draws << endl << endl;
@@ -500,6 +524,8 @@ namespace SWFRecomp
 						  << "};";
 		
 		context.out_draws_header << endl
+								 << "#define SHAPE_DATA_EXISTS " << to_string(current_tri > 0) << endl
+								 << endl
 								 << "extern u32 shape_data[" << to_string(current_tri ? 3*current_tri : 1) << "][4];" << endl
 								 << "extern float transform_data[" << to_string(current_transform ? current_transform : 1) << "][16];" << endl
 								 << "extern float color_data[" << to_string(current_color ? current_color : 1) << "][4];" << endl
@@ -529,11 +555,65 @@ namespace SWFRecomp
 		context.constants_header << endl << endl
 								 << "#define BITMAP_COUNT " << to_string(current_bitmap) << endl
 								 << "#define BITMAP_HIGHEST_W " << to_string(highest_w) << endl
-								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h);
+								 << "#define BITMAP_HIGHEST_H " << to_string(highest_h) << endl
+								 << endl
+								 << "#define EXPORTED_ASSETS_COUNT " << to_string(assets.size());
+		
+		if (assets.size() > 0)
+		{
+			context.constants_header << endl << endl
+									 << "extern u16 exported_char_ids[" << to_string(assets.size()) << "];";
+			
+			context.constants_header << endl << endl
+									 << "extern u32 exported_string_ids[" << to_string(assets.size()) << "];";
+			
+			context.constants << endl << endl
+						  << "u16 exported_char_ids[] =" << endl
+						  << "{" << endl;
+			
+			for (size_t i = 0; i < assets.size(); ++i)
+			{
+				context.constants << "\t" << assets[i].char_id << "," << endl;
+			}
+			
+			context.constants << "};";
+			
+			context.constants << endl << endl
+							  << "u32 exported_string_ids[] =" << endl
+							  << "{" << endl;
+			
+			for (size_t i = 0; i < assets.size(); ++i)
+			{
+				context.constants << "\t" << assets[i].string_id << "," << endl;
+			}
+			
+			context.constants << "};";
+		}
+		
+		else
+		{
+			context.constants_header << endl << endl
+									 << "extern u16* exported_char_ids;";
+			
+			context.constants_header << endl << endl
+									 << "extern u32* exported_string_ids;";
+			
+			context.constants << endl << endl
+							  << "u16* exported_char_ids = NULL;";
+			
+			context.constants << endl << endl
+							  << "u32* exported_string_ids = NULL;";
+		}
 		
 		// Generate MAX_STRING_ID constant for runtime initialization
 		context.out_script_decls << endl
 								 << "#define MAX_STRING_ID " << action.next_str_i;
+		
+		
+		action.recompileStringTable(context);
+		action.recompileFunctionTable(context);
+		
+		recompileBitmapIds(context);
 		
 		context.out_script_header.close();
 		context.out_script_defs.close();
@@ -579,6 +659,14 @@ namespace SWFRecomp
 			
 			case SWF_TAG_SHOW_FRAME:
 			{
+				while (last_queued_init_script < next_init_script_i)
+				{
+					context.tag_main << "\t" << "init_script_" << to_string(last_queued_init_script) << "(app_context);" << endl;
+					last_queued_init_script += 1;
+				}
+				
+				// TODO: move calls to PlaceObject/PlaceObject2 tags here
+				
 				while (last_queued_script < next_script_i)
 				{
 					context.tag_main << "\t" << "script_" << to_string(last_queued_script) << "(app_context);" << endl;
@@ -672,8 +760,9 @@ namespace SWFRecomp
 				
 				char_id_to_bitmap_id[char_id] = current_bitmap;
 				
-				tag_init << endl
+				context.tag_init << endl
 						 << "\tdefineBitmap("
+						 << "app_context, "
 						 << to_string(4*bitmap_start) << ", "
 						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
 						 << to_string(w) << ", "
@@ -731,6 +820,7 @@ namespace SWFRecomp
 				RGB.parseFields(cur_pos);
 				
 				context.tag_main << "\t" << "tagSetBackgroundColor("
+								 << "app_context, "
 								 << to_string((u8) RGB.fields[0].value) << ", "
 								 << to_string((u8) RGB.fields[1].value) << ", "
 								 << to_string((u8) RGB.fields[2].value) << ");" << endl;
@@ -1002,15 +1092,15 @@ namespace SWFRecomp
 					}
 					
 					size_t text_size = current_text - text_start;
-					tag_init << endl
-							 << "\t" << "tagDefineText("
-							 << "app_context, "
-							 << to_string(char_id) << ", "
-							 << to_string(text_start) << ", "
-							 << to_string(text_size) << ", "
-							 << to_string(transform_start) << ", "
-							 << to_string(cxform_id)
-							 << ");";
+					context.tag_init << endl
+									 << "\t" << "tagDefineText("
+									 << "app_context, "
+									 << to_string(char_id) << ", "
+									 << to_string(text_start) << ", "
+									 << to_string(text_size) << ", "
+									 << to_string(transform_start) << ", "
+									 << to_string(cxform_id)
+									 << ");";
 				}
 				
 				break;
@@ -1020,7 +1110,7 @@ namespace SWFRecomp
 			{
 				context.out_script_header << endl << "void script_" << to_string(next_script_i) << "(SWFAppContext* app_context);";
 				
-				ofstream out_script(context.output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
+				ofstream out_script(context.config.output_scripts_folder + "script_" + to_string(next_script_i) + ".c", ios_base::out);
 				out_script << "#include <recomp.h>" << endl
 						   << "#include \"script_decls.h\"" << endl << endl
 						   << "void script_" << next_script_i << "(SWFAppContext* app_context)" << endl
@@ -1028,7 +1118,7 @@ namespace SWFRecomp
 				
 				next_script_i += 1;
 				
-				action.parseActions(context, cur_pos, out_script);
+				(void) action.parseActions(context, cur_pos, out_script, true, false);
 				
 				out_script << "}";
 				
@@ -1038,6 +1128,166 @@ namespace SWFRecomp
 			case SWF_TAG_DEFINE_FONT_INFO:
 			{
 				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_BITS_LOSSLESS:
+			{
+				long unsigned int compressed_length = tag.length;
+				
+				u16 char_id = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u8 bitmap_format = *cur_pos;
+				cur_pos += 1;
+				compressed_length -= 1;
+				
+				u16 width = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u16 height = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				if (bitmap_format == 3 || bitmap_format == 4)
+				{
+					EXC_ARG("DefineBitsLossless tag had unsupported format: %d\n", bitmap_format);
+				}
+				
+				u32 image_data_size = width*height;
+				
+				long unsigned int uncompressed_length = 4*image_data_size;
+				
+				char* bitmap_buffer_uncompressed = new char[uncompressed_length];
+				uncompress((u8*) bitmap_buffer_uncompressed, &uncompressed_length, const_cast<const u8*>((u8*) cur_pos), (uLong) (compressed_length));
+				
+				Vertex v;
+				v.x = width;
+				v.y = height;
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < uncompressed_length; i += 4)
+				{
+					u8 reserved = bitmap_buffer_uncompressed[i];
+					u8 red = bitmap_buffer_uncompressed[i + 1];
+					u8 green = bitmap_buffer_uncompressed[i + 2];
+					u8 blue = bitmap_buffer_uncompressed[i + 3];
+					
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) red << "," << endl
+								<< "\t0x" << (u32) green << "," << endl
+								<< "\t0x" << (u32) blue << "," << endl
+								<< "\t0xFF," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				context.tag_init << endl
+						 << "\tdefineBitmap("
+						 << "app_context, "
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(width) << ", "
+						 << to_string(height)
+						 << ");";
+				
+				current_bitmap += 1;
+				
+				cur_pos += compressed_length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_JPEG_2:
+			{
+				size_t new_length = tag.length;
+				
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 char_id = (u16) tag.fields[0].value;
+				new_length -= 2;
+				
+				// stupid swf edge cases are stupid
+				if ((u8) cur_pos[0] == 0xFF &&
+					(u8) cur_pos[1] == 0xD9 &&
+					(u8) cur_pos[2] == 0xFF &&
+					(u8) cur_pos[3] == 0xD8)
+				{
+					cur_pos += 4;
+					new_length -= 4;
+				}
+				
+				else if ((u8) cur_pos[0] == 0xFF &&
+						 (u8) cur_pos[1] == 0xD8)
+				{
+					cur_pos += 2;
+					new_length -= 2;
+				}
+				
+				size_t jpeg_data_size = new_length;
+				u8* jpeg_data = new u8[jpeg_data_size];
+				
+				for (size_t i = 0; i < jpeg_data_size; ++i)
+				{
+					jpeg_data[i] = cur_pos[i];
+				}
+				
+				int w;
+				int h;
+				int comp;
+				u8* decompressed = stbi_load_from_memory(jpeg_data, (int) jpeg_data_size, &w, &h, &comp, 3);
+				
+				if (decompressed == nullptr)
+				{
+					EXC("JPEG data returned NULL.\n");
+				}
+				
+				Vertex v;
+				v.x = w;
+				v.y = h;
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < 3*w*h; i += 3)
+				{
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) decompressed[i] << "," << endl
+								<< "\t0x" << (u32) decompressed[i + 1] << "," << endl
+								<< "\t0x" << (u32) decompressed[i + 2] << "," << endl
+								<< "\t0xFF," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				context.tag_init << endl
+						 << "\tdefineBitmap("
+						 << "app_context, "
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(w) << ", "
+						 << to_string(h)
+						 << ");";
+				
+				current_bitmap += 1;
+				
+				cur_pos += new_length;
 				
 				break;
 			}
@@ -1104,9 +1354,243 @@ namespace SWFRecomp
 				break;
 			}
 			
+			case SWF_TAG_DEFINE_BITS_LOSSLESS_2:
+			{
+				long unsigned int compressed_length = tag.length;
+				
+				u16 char_id = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u8 bitmap_format = *cur_pos;
+				cur_pos += 1;
+				compressed_length -= 1;
+				
+				u16 width = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				u16 height = VAL(u16, cur_pos);
+				cur_pos += 2;
+				compressed_length -= 2;
+				
+				if (bitmap_format == 3 || bitmap_format == 4)
+				{
+					EXC_ARG("DefineBitsLossless2 tag had unsupported format: %d\n", bitmap_format);
+				}
+				
+				u32 image_data_size = width*height;
+				
+				long unsigned int uncompressed_length = 4*image_data_size;
+				
+				char* bitmap_buffer_uncompressed = new char[uncompressed_length];
+				uncompress((u8*) bitmap_buffer_uncompressed, &uncompressed_length, const_cast<const u8*>((u8*) cur_pos), (uLong) (compressed_length));
+				
+				Vertex v;
+				v.x = width;
+				v.y = height;
+				
+				bitmap_sizes.push_back(v);
+				
+				size_t bitmap_start = current_bitmap_pixel;
+				
+				for (size_t i = 0; i < uncompressed_length; i += 4)
+				{
+					u8 alpha = bitmap_buffer_uncompressed[i];
+					u8 red = bitmap_buffer_uncompressed[i + 1];
+					u8 green = bitmap_buffer_uncompressed[i + 2];
+					u8 blue = bitmap_buffer_uncompressed[i + 3];
+					
+					bitmap_data << std::hex << std::uppercase << std::setw(2)
+								<< "\t0x" << (u32) alpha << "," << endl
+								<< "\t0x" << (u32) red << "," << endl
+								<< "\t0x" << (u32) green << "," << endl
+								<< "\t0x" << (u32) blue << "," << endl;
+					
+					current_bitmap_pixel += 1;
+				}
+				
+				char_id_to_bitmap_id[char_id] = current_bitmap;
+				
+				context.tag_init << endl
+						 << "\tdefineBitmap("
+						 << "app_context, "
+						 << to_string(4*bitmap_start) << ", "
+						 << to_string(4*(current_bitmap_pixel - bitmap_start)) << ", "
+						 << to_string(width) << ", "
+						 << to_string(height)
+						 << ");";
+				
+				current_bitmap += 1;
+				
+				cur_pos += compressed_length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_SPRITE:
+			{
+				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DEFINE_FONT_2:
+			{
+				tag.clearFields();
+				tag.setFieldCount(1);
+				
+				tag.configureNextField(SWF_FIELD_UI16);
+				
+				tag.parseFields(cur_pos);
+				
+				u16 font_id = (u16) tag.fields[0].value;
+				
+				u8 flags = (u8) *cur_pos;
+				cur_pos += 1;
+				
+				bool has_layout = flags & 0b10000000;
+				bool shift_jis = flags & 0b01000000;
+				
+				bool wide_offsets = flags & 0b00001000;
+				bool wide_codes = flags & 0b00000100;
+				
+				fprintf(stderr, "flags: 0x%02X, l: %d, w: %d\n", flags, has_layout, wide_codes);
+				
+				u8 langcode = (u8) *cur_pos;
+				cur_pos += 1;
+				
+				u8 name_len = (u8) *cur_pos;
+				cur_pos += 1 + name_len;
+				
+				u16 num_glyphs = VAL(u16, cur_pos);
+				cur_pos += 2;
+				
+				char* offset_table = cur_pos;
+				
+				int offset_stride = wide_offsets ? sizeof(u32) : sizeof(u16);
+				cur_pos += offset_stride*num_glyphs;
+				
+				//~ u32 code_table_offset = wide_offsets ? VAL(u32, cur_pos) : VAL(u16, cur_pos);
+				//~ u8* code_table_u8 = offset_stride + code_table_offset;  // TODO: THIS ISN'T RIGHT
+				//~ u16* code_table_u16 = (u16*) code_table_u8;
+				//~ cur_pos = code_table_u8 + (wide_codes/2)*num_glyphs;  // TODO: CHECK THIS
+				
+				//~ if (has_layout)
+				//~ {
+					//~ u16 font_ascent = VAL(u16, cur_pos);
+					//~ cur_pos += 2;
+					
+					//~ u16 font_descent = VAL(u16, cur_pos);
+					//~ cur_pos += 2;
+					
+					//~ s16 font_leading = VAL(s16, cur_pos);
+					//~ cur_pos += 2;
+					
+					//~ s16* font_advance_table = cur_pos;  // TODO: CHECK THIS
+					//~ cur_pos += sizeof(s16)*num_glyphs;
+					
+					
+				//~ }
+				
+				// TODO: finish implementing DefineFont2
+				
+				//~ tag.clearFields();
+				//~ tag.setFieldCount(1);
+				
+				//~ tag.configureNextField(SWF_FIELD_UI16);
+				
+				//~ tag.parseFields(cur_pos);
+				
+				//~ std::vector<u16> entry_offsets;
+				//~ entry_offsets.push_back((u16) tag.fields[0].value);
+				
+				//~ u16 num_entries = entry_offsets.back()/2;
+				
+				//~ tag.clearFields();
+				//~ tag.setFieldCount(num_entries - 1);
+				
+				//~ for (u16 i = 0; i < num_entries - 1; ++i)
+				//~ {
+					//~ tag.configureNextField(SWF_FIELD_UI16);
+				//~ }
+				
+				//~ tag.parseFields(cur_pos);
+				
+				//~ for (u16 i = 0; i < num_entries - 1; ++i)
+				//~ {
+					//~ entry_offsets.push_back((u16) tag.fields[i].value);
+				//~ }
+				
+				//~ for (u16 i = 0; i < num_entries; ++i)
+				//~ {
+					//~ size_t glyph_start = 3*current_tri;
+					
+					//~ interpretShape(context, tag);
+					
+					//~ size_t glyph_size = 3*current_tri - glyph_start;
+					
+					//~ glyph_data << "\t" << to_string(glyph_start) << "," << endl
+							   //~ << "\t" << to_string(glyph_size) << "," << endl;
+					
+					//~ current_glyph += 1;
+				//~ }
+				
+				break;
+			}
+			
+			case SWF_TAG_EXPORT_ASSETS:
+			{
+				u16 count = VAL(u16, cur_pos);
+				cur_pos += 2;
+				
+				for (u16 i = 0; i < count; ++i)
+				{
+					ExportedAsset asset;
+					
+					asset.char_id = VAL(u16, cur_pos);
+					cur_pos += 2;
+					
+					tag.clearFields();
+					tag.setFieldCount(1);
+					tag.configureNextField(SWF_FIELD_STRING);
+					
+					tag.parseFields(cur_pos);
+					
+					asset.name = (char*) tag.fields[0].value;
+					asset.string_id = action.getStringId(context, asset.name);
+					
+					assets.push_back(asset);
+				}
+				
+				break;
+			}
+			
 			case SWF_TAG_ENABLE_DEBUGGER:
 			{
 				cur_pos += tag.length;
+				
+				break;
+			}
+			
+			case SWF_TAG_DO_INIT_ACTION:
+			{
+				context.out_script_header << endl << "void init_script_" << to_string(next_init_script_i) << "(SWFAppContext* app_context);";
+				
+				ofstream out_script(context.config.output_scripts_folder + "init_script_" + to_string(next_init_script_i) + ".c", ios_base::out);
+				out_script << "#include <recomp.h>" << endl
+						   << "#include \"script_decls.h\"" << endl << endl
+						   << "void init_script_" << next_init_script_i << "(SWFAppContext* app_context)" << endl
+						   << "{" << endl;
+				
+				next_init_script_i += 1;
+				
+				u16 sprite_id = VAL(u16, cur_pos);
+				cur_pos += 2;
+				
+				(void) action.parseActions(context, cur_pos, out_script, true, false);
+				
+				out_script << "}";
 				
 				break;
 			}
@@ -1188,6 +1672,45 @@ namespace SWFRecomp
 	{
 		int diff = end - start;
 		return (u8) (start + t*diff);
+	}
+	
+	void SWF::recompileBitmapIds(Context& context)
+	{
+		if (char_id_to_bitmap_id.size() == 0)
+		{
+			context.out_script_decls << endl << "extern u16* bitmap_char_ids;";
+			context.out_script_defs << endl << "u16* bitmap_char_ids = NULL;";
+			
+			context.out_script_decls << endl << "extern u16* bitmap_ids;";
+			context.out_script_defs << endl << "u16* bitmap_ids = NULL;";
+		}
+		
+		else
+		{
+			context.out_script_decls << endl << "extern u16 bitmap_char_ids[" << char_id_to_bitmap_id.size() << "];";
+			context.out_script_defs << endl << "u16 bitmap_char_ids[" << to_string(char_id_to_bitmap_id.size()) << "] =" << endl;
+			
+			context.out_script_defs << "{" << endl;
+			
+			for (const auto& [c, b] : char_id_to_bitmap_id)
+			{
+				context.out_script_defs << "\t" << to_string(c) << "," << endl;
+			}
+			
+			context.out_script_defs << "};";
+			
+			context.out_script_decls << endl << "extern u16 bitmap_ids[" << char_id_to_bitmap_id.size() << "];";
+			context.out_script_defs << endl << "u16 bitmap_ids[" << to_string(char_id_to_bitmap_id.size()) << "] =" << endl;
+			
+			context.out_script_defs << "{" << endl;
+			
+			for (const auto& [c, b] : char_id_to_bitmap_id)
+			{
+				context.out_script_defs << "\t" << to_string(b) << "," << endl;
+			}
+			
+			context.out_script_defs << "};";
+		}
 	}
 	
 	void SWF::recompileMatrix(MATRIX matrix, std::stringstream& out)

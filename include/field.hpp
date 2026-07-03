@@ -45,6 +45,7 @@ namespace SWFRecomp
 	{
 	public:
 		u32 bit_length;
+		size_t str_length;
 		FieldType type;
 		s64 value;
 		bool is_nbits;

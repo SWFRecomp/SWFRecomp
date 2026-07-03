@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <exception>
 
 #include <field.hpp>
@@ -11,6 +12,7 @@ namespace SWFRecomp
 	SWFField::SWFField()
 	{
 		bit_length = 0;
+		str_length = 0;
 		type = SWF_FIELD_NONE;
 		value = 0;
 		is_nbits = false;
@@ -153,6 +155,16 @@ namespace SWFRecomp
 				value = VAL(u32, &f);
 				
 				prev_was_bitfield = true;
+				
+				break;
+			}
+			
+			case SWF_FIELD_STRING:
+			{
+				str_length = strlen(field_buffer);
+				value = (u64) field_buffer;
+				
+				field_buffer += str_length + 1;
 				
 				break;
 			}
