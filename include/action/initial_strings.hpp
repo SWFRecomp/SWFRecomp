@@ -76,4 +76,5 @@ const char* initial_strings[] =
 	"NEGATIVE_INFINITY",
 	"MAX_VALUE",
 	"MIN_VALUE",
+	"recompToml",
 };
