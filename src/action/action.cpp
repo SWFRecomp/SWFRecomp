@@ -640,6 +640,14 @@ namespace SWFRecomp
 					break;
 				}
 				
+				case SWF_ACTION_DUPLICATE:
+				{
+					out_script << "\t" << "// Duplicate" << endl
+							   << "\t" << "actionDuplicate(app_context);" << endl;
+					
+					break;
+				}
+				
 				case SWF_ACTION_GET_MEMBER:
 				{
 					out_script << "\t" << "// GetMember" << endl
@@ -978,6 +986,61 @@ namespace SWFRecomp
 		return last_action_return;
 	}
 	
+	string cleanString(string str)
+	{
+		string clean_str;
+		
+		for (size_t i = 0; i < str.size(); ++i)
+		{
+			switch (str[i])
+			{
+				case '\n':
+				{
+					clean_str += "\\n";
+					
+					break;
+				}
+				
+				case '\r':
+				{
+					clean_str += "\\r";
+					
+					break;
+				}
+				
+				case '\\':
+				{
+					clean_str += "\\\\";
+					
+					break;
+				}
+				
+				case '\'':
+				{
+					clean_str += "\\\'";
+					
+					break;
+				}
+				
+				case '\"':
+				{
+					clean_str += "\\\"";
+					
+					break;
+				}
+				
+				default:
+				{
+					clean_str += str[i];
+					
+					break;
+				}
+			}
+		}
+		
+		return clean_str;
+	}
+	
 	void SWFAction::recompileStringTable(Context& context)
 	{
 		context.out_script_decls << endl << "extern char* str_table["
@@ -990,7 +1053,7 @@ namespace SWFRecomp
 		
 		for (size_t i = 1; i < next_str_i; ++i)
 		{
-			context.out_script_defs << "\t\"" << id_to_string[i].c_str() << "\"," << endl;
+			context.out_script_defs << "\t\"" << cleanString(id_to_string[i]) << "\"," << endl;
 		}
 		
 		context.out_script_defs << "};";
@@ -1127,7 +1190,10 @@ namespace SWFRecomp
 		// New string - assign ID and declare
 		string_to_id[str] = next_str_i;
 		id_to_string[next_str_i] = str;
-		context.out_script_defs << endl << "char* const_str_" << next_str_i << " = \"" << str << "\";";
+		
+		string clean_str = cleanString(str);
+		
+		context.out_script_defs << endl << "char* const_str_" << next_str_i << " = \"" << clean_str << "\";";
 		context.out_script_decls << endl << "extern char* const_str_" << next_str_i << ";";
 		next_str_i += 1;
 	}
