@@ -82,7 +82,7 @@ const char* initial_strings[] =
 	"recompSITLInit",
 	"recompSITLReadPacket",
 	"recompSITLSendJSON",
-	"recompSITLSendSensors",
+	"recompSITLSendSensor",
 	"recompJSON",
 	"leftThruster",
 	"rightThruster",
