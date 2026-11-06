@@ -13,6 +13,8 @@ const char* initial_strings[] =
 	"recompSetDisplayScale",
 	"recompSin",
 	"recompCos",
+	"recompAtan2",
+	"recompSqrt",
 	"recompColorTransform",
 	"redMultiplier",
 	"greenMultiplier",
