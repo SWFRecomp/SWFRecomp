@@ -79,11 +79,4 @@ const char* initial_strings[] =
 	"MAX_VALUE",
 	"MIN_VALUE",
 	"recompToml",
-	"recompSITLInit",
-	"recompSITLReadPacket",
-	"recompSITLSendJSON",
-	"recompSITLSendSensor",
-	"recompJSON",
-	"leftThruster",
-	"rightThruster",
 };
