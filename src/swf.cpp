@@ -2733,12 +2733,9 @@ namespace SWFRecomp
 	
 	void SWF::addCurvedEdge(Path* path, Vertex current, Vertex control, Vertex anchor, u32 passes)
 	{
-		std::vector<Vertex> left_points;
-		std::vector<Vertex> right_points;
-		
 		for (u32 i = 1; i <= passes; ++i)
 		{
-			float t = (float) i / passes;
+			float t = (float) i/passes;
 			float u = 1.0f - t;
 			
 			s32 x = (s32) (u*u*current.x + 2*u*t*control.x + t*t*anchor.x);
