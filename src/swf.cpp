@@ -1437,14 +1437,8 @@ namespace SWFRecomp
 			
 			case SWF_TAG_DEFINE_FONT_2:
 			{
-				tag.clearFields();
-				tag.setFieldCount(1);
-				
-				tag.configureNextField(SWF_FIELD_UI16);
-				
-				tag.parseFields(cur_pos);
-				
-				u16 font_id = (u16) tag.fields[0].value;
+				u16 font_id = VAL(u16, cur_pos);
+				cur_pos += 2;
 				
 				u8 flags = (u8) *cur_pos;
 				cur_pos += 1;
@@ -1454,8 +1448,6 @@ namespace SWFRecomp
 				
 				bool wide_offsets = flags & 0b00001000;
 				bool wide_codes = flags & 0b00000100;
-				
-				fprintf(stderr, "flags: 0x%02X, l: %d, w: %d\n", flags, has_layout, wide_codes);
 				
 				u8 langcode = (u8) *cur_pos;
 				cur_pos += 1;
@@ -1471,70 +1463,69 @@ namespace SWFRecomp
 				int offset_stride = wide_offsets ? sizeof(u32) : sizeof(u16);
 				cur_pos += offset_stride*num_glyphs;
 				
-				//~ u32 code_table_offset = wide_offsets ? VAL(u32, cur_pos) : VAL(u16, cur_pos);
-				//~ u8* code_table_u8 = offset_stride + code_table_offset;  // TODO: THIS ISN'T RIGHT
-				//~ u16* code_table_u16 = (u16*) code_table_u8;
-				//~ cur_pos = code_table_u8 + (wide_codes/2)*num_glyphs;  // TODO: CHECK THIS
+				u32 code_table_offset = wide_offsets ? VAL(u32, cur_pos) : VAL(u16, cur_pos);
+				cur_pos += offset_stride;
 				
-				//~ if (has_layout)
-				//~ {
-					//~ u16 font_ascent = VAL(u16, cur_pos);
-					//~ cur_pos += 2;
+				char* glyph_table = cur_pos;
+				
+				u8* code_table_u8 = ((u8*) offset_table) + code_table_offset;
+				u16* code_table = (u16*) code_table_u8;
+				cur_pos = ((char*) code_table_u8) + (wide_codes + 1)*num_glyphs;
+				
+				if (has_layout)
+				{
+					u16 font_ascent = VAL(u16, cur_pos);
+					cur_pos += 2;
 					
-					//~ u16 font_descent = VAL(u16, cur_pos);
-					//~ cur_pos += 2;
+					u16 font_descent = VAL(u16, cur_pos);
+					cur_pos += 2;
 					
-					//~ s16 font_leading = VAL(s16, cur_pos);
-					//~ cur_pos += 2;
+					s16 font_leading = VAL(s16, cur_pos);
+					cur_pos += 2;
 					
-					//~ s16* font_advance_table = cur_pos;  // TODO: CHECK THIS
-					//~ cur_pos += sizeof(s16)*num_glyphs;
+					s16* font_advance_table = (s16*) cur_pos;
+					cur_pos += sizeof(s16)*num_glyphs;
 					
+					SWFTag rect;
 					
-				//~ }
-				
-				// TODO: finish implementing DefineFont2
-				
-				//~ tag.clearFields();
-				//~ tag.setFieldCount(1);
-				
-				//~ tag.configureNextField(SWF_FIELD_UI16);
-				
-				//~ tag.parseFields(cur_pos);
-				
-				//~ std::vector<u16> entry_offsets;
-				//~ entry_offsets.push_back((u16) tag.fields[0].value);
-				
-				//~ u16 num_entries = entry_offsets.back()/2;
-				
-				//~ tag.clearFields();
-				//~ tag.setFieldCount(num_entries - 1);
-				
-				//~ for (u16 i = 0; i < num_entries - 1; ++i)
-				//~ {
-					//~ tag.configureNextField(SWF_FIELD_UI16);
-				//~ }
-				
-				//~ tag.parseFields(cur_pos);
-				
-				//~ for (u16 i = 0; i < num_entries - 1; ++i)
-				//~ {
-					//~ entry_offsets.push_back((u16) tag.fields[i].value);
-				//~ }
-				
-				//~ for (u16 i = 0; i < num_entries; ++i)
-				//~ {
-					//~ size_t glyph_start = 3*current_tri;
+					rect.setFieldCount(5);
 					
-					//~ interpretShape(context, tag);
+					rect.configureNextField(SWF_FIELD_UB, 5, true);
+					rect.configureNextField(SWF_FIELD_SB, 0);
+					rect.configureNextField(SWF_FIELD_SB, 0);
+					rect.configureNextField(SWF_FIELD_SB, 0);
+					rect.configureNextField(SWF_FIELD_SB, 0);
 					
-					//~ size_t glyph_size = 3*current_tri - glyph_start;
+					for (u16 i = 0; i < num_glyphs; ++i)
+					{
+						rect.clearFields();
+						rect.parseFields(cur_pos);
+					}
 					
-					//~ glyph_data << "\t" << to_string(glyph_start) << "," << endl
-							   //~ << "\t" << to_string(glyph_size) << "," << endl;
+					u16 kerning_count = VAL(u16, cur_pos);
+					cur_pos += 2;
 					
-					//~ current_glyph += 1;
-				//~ }
+					// TODO: read kerning records
+				}
+				
+				char* last_pos = cur_pos;
+				cur_pos = glyph_table;
+				
+				for (u16 i = 0; i < num_glyphs; ++i)
+				{
+					size_t glyph_start = 3*current_tri;
+					
+					interpretShape(context, tag);
+					
+					size_t glyph_size = 3*current_tri - glyph_start;
+					
+					glyph_data << "\t" << to_string(glyph_start) << "," << endl
+							   << "\t" << to_string(glyph_size) << "," << endl;
+					
+					current_glyph += 1;
+				}
+				
+				cur_pos = last_pos;
 				
 				break;
 			}
@@ -1948,13 +1939,15 @@ namespace SWFRecomp
 		// TODO: DefineShape3
 		// TODO: DefineShape4
 		
-		bool is_font = shape_tag.code == SWF_TAG_DEFINE_FONT;
+		bool is_font = shape_tag.code == SWF_TAG_DEFINE_FONT ||
+					   shape_tag.code == SWF_TAG_DEFINE_FONT_2;
 		
 		switch (shape_tag.code)
 		{
 			case SWF_TAG_DEFINE_SHAPE:
 			case SWF_TAG_DEFINE_SHAPE_2:
 			case SWF_TAG_DEFINE_FONT:
+			case SWF_TAG_DEFINE_FONT_2:
 			{
 				u16 shape_id;
 				u16 fill_style_count;
