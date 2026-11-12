@@ -28,10 +28,12 @@ set(RENAME_ZCONF OFF)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/zlib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib/lzma)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib/libtess2)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     zlibstatic
     lzma
+    libtess2
 )
 
 # frick u ninja
@@ -47,6 +49,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include/action
     zlib
     lzma/liblzma/api
+    ${CMAKE_SOURCE_DIR}/lib/libtess2/Include
     ${CMAKE_SOURCE_DIR}/lib/earcut/include/mapbox
     ${CMAKE_SOURCE_DIR}/lib/tomlplusplus/include
     ${CMAKE_SOURCE_DIR}/lib/stb

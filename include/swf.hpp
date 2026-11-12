@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <tesselator.h>
+
 #include <common.h>
 #include <tag.hpp>
 #include <action.hpp>
@@ -189,6 +191,8 @@ namespace SWFRecomp
 		std::stringstream cxform_data;
 		size_t current_cxform;
 		
+		TESStesselator* tess;
+		
 		u8* jpeg_tables;
 		size_t jpeg_tables_size;
 		
@@ -220,6 +224,8 @@ namespace SWFRecomp
 		void processShape(Shape& shape, u32* fill_styles);
 		void constructEdges(std::vector<Path>& paths, std::vector<Node>& nodes);
 		void johnson(std::vector<Node>& nodes, std::vector<Path>& path_stack, std::unordered_map<Node*, bool>& blocked, std::unordered_map<Node*, std::vector<Node*>>& blocked_map, std::vector<std::vector<Path>>& closed_paths);
+		void addContour(const Shape* shape);
+		void tessShape(std::vector<Tri>& tris);
 		void fillShape(Shape& shape, std::vector<Tri>& tris);
 		void drawLines(const Path& path, u16 width, std::vector<Tri>& tris);
 	};

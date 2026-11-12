@@ -209,6 +209,8 @@ namespace SWFRecomp
 		cur_pos = swf_buffer + 8;
 		
 		header.loadOtherData(cur_pos);
+		
+		tess = tessNewTess(nullptr);
 	}
 	
 	void SWF::openSWF(Context& context)
@@ -2569,8 +2571,8 @@ namespace SWFRecomp
 							
 							Shape& test_shape = shapes[j];
 							
-							if (test_shape.min.x < hole.min.x && test_shape.max.x > hole.max.x &&
-								test_shape.min.y < hole.min.y && test_shape.max.y > hole.max.y)
+							if (test_shape.min.x <= hole.min.x && test_shape.max.x >= hole.max.x &&
+								test_shape.min.y <= hole.min.y && test_shape.max.y >= hole.max.y)
 							{
 								outer_candidates.push_back(&test_shape);
 							}
@@ -2615,30 +2617,63 @@ namespace SWFRecomp
 				
 				size_t tris_size = 0;
 				
-				for (size_t i = 0; i < shapes.size(); ++i)
+				if (is_font)
 				{
-					if (!shapes[i].invalid && shapes[i].closed && shapes[i].inner_fill != 0 && !shapes[i].hole)
+					for (size_t i = 0; i < shapes.size(); ++i)
 					{
-						std::vector<Tri> tris;
-						
-						fillShape(shapes[i], tris);
-						
-						tris_size += tris.size();
-						
-						for (Tri t : tris)
+						if (!shapes[i].invalid && shapes[i].closed)
 						{
-							for (int j = 0; j < 3; ++j)
+							addContour(&shapes[i]);
+						}
+					}
+					
+					std::vector<Tri> tris;
+					tessShape(tris);
+					tris_size += tris.size();
+					
+					for (Tri t : tris)
+					{
+						for (int j = 0; j < 3; ++j)
+						{
+							float x_f = (float) t.verts[j].x;
+							float y_f = (float) 1024 - t.verts[j].y;
+							
+							shape_data << "\t" << "{ "
+									   << std::hex << std::uppercase
+									   << "0x" << VAL(u32, &x_f) << ", "
+									   << "0x" << VAL(u32, &y_f) << ", "
+									   << "0x" << (u32) all_fill_styles[shapes[0].fill_style_list][0].type << ", "
+									   << "0x" << (u32) all_fill_styles[shapes[0].fill_style_list][0].index
+									   << " }," << endl;
+						}
+					}
+				}
+				
+				else
+				{
+					for (size_t i = 0; i < shapes.size(); ++i)
+					{
+						if (!shapes[i].invalid && shapes[i].closed && shapes[i].inner_fill != 0 && !shapes[i].hole)
+						{
+							std::vector<Tri> tris;
+							fillShape(shapes[i], tris);
+							tris_size += tris.size();
+							
+							for (Tri t : tris)
 							{
-								float x_f = (float) t.verts[j].x;
-								float y_f = (float) (is_font ? 1024 : FRAME_HEIGHT) - t.verts[j].y;
-								
-								shape_data << "\t" << "{ "
-										   << std::hex << std::uppercase
-										   << "0x" << VAL(u32, &x_f) << ", "
-										   << "0x" << VAL(u32, &y_f) << ", "
-										   << "0x" << (u32) all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].type << ", "
-										   << "0x" << (u32) all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].index
-										   << " }," << endl;
+								for (int j = 0; j < 3; ++j)
+								{
+									float x_f = (float) t.verts[j].x;
+									float y_f = (float) FRAME_HEIGHT - t.verts[j].y;
+									
+									shape_data << "\t" << "{ "
+											   << std::hex << std::uppercase
+											   << "0x" << VAL(u32, &x_f) << ", "
+											   << "0x" << VAL(u32, &y_f) << ", "
+											   << "0x" << (u32) all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].type << ", "
+											   << "0x" << (u32) all_fill_styles[shapes[i].fill_style_list][shapes[i].inner_fill - 1].index
+											   << " }," << endl;
+								}
 							}
 						}
 					}
@@ -2650,6 +2685,11 @@ namespace SWFRecomp
 					
 					if (line_style_i != 0)
 					{
+						if (is_font)
+						{
+							EXC("lines for DefineFont not supported\n");
+						}
+						
 						LineStyle line_style = all_line_styles[paths[i].line_style_list][line_style_i - 1];
 						
 						std::vector<Tri> tris;
@@ -3058,6 +3098,45 @@ namespace SWFRecomp
 			{
 				tris.push_back(t);
 			}
+		}
+	}
+	
+	void SWF::addContour(const Shape* shape)
+	{
+		std::vector<TESSreal> coords;
+		
+		for (const Vertex& v : shape->verts)
+		{
+			coords.push_back((TESSreal) v.x);
+			coords.push_back((TESSreal) v.y);
+		}
+		
+		tessAddContour(tess, 2, coords.data(), 2*sizeof(TESSreal), shape->verts.size() - 1);
+	}
+	
+	void SWF::tessShape(std::vector<Tri>& tris)
+	{
+		if (!tessTesselate(tess, TESS_WINDING_NONZERO, TESS_POLYGONS, 3, 2, 0))
+		{
+			EXC("tessellation failed\n");
+		}
+		
+		Tri t;
+		
+		const TESSreal* vertices = tessGetVertices(tess);
+		const TESSindex* indices = tessGetElements(tess);
+		
+		for (size_t i = 0; i < tessGetElementCount(tess); ++i)
+		{
+			for (size_t j = 0; j < 3; ++j)
+			{
+				const TESSindex index = indices[3*i + j];
+				
+				t.verts[j].x = vertices[2*index];
+				t.verts[j].y = vertices[2*index + 1];
+			}
+			
+			tris.push_back(t);
 		}
 	}
 	

@@ -13,3 +13,6 @@
 [submodule "lib/stb"]
 	path = lib/stb
 	url = https://github.com/nothings/stb.git
+[submodule "lib/libtess2"]
+	path = lib/libtess2
+	url = https://github.com/SWFRecomp/libtess2
