@@ -2273,7 +2273,7 @@ namespace SWFRecomp
 						move_delta_y = (s32) shape_tag.fields[current_field++].value;
 						
 						last_x = move_delta_x;
-						last_y = (is_font ? 0 : FRAME_HEIGHT) - move_delta_y;
+						last_y = (is_font ? 1024 : FRAME_HEIGHT) - move_delta_y;
 					}
 					
 					if (state_fill_style_0)
