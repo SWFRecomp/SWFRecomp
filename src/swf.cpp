@@ -886,6 +886,7 @@ namespace SWFRecomp
 			}
 			
 			case SWF_TAG_DEFINE_TEXT:
+			case SWF_TAG_DEFINE_TEXT_2:
 			{
 				tag.clearFields();
 				tag.setFieldCount(1);
@@ -921,6 +922,8 @@ namespace SWFRecomp
 				u8 glyph_bits = (u8) tag.fields[0].value;
 				u8 advance_bits = (u8) tag.fields[1].value;
 				
+				bool is_text_2 = tag.code == SWF_TAG_DEFINE_TEXT_2;
+				
 				while (true)
 				{
 					tag.clearFields();
@@ -942,9 +945,7 @@ namespace SWFRecomp
 					bool has_x_offset = (flags & 0b0010);
 					bool has_y_offset = (flags & 0b0001);
 					
-					// TODO: handle RGBA for DefineText2
-					
-					u32 field_count = 2*has_font + 3*has_color + has_x_offset + has_y_offset + 1;
+					u32 field_count = 2*has_font + 3*has_color + is_text_2*has_color + has_x_offset + has_y_offset + 1;
 					
 					tag.clearFields();
 					tag.setFieldCount(field_count);
@@ -959,6 +960,11 @@ namespace SWFRecomp
 						tag.configureNextField(SWF_FIELD_UI8);
 						tag.configureNextField(SWF_FIELD_UI8);
 						tag.configureNextField(SWF_FIELD_UI8);
+						
+						if (is_text_2)
+						{
+							tag.configureNextField(SWF_FIELD_UI8);
+						}
 					}
 					
 					if (has_x_offset)
@@ -988,6 +994,7 @@ namespace SWFRecomp
 					u8 r;
 					u8 g;
 					u8 b;
+					u8 a;
 					s16 x_offset;
 					s16 y_offset;
 					u16 text_height;
@@ -1001,11 +1008,11 @@ namespace SWFRecomp
 					
 					if (has_color)
 					{
-						// TODO: handle RGBA (DefineText2)
-						
 						r = (u8) tag.fields[current_field++].value;
 						g = (u8) tag.fields[current_field++].value;
 						b = (u8) tag.fields[current_field++].value;
+						
+						a = (u8) (is_text_2 ? tag.fields[current_field++].value : 0xFF);
 						
 						cxform_id = (u32) current_cxform;
 						
@@ -1032,7 +1039,7 @@ namespace SWFRecomp
 									<< "\t" << to_string(r) << "/255.0f," << endl
 									<< "\t" << to_string(g) << "/255.0f," << endl
 									<< "\t" << to_string(b) << "/255.0f," << endl
-									<< "\t" << "0.0f," << endl;
+									<< "\t" << to_string(a) << "/255.0f," << endl;
 						
 						current_cxform += 1;
 					}
@@ -2432,10 +2439,9 @@ namespace SWFRecomp
 						
 						shapes.back().fill_style_list = paths[i].fill_style_list;
 						
-						if (paths[i].fill_styles[shapes.back().fill_right] == 0 && paths[i].fill_styles[!shapes.back().fill_right] != 0)
+						if (shapes.back().inner_fill == 0 && shapes.back().outer_fill != 0)
 						{
 							shapes.back().hole = true;
-							shapes.back().outer_fill = paths[i].fill_styles[!shapes.back().fill_right];
 						}
 					}
 				}
@@ -2802,7 +2808,17 @@ namespace SWFRecomp
 		
 		shape.fill_right = signed_area < 0;
 		
-		shape.inner_fill = fill_styles[signed_area < 0];
+		if (fill_styles[0] != 0 && fill_styles[1] == 0)
+		{
+			shape.inner_fill = fill_styles[0];
+			shape.outer_fill = 0;
+		}
+		
+		else
+		{
+			shape.inner_fill = fill_styles[shape.fill_right];
+			shape.outer_fill = fill_styles[!shape.fill_right];
+		}
 		
 		shape.got_min_max = true;
 	}
