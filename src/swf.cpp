@@ -3111,7 +3111,7 @@ namespace SWFRecomp
 			coords.push_back((TESSreal) v.y);
 		}
 		
-		tessAddContour(tess, 2, coords.data(), 2*sizeof(TESSreal), shape->verts.size() - 1);
+		tessAddContour(tess, 2, coords.data(), 2*sizeof(TESSreal), (int) shape->verts.size() - 1);
 	}
 	
 	void SWF::tessShape(std::vector<Tri>& tris)
@@ -3132,8 +3132,8 @@ namespace SWFRecomp
 			{
 				const TESSindex index = indices[3*i + j];
 				
-				t.verts[j].x = vertices[2*index];
-				t.verts[j].y = vertices[2*index + 1];
+				t.verts[j].x = (s32) vertices[2*index];
+				t.verts[j].y = (s32) vertices[2*index + 1];
 			}
 			
 			tris.push_back(t);
