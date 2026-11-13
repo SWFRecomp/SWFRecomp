@@ -2441,7 +2441,7 @@ namespace SWFRecomp
 						
 						shapes.back().fill_style_list = paths[i].fill_style_list;
 						
-						if (shapes.back().inner_fill == 0 && shapes.back().outer_fill != 0)
+						if (paths[i].fill_styles[shapes.back().fill_right] == 0 && paths[i].fill_styles[!shapes.back().fill_right] != 0)
 						{
 							shapes.back().hole = true;
 						}
