@@ -1358,8 +1358,6 @@ namespace SWFRecomp
 				
 				context.tag_main << "\t" << "tagPlaceObject2(app_context, " << to_string(depth) << ", " << to_string(char_id) << ", " << to_string(transform_id) << ");" << endl;
 				
-				current_transform += 1;
-				
 				break;
 			}
 			
