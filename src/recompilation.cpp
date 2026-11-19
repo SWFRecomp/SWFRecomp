@@ -18,8 +18,6 @@ namespace SWFRecomp
 {
 	void recompile(Context& context)
 	{
-		printf("\n");
-		
 		if (!fs::exists(context.config.output_tags_folder))
 		{
 			fs::create_directory(context.config.output_tags_folder);
